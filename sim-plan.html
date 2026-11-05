@@ -88,7 +88,14 @@ const ls={g:k=>{try{return localStorage.getItem(k)}catch(e){return null}},s:(k,v
 
 /* ============ veri ============ */
 const LS_KEY="simplan.v1";
-const DEF={start:"",end:"",lpcSec:2,opcSec:2,maxGap:1,winM:3,gapM:4,lpcM:12,opcM:6,instrPerDay:1,avoidFinal:true,rankFirst:true,visaHard:false,allowMix:true,diffInstr:true};
+const DEF={start:"",end:"",lpcSec:2,opcSec:2,maxGap:1,winM:3,gapM:4,lpcM:12,opcM:6,instrPerDay:1,avoidFinal:true,avoidMix:true,pairRank:true,prio:["rank","final","mix"],visaHard:false,diffInstr:true};
+// öncelikli kurallar (prio: 0 = en önemli); kurallar çakışınca üstteki korunur
+const PRULES={final:"Mümkünse kişiyi son ayında planlama",mix:"Mecbur kalmadıkça LPC ve OPC aynı oturumda planlama",rank:"Mecbur kalmadıkça 1 CPT + 1 F/O eşleşmesi (iki CPT / iki F/O yok)"};
+const RULEKEY={final:"avoidFinal",mix:"avoidMix",rank:"pairRank"};
+const ruleOn=(S,k)=>S[RULEKEY[k]]!==false;
+const prioOf=S=>{const p=(Array.isArray(S.prio)?S.prio:[]).filter((k,i,a)=>k in PRULES&&a.indexOf(k)===i);for(const k of["rank","final","mix"])if(!p.includes(k))p.push(k);return p};
+const prioBox=S=>{const p=prioOf(S);return p.map((k,i)=>`<div class="row" style="gap:8px;margin:3px 0;flex-wrap:nowrap"><b style="width:18px">${i+1}.</b><label class="ck" style="flex:1"><input type="checkbox" data-pon="${k}"${ruleOn(S,k)?" checked":""}><span>${PRULES[k]}</span></label><button class="s np" data-pmv="${i}" data-dir="-1"${i?"":" disabled"} title="Önceliği artır">▲</button><button class="s np" data-pmv="${i}" data-dir="1"${i<p.length-1?"":" disabled"} title="Önceliği azalt">▼</button></div>`).join("")+
+ '<div class="mu" style="margin-top:4px">1 = en önemli. Kurallar çakışınca üstteki kural korunur, alttaki gerekirse esnetilir. İşareti kaldırılan kural uygulanmaz.</div>'};
 const LISTS={
  crew:{t:"Ekip",sheet:"Ekip",cols:[
   {k:"rank",l:"Rütbe",t:"sel",o:["CPT","F/O"],al:["rutbe","rank","unvan","gorev","pozisyon"]},
@@ -159,7 +166,9 @@ function load(){try{DB=JSON.parse(ls.g(LS_KEY)||"null")}catch(e){DB=null}
  const e=emptyDB();for(const k in e)if(DB[k]==null)DB[k]=e[k];DB.settings={...DEF,...DB.settings};
  DB.crew.forEach(c=>{delete c.opc;delete c.lastLoc;delete c.note});migrate(DB);syncVisas();save()}// kaldırılan ekip alanları
 // eski veri: kişideki tek vize tarihi Schengen sütununa, simülatördeki "vize gerekli" kaldırılır
-function migrate(d){if(!Array.isArray(d.visas)||(!d.visas.length&&(d.crew||[]).some(c=>c.visa)))d.visas=(d.crew||[]).filter(c=>c.code).map(c=>({id:uid(),code:c.code,name:c.name||"",schengen:c.visa||"",uae:""}));
+function migrate(d){const S0=d.settings||{};
+ if("rankFirst"in S0||"allowMix"in S0){if(S0.rankFirst===false&&JSON.stringify(S0.prio)===JSON.stringify(DEF.prio))S0.prio=["final","rank","mix"];delete S0.rankFirst;delete S0.allowMix}
+if(!Array.isArray(d.visas)||(!d.visas.length&&(d.crew||[]).some(c=>c.visa)))d.visas=(d.crew||[]).filter(c=>c.code).map(c=>({id:uid(),code:c.code,name:c.name||"",schengen:c.visa||"",uae:""}));
  if(!Array.isArray(d.visaTypes))d.visaTypes=defVisaTypes();
  if(d.settings&&d.settings.schengen!=null){const t=d.visaTypes.find(t=>t.id==="schengen");if(t)t.locs=d.settings.schengen;delete d.settings.schengen}
  // eski SCHENGEN/UAE hücrelerindeki "Yesil" kişinin yeşil pasaportuna dönüşür
@@ -282,17 +291,21 @@ function schedule(X){const S=X.S,out=[];
    if(S.visaHard&&visaExpired(visaOf(X,p.code,L.loc),c))continue;
    out.push({p,ev,c,latest,soft:ev.soft-c,hard:latest-c})}
   return out.sort((a,b)=>a.soft-b.soft||a.hard-b.hard||X.order.get(a.p.code)-X.order.get(b.p.code))};
- const penalty=(a,b,ta,tb)=>{if(ta!==tb&&!S.allowMix)return null;return(ta!==tb?1:0)+(a.rank===b.rank?2:0)};
+ // eşleşme kurallarının cezası: açık kurallar öncelik sırasına göre 2'nin kuvvetleri (üstteki kural daha ağır)
+ const PR=prioOf(S),WT={};{const on=PR.filter(k=>k!=="final"&&ruleOn(S,k));on.forEach((k,i)=>WT[k]=2**(on.length-1-i))}
+ const above=k=>ruleOn(S,"final")&&PR.indexOf(k)<PR.indexOf("final");
+ const penalty=(a,b,ta,tb)=>(ta!==tb?(WT.mix||0):0)+(a.rank===b.rank?(WT.rank||0):0);
  const freeIn=(code,from,to)=>{for(let x=from;x<=to;x++)if(!onLeave(X,code,x))return true;return false};
  // "mecbur kalmak": ideal olmayan eşi (ceza pen) kabul etmeden önce: süre penceresi içinde daha iyi eş çıkabilecek mi, kapasite yetiyor mu?
  // Pencere: rütbe uyumsuzluğunda (pen>=2, ayar açıksa) geçerlilik bitişi, diğerlerinde son aydan önceki gün.
- const acceptPen=(a,d,n,pen)=>{const W=pen>=2&&S.rankFirst?a.latest:a.ev.expired?X.end:a.ev.soft;if(W<a.c)return true;let dem=0;
+ // ihlal edilen kural "son ay" kuralından önemliyse daha iyi eş için geçerlilik bitişine kadar beklenir, değilse son aydan önceye kadar
+ const acceptPen=(a,d,n,pen)=>{const vM=!!(pen&(WT.mix||0)),vR=!!(pen&(WT.rank||0)),W=(vR&&above("rank"))||(vM&&above("mix"))?a.latest:a.ev.expired?X.end:a.ev.soft;if(W<a.c)return true;let dem=0;
   for(const q of X.crew){const e=getPend(q);if(e&&X.sec[e.type]===n&&Math.min(e.soft,e.expired?X.end:e.deadline)<=W&&e.earliest<=W)dem++}
   if((cap(d,W,n)-1)*2<dem)return true;
   // daha iyi eş adayları (better) ile aynı adaylara ihtiyaç duyan, süresi pencere içinde biten rakipler (riv) karşılaştırılır
   let better=0,riv=0;
   for(const q of X.crew){if(q===a.p)continue;const e=getPend(q);if(!e||X.sec[e.type]!==n||reserved(q,e))continue;const ql=e.expired?X.end:e.deadline;
-   if(q.rank===a.p.rank&&(pen>=2||e.type===a.ev.type)&&e.earliest<=W&&ql<=W)riv++;
+   if((!WT.rank||q.rank===a.p.rank)&&(vR||e.type===a.ev.type)&&e.earliest<=W&&ql<=W)riv++;
    if(noFly(X,q.code,a.p.code))continue;const pq=penalty(a.p,q,a.ev.type,e.type);if(pq==null||pq>=pen)continue;
    const from=Math.max(d+1,e.earliest+1-(n-1)*S.maxGap),to=Math.min(W,ql);if(from>to)continue;
    if(freeIn(q.code,from,to)&&freeIn(a.p.code,from,to)&&cap(from,to,n)>0)better++}
@@ -331,7 +344,7 @@ function evaluate(X){const S=X.S;
   if(!pil.length)o.err.push("Öğrenci yok");else if(pil.length<2)o.warn.push("Tek öğrenci – koltuk doldurucu gerekli");
   if(pil.length===2&&pil[0]===pil[1])o.err.push("Aynı kişi iki kez yazılmış");
   pil.forEach(c=>{if(!X.crewMap.has(c))o.err.push(c+" ekip listesinde yok")});
-  const kn=pil.map(c=>X.crewMap.get(c)).filter(Boolean);if(kn.length===2&&kn[0].rank===kn[1].rank)o.warn.push("Aynı rütbe (2 "+kn[0].rank+")");
+  const kn=pil.map(c=>X.crewMap.get(c)).filter(Boolean);if(ruleOn(S,"rank")&&kn.length===2&&kn[0].rank===kn[1].rank)o.warn.push("Aynı rütbe (2 "+kn[0].rank+")");
   const people=[...new Set([...pil,...(o.s.instr||[]).filter(Boolean)])];
   for(let i=0;i<people.length;i++)for(let j=i+1;j<people.length;j++)if(noFly(X,people[i],people[j]))o.err.push(people[i]+" ve "+people[j]+" birlikte planlanmamalı");
   o.dn.forEach((d,k)=>{[...pil,o.s.instr?.[k]].filter(Boolean).forEach(c=>{const l=onLeave(X,c,d);if(l)o.err.push(c+" "+fmt(d)+" izinli ("+l+")")})});
@@ -362,7 +375,7 @@ function evaluate(X){const S=X.S;
    if(ev.deadline<=X.end)r.err.push("Planlanmadı");else r.warn.push("Planlanmadı – geçerlilik dönem sonrasında ("+fmt(ev.deadline)+")");
    if(ev.expired)r.err.push("Geçerlilik plan başlangıcından önce dolmuş");
    rows.push(r)}}
- for(const o of ses){if(new Set(Object.values(o.types)).size>1)o.warn.push("Karışık oturum (LPC + OPC)");o.err=[...new Set(o.err)];o.warn=[...new Set(o.warn)]}
+ for(const o of ses){if(ruleOn(S,"mix")&&new Set(Object.values(o.types)).size>1)o.warn.push("Karışık oturum (LPC + OPC)");o.err=[...new Set(o.err)];o.warn=[...new Set(o.warn)]}
  return{rows,ses,byId}}
 
 /* ============ arayüz ============ */
@@ -398,14 +411,14 @@ function vSettings(){const S=DB.settings;
  ${fld("lpcSec","LPC kaç sektör?","sec",`<span class="mu">${sectorLabels("LPC",S.lpcSec).join(" → ")}</span>`)}${fld("opcSec","OPC kaç sektör?","sec",`<span class="mu">${sectorLabels("OPC",S.opcSec).join(" → ")}</span>`)}</div></div>
  <div class="cd"><h2>Kurallar</h2><div class="g">${fld("winM","Son … ay kuralı (ay)","number")}${fld("gapM","İki kontrol arası en az (ay)","number")}${fld("lpcM","LPC geçerlilik süresi (ay)","number")}${fld("opcM","OPC geçerlilik süresi (ay, ay sonuna yuvarlanır)","number")}
  ${fld("maxGap","Sektörler arası en fazla gün farkı","number",'<span class="mu">1 = art arda günler</span>')}${fld("instrPerDay","Eğitmen günde en fazla oturum","number")}</div>
- <div class="g" style="margin-top:10px">${fld("avoidFinal","Mümkünse kişiyi son ayında planlama","check")}${fld("rankFirst","1 CPT + 1 F/O eşleşmesi son aydan kaçınmadan önce gelsin (iki CPT / iki F/O yerine gerekirse son aya kayar)","check")}${fld("allowMix","Mecbur kalınca LPC ve OPC aynı oturumda olabilir (sektör sayıları eşitse)","check")}
- ${fld("diffInstr","Kontrolü, eğitimi verenden farklı eğitmen yapsın (mümkünse)","check")}${fld("visaHard","Vizesi geçersiz pilot ya da eğitmeni vize gereken simülatöre hiç planlama","check")}</div></div>
+ <h3>Öncelikli kurallar</h3><div id="prioS">${prioBox(S)}</div>
+ <div class="g" style="margin-top:10px"> ${fld("diffInstr","Kontrolü, eğitimi verenden farklı eğitmen yapsın (mümkünse)","check")}${fld("visaHard","Vizesi geçersiz pilot ya da eğitmeni vize gereken simülatöre hiç planlama","check")}</div></div>
  <div class="cd"><h2>Planlama nasıl yapılır</h2><ul class="rules">
  <li><b>Son ${S.winM} ay kuralı:</b> kontrol geçerliliğin son ${S.winM} ayında yapılırsa yeni geçerlilik eski bitiş tarihinden sayılır (LPC +${S.lpcM} ay). Bu yüzden en erken tarih = geçerlilik − ${S.winM} ay.</li>
  <li><b>${S.gapM} ay kuralı:</b> yılda iki kontrol; art arda iki kontrol ${S.gapM} aydan yakın olamaz. En erken tarih = son kontrol + ${S.gapM} ay (tabloda kırmızı kalın ise bu kural belirleyicidir).</li>
  <li><b>OPC:</b> LPC'den ${S.opcM} ay önce ya da sonra (bugünden sonraki ilk tarih). LPC'ler turuncu, OPC'ler sarı gösterilir. LPC aynı zamanda OPC yerine geçer.</li>
- <li>Her oturumda en az 2 öğrenci + 1 eğitmen; mecbur kalınmadıkça 1 CPT + 1 F/O ve aynı kontrol tipi (LPC ile LPC, OPC ile OPC) birlikte.</li>
- <li>Mümkünse kişi son ayında (geçerliliğin bittiği takvim ayında: Excel'de "Final!") planlanmaz; süresi en yakın olan önce yerleştirilir.</li>
+ <li>Her oturumda en az 2 öğrenci + 1 eğitmen. Süresi en yakın olan önce yerleştirilir.</li>
+ <li>Öncelikli kurallar (şu anki sıra): ${prioOf(S).map((k,i)=>`<b>${i+1}.</b> ${PRULES[k]}${ruleOn(S,k)?"":" <i>(uygulanmıyor)</i>"}`).join(" · ")}. Son ay = geçerliliğin bittiği takvim ayı (Excel'de "Final!"). LPC ile OPC ancak sektör sayıları eşitse aynı oturumda olabilir.</li>
  <li>Excel'deki gibi plan tarihi <b>Earliest Auto'dan sonra</b> (eşit olamaz) ve <b>Valid'e kadar</b> olmalı; değilse ya da planlanmamışsa "Hata".</li>
  <li>Kontrol tarihi = son sektörün tarihi. Kilitli oturumlar yeniden planlamada korunur; diğerleri silinip yeniden dağıtılır.</li></ul></div>`}
 
@@ -588,7 +601,8 @@ function planDlg(){const S=DB.settings,locked=DB.sessions.filter(s=>s.locked).le
  <label class="f"><span>LPC kaç sektör planlansın?</span><select id="pL">${[1,2,3,4,5].map(n=>`<option${n==S.lpcSec?" selected":""}>${n}</option>`).join("")}</select><span class="mu" id="pLn"></span></label>
  <label class="f"><span>OPC kaç sektör planlansın?</span><select id="pO">${[1,2,3,4,5].map(n=>`<option${n==S.opcSec?" selected":""}>${n}</option>`).join("")}</select><span class="mu" id="pOn"></span></label>
  <label class="f"><span>Plan başlangıcı</span><input type="date" id="pS" value="${esc(S.start)}"></label><label class="f"><span>Plan bitişi</span><input type="date" id="pE" value="${esc(S.end)}"></label></div>
- <div class="mu" style="margin-top:10px">Ekip: <b>${X.crew.length}</b>${bad?` <span class="bad">(${bad} kişi kod/LPC eksik ya da kod tekrarı yüzünden dışarıda)</span>`:""} · Eğitmen: <b>${X.instr.length}</b> · Dönemde müsait simülatör günü: <b>${days}</b><br>
+ <div class="mu" style="margin-top:10px">Kurallar (Ayarlar'dan): ${prioOf(S).map((k,i)=>`${i+1}. ${PRULES[k]}${ruleOn(S,k)?"":" <i>(uygulanmıyor)</i>"}`).join(" · ")}</div>
+ <div class="mu" style="margin-top:6px">Ekip: <b>${X.crew.length}</b>${bad?` <span class="bad">(${bad} kişi kod/LPC eksik ya da kod tekrarı yüzünden dışarıda)</span>`:""} · Eğitmen: <b>${X.instr.length}</b> · Dönemde müsait simülatör günü: <b>${days}</b><br>
  ${locked?`<b>${locked}</b> kilitli oturum korunacak; `:""}${DB.sessions.length-locked} kilitsiz oturum silinip yeniden dağıtılacak.</div>
  ${!X.laneArr.length?'<div class="bad" style="margin-top:8px">Simülatör müsaitliği girilmemiş; FSTD / Uçak sekmesinden ekleyin.</div>':""}`,
  [{l:"Vazgeç"},{l:"Planla",c:"p",f:()=>{S.lpcSec=+$("#pL").value;S.opcSec=+$("#pO").value;S.start=$("#pS").value;S.end=$("#pE").value;
@@ -753,6 +767,7 @@ document.addEventListener("click",e=>{const el=e.target.closest("button,[data-se
   let lane=X.laneArr[0]?.key,date=dt;for(const L of X.laneArr){const f=[...L.avail].filter(x=>x>=dt).sort((a,b)=>a-b)[0];if(f!=null&&(date===dt||f<date)){date=f;lane=L.key}}
   return sessionDlg(null,{pilot:c?.code,type:r?.ev.type,lane,date:toIso(date)})}
  if(d.newses)return sessionDlg(null,{});
+ if(d.pmv!==undefined){const S=DB.settings,p=prioOf(S),i=+d.pmv,j=i+ +d.dir;if(j<0||j>=p.length)return;[p[i],p[j]]=[p[j],p[i]];S.prio=p;touch();render();return}
  if(d.fillvisa){const have=new Set(DB.visas.map(v=>(v.code||"").toUpperCase()));let n=0;DB.crew.forEach(c=>{if(c.code&&!have.has(c.code.toUpperCase())){DB.visas.push({id:uid(),code:c.code.toUpperCase(),name:c.name||"",green:false});n++}});touch();render();toast(n+" kişi eklendi");return}
  if(d.lockall!==undefined){DB.sessions.forEach(s=>s.locked=d.lockall==="1");save();render();toast(d.lockall==="1"?"Tüm oturumlar kilitlendi":"Kilitler kaldırıldı");return}
 });
@@ -761,6 +776,7 @@ document.addEventListener("change",e=>{const el=e.target,d=el.dataset;
   if(col.t==="dev"){const dv=devById(el.value);it.dev=dv?dv.id:"";if(dv&&!isAC(dv)&&!dv.s?.[it.slot])it.slot=SLOTS.find(k=>dv.s[k])||"";if(isAC(dv))it.slot="";touch();render();return}
   if(col.t==="days"){if(!Array.isArray(it.days))it.days=Array(7).fill(true);it.days[+d.j]=el.checked}else if(col.t==="check")it[d.k]=el.checked;else if(col.t==="code"){it[d.k]=el.value.trim().toUpperCase();el.value=it[d.k]}else it[d.k]=el.value;
   touch();if(d.l==="crew")crewDerived();if(d.l==="visaTypes")render();return}
+ if(d.pon){DB.settings[RULEKEY[d.pon]]=el.checked;touch();render();return}
  if(d.s){const S=DB.settings;S[d.s]=el.type==="checkbox"?el.checked:el.type==="number"?Math.max(0,+el.value||0):el.value;if(d.s==="winM"||d.s==="gapM"||d.s==="lpcM"||d.s==="opcM"||d.s==="maxGap"||d.s==="instrPerDay")S[d.s]=Math.max(1,S[d.s]);touch();render();return}
  if(d.ui){UI[d.ui]=el.type==="checkbox"?el.checked:el.value;render()}});
 // arama ve sütun filtreleri: yazmayı bekleyip yeniden çizer, imleci aynı kutuya geri koyar
