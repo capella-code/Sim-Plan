@@ -376,8 +376,11 @@ function schedule(X,tent=new Map()){const S=X.S,out=[];
  const pick=(L,d,dates,cs)=>{const n=dates.length,tb=dates.some((x,i)=>!dates.lanes[i].res.has(x));
   for(let i=0;i<cs.length;i++){const a=cs[i],parts=[];if(tb&&!allowTent(a,d,n))continue;
    for(let j=0;j<cs.length;j++){if(i===j)continue;const b=cs[j];if(noFly(X,a.p.code,b.p.code))continue;const pen=penalty(a.p,b.p,a.ev.type,b.ev.type);if(pen!=null)parts.push({b,pen,j})}
-   parts.sort((x,y)=>x.pen-y.pen||x.j-y.j);const ok=new Map();
-   for(const q of parts){if(q.pen>0){if(!ok.has(q.pen))ok.set(q.pen,acceptPen(a,d,n,q.pen,!tb));if(!ok.get(q.pen))continue}const ins=assign(L,dates,[a.p,q.b.p]);if(ins)return{a,b:q.b,ins,dates,L,pen:q.pen}}
+   // şimdi alınmazsa son ayına düşecek eş: öncelik sırasında "son ay"ın altındaki eşleşme kuralları onun için esner (cezası sayılmaz)
+   const ce=dates.at(-1);parts.forEach(q=>{const urg=ruleOn(S,"final")&&q.b.soft>=0&&cap(ce+1,q.b.ev.soft,n)===0;
+    q.eff=urg?((q.pen&(WT.mix||0))&&above("mix")?WT.mix:0)+((q.pen&(WT.rank||0))&&above("rank")?WT.rank:0):q.pen});
+   parts.sort((x,y)=>x.eff-y.eff||x.j-y.j);const ok=new Map();
+   for(const q of parts){if(q.eff>0){if(!ok.has(q.pen))ok.set(q.pen,acceptPen(a,d,n,q.pen,!tb));if(!ok.get(q.pen))continue}const ins=assign(L,dates,[a.p,q.b.p]);if(ins)return{a,b:q.b,ins,dates,L,pen:q.pen}}
    if(cap(d,a.latest,n)-1<=0){const ins=assign(L,dates,[a.p]);if(ins)return{a,b:null,ins,dates,L,pen:9}}}
   return null};
  const commit=dec=>{const{a,b,ins,dates,L}=dec;dates.forEach((x,k)=>{laneBusy.get(dates.lanes[k].key).add(x);P(a.p.code,x).st=1;if(b)P(b.p.code,x).st=1;if(ins[k]){P(ins[k],x).te++;addLoad(ins[k])}});
