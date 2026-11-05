@@ -91,12 +91,11 @@ const LISTS={
   {k:"rank",l:"Rütbe",t:"sel",o:["CPT","F/O"],al:["rutbe","rank","unvan","gorev","pozisyon"]},
   {k:"name",l:"Ad Soyad",t:"text",al:["adsoyad","namesurname","adisoyadi","name","isim","personel"],w:190},
   {k:"code",l:"Kod",t:"code",al:["kod","code","codes","kisaltma"]},
-  {k:"lpc",l:"LPC Geçerlilik",t:"date",al:["lpcgecerlilik","lpcexpiry","lisansgecerlilik","lpcvalid","lpc","valid","gecerlilik"]},
-  {k:"opc",l:"OPC Geçerlilik",t:"date",al:["opcgecerlilik","opcexpiry","opcvalid","opc"],tip:"Boş bırakılırsa LPC geçerliliğinden ±6 ay ile hesaplanır (bugünden sonraki ilk tarih, ay sonuna yuvarlanır)."},
+  {k:"lpc",l:"LPC Geçerlilik",t:"date",al:["lpcgecerlilik","lpcexpiry","lisansgecerlilik","lpcvalid","lpc","valid","gecerlilik"],tip:"OPC geçerliliği bundan hesaplanır: LPC'den 6 ay önce ya da sonra (bugünden sonraki ilk tarih, ay sonuna yuvarlanır)."},
   {k:"last",l:"Son Sim Tarihi",t:"date",al:["sonsimtarihi","sonsimulatortarihi","sonkontroltarihi","sonkontrol","sonsim","lastsim","lastcheck","sonsimulator"],tip:"En son katıldığı kontrolün (LPC/OPC) tarihi; 4 ay kuralı buna göre uygulanır."},
-  {k:"lastLoc",l:"Son Sim Yeri",t:"text",al:["sonsimyeri","themostrecent","lastlocation","sonyer"],w:60},
-  {k:"visa",l:"Vize Bitiş",t:"date",al:["vizebitis","vizegecerlilik","visaexpiry","vize","visa"]},
-  {k:"note",l:"Not",t:"text",al:["not","note","aciklama"],w:130}]},
+  {k:"visa",l:"Vize Bitiş",t:"date",al:["vizebitis","vizegecerlilik","visaexpiry","vize","visa"]}],
+  // Excel'de bu başlıklar olsa da okunmaz (başka sütunla karışmasın diye)
+  ign:["opc","sonsimyeri","themostrecent","lastlocation","sonyer","not","note","aciklama"]},
  instr:{t:"Eğitmenler",sheet:"Egitmenler",cols:[
   {k:"code",l:"Kod",t:"code",al:["kod","code"]},
   {k:"name",l:"Ad Soyad",t:"text",al:["adsoyad","name","adisoyadi","isim"],w:190},
@@ -129,13 +128,14 @@ function emptyDB(){const t=todayDn();return{settings:{...DEF,start:toIso(t),end:
 let DB;
 function load(){try{DB=JSON.parse(ls.g(LS_KEY)||"null")}catch(e){DB=null}
  if(!DB||typeof DB!=="object"){DB=sampleDB();save();return}
- const e=emptyDB();for(const k in e)if(DB[k]==null)DB[k]=e[k];DB.settings={...DEF,...DB.settings}}
+ const e=emptyDB();for(const k in e)if(DB[k]==null)DB[k]=e[k];DB.settings={...DEF,...DB.settings};
+ DB.crew.forEach(c=>{delete c.opc;delete c.lastLoc;delete c.note})}// kaldırılan ekip alanları
 function save(){ls.s(LS_KEY,JSON.stringify(DB))}
 function touch(){DB.dataVer++;save();tabCounts()}
 
 /* ============ örnek veri ============ */
 function sampleDB(){const d=emptyDB();d.settings.start="2026-12-01";d.settings.end="2027-12-31";
- const C=(rank,name,code,lpc,last,visa,opc="")=>({id:uid(),rank,name,code,lpc,opc,last,lastLoc:"FRA",visa,note:""});
+ const C=(rank,name,code,lpc,last,visa)=>({id:uid(),rank,name,code,lpc,last,visa});
  d.crew=[C("CPT","BARIŞ BARANOĞLU","BA","2027-02-28","2026-06-25","2030-06-22"),C("F/O","ALİHAN ÇEBİ","AN","2027-02-28","2026-08-08","2026-09-10"),
   C("F/O","MERT CAN","MC","2027-03-31","2026-09-15","2029-05-01"),C("F/O","YUSUF ZENGİN","YZ","2027-02-28","2026-07-20","2028-11-30"),
   C("CPT","DENİZ VURAL","DV","2027-04-30","2026-10-10","2029-03-15"),C("F/O","OĞUZ KAYA","OK","2027-04-30","2026-10-05","2028-08-20"),
@@ -175,9 +175,9 @@ const noFly=(X,a,b)=>X.nofly.has(pairKey(a,b));
 const sectorLabels=(type,n)=>{if(n<=1)return[type];const r=[type==="LPC"?"LPT":"OPT"];for(let k=1;k<n;k++)r.push(n>2?type+"-"+k:type);return r};
 const isCheckSector=(k,n)=>n===1||k>0;
 // Kişinin başlangıç durumu: LPC geçerliliği, OPC (operatör) geçerliliği, son kontrol tarihi
-function initState(c,X){const S=X.S,lpc=toDn(c.lpc);let op=toDn(c.opc);
- if(op==null){const a=eom(addM(lpc,-S.opcM));op=a>=X.start?a:eom(addM(lpc,S.opcM))}
- return{lpc,op,last:toDn(c.last),n:0}}
+// OPC geçerliliği LPC'den türetilir: LPC − 6 ay (plan başlangıcından sonraysa), değilse LPC + 6 ay; ay sonuna yuvarlanır
+function initState(c,X){const S=X.S,lpc=toDn(c.lpc),a=eom(addM(lpc,-S.opcM));
+ return{lpc,op:a>=X.start?a:eom(addM(lpc,S.opcM)),last:toDn(c.last),n:0}}
 // Sıradaki kontrol: hangisinin süresi önce doluyorsa
 function nextEvent(st,X){const S=X.S;let type,deadline,early=false;
  if(st.op<st.lpc){deadline=st.op;if(addM(st.op,S.gapM)>st.lpc){type="LPC";early=true}else type="OPC"}else{type="LPC";deadline=st.lpc}
@@ -525,6 +525,7 @@ const daysStr=d=>{const a=Array.isArray(d)?d.map(x=>x!==false):Array(7).fill(tru
 function normRank(v){const s=norm(v);if(/^(cpt|capt|captain|kaptan|kpt|cp)$/.test(s))return"CPT";if(/^(fo|f0|sfo|firstofficer|ikincipilot|2pilot|copilot|yardimcipilot)$/.test(s))return"F/O";return String(v??"").trim().toUpperCase()}
 function rowsToItems(key,rows){const L=LISTS[key],H=rows.slice(0,6);let hi=-1,map=null;
  for(let r=0;r<H.length;r++){const hs=(H[r]||[]).map(norm),m={},used=new Set();
+  hs.forEach((h,ci)=>{if(h&&L.ign?.some(a=>h.startsWith(a)))hs[ci]="";});
   hs.forEach((h,ci)=>{if(!h)return;const col=L.cols.find(c=>!used.has(c.k)&&c.al.includes(h));if(col){m[ci]=col;used.add(col.k)}});
   hs.forEach((h,ci)=>{if(!h||m[ci])return;const col=L.cols.find(c=>!used.has(c.k)&&c.al.some(a=>a.length>=3&&h.includes(a)));if(col){m[ci]=col;used.add(col.k)}});
   if(Object.keys(m).length>=2){hi=r;map=m;break}}
