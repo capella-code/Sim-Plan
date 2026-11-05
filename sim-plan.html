@@ -38,7 +38,7 @@ tr.fr th{padding:2px 3px;background:var(--hd)}tr.fr input{width:100%;min-width:4
 .mt th.mh{background:var(--gr);font-weight:700;font-size:15px}.mt td.dy{font-size:15px;cursor:pointer;position:relative}.mt td.dy small{display:block;font-size:10px;color:#555;line-height:1}
 .mt td.ln{font-size:10px;color:#333}.mt td.tm{font-size:11px;color:#000;white-space:nowrap}.mt td.lb{font-size:10px;color:#333;background:#f2f2f2}
 .mt td.LPC{background:var(--lpc)}.mt td.OPC{background:var(--opc)}.mt td.x{background:#eee;color:#777}
-.mt td.cl{cursor:pointer}.mt td.rs{background:#c6efce;color:#006100;font-weight:700}.mt td.fm{box-shadow:inset 0 0 0 2px #d00000}.mt td.vx{outline:2px dashed #7030a0;outline-offset:-5px}.mt td.ce{box-shadow:inset 0 4px 0 #d00000}.mt td.cw{box-shadow:inset 0 4px 0 #0070c0}.mt td.em{color:#999;cursor:pointer}
+.mt td.cl{cursor:pointer}.mt td.rs{background:#c6efce;color:#006100;font-weight:700}.mt td.fm{box-shadow:inset 0 0 0 2px #d00000}.mt td.vx{outline:2px dashed #7030a0;outline-offset:-5px}.mt td[draggable=true]{cursor:grab}.mt td.dtg{outline:3px solid #0070c0!important;outline-offset:-3px}.mt td.dsrc{opacity:.45}.mt td.ce{box-shadow:inset 0 4px 0 #d00000}.mt td.cw{box-shadow:inset 0 4px 0 #0070c0}.mt td.em{color:#999;cursor:pointer}
 .lg{display:inline-block;width:14px;height:14px;border:1px solid #000;vertical-align:-2px;margin-right:3px}
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;z-index:50;padding:30px 10px;overflow:auto}
 .dl{background:var(--cd);border-radius:12px;max-width:760px;width:100%;padding:16px;box-shadow:0 10px 40px rgba(0,0,0,.35)}
@@ -666,20 +666,20 @@ function vPlan(){const X=ctx(),R=evaluate(X),months=planCols(X,R),multi=X.laneAr
    const mk=c=>c.o?(c.o.err.length?" ce":c.o.warn.length?" cw":""):"";
    const tip=c=>c.o?esc([c.o.L?.label||c.o.s.lane,...c.o.err.map(e=>"✖ "+e),...c.o.warn.map(e=>"⚠ "+e)].join("\n")):"Boş simülatör günü – oturum eklemek için tıklayın";
    const pc=(c,j)=>{if(!c.o)return`<td class="x" ${at(c)}></td>`;const code=c.o.s.pilots[j]||"",t=c.o.types[code]||"",cr=X.crewMap.get(code);
-    const fm=FM.has(c.o.s.id+"|"+code),vx=VX.get(c.o.s.id+"|"+code);return`<td class="cl ${t}${fm?" fm":""}${vx?" vx":""}" ${at(c)} title="${esc(cr?cr.name+" ("+cr.rank+")":code)}${t?" – "+(c.o.labels[code]?.[c.k]||t):""}${fm?" – SON AYINDA (Final!)":""}${vx?" – "+esc(vx):""}">${esc(code)||"<span style='color:#999'>—</span>"}</td>`};
+    const fm=FM.has(c.o.s.id+"|"+code),vx=VX.get(c.o.s.id+"|"+code);return`<td class="cl ${t}${fm?" fm":""}${vx?" vx":""}" ${at(c)} data-dt="p|${c.o.s.id}|${j}"${code?` draggable="true" data-dg="p|${c.o.s.id}|${j}"`:""} title="${esc(cr?cr.name+" ("+cr.rank+")":code)}${t?" – "+(c.o.labels[code]?.[c.k]||t):""}${fm?" – SON AYINDA (Final!)":""}${vx?" – "+esc(vx):""}">${esc(code)||"<span style='color:#999'>—</span>"}</td>`};
    tabs.push(`<table class="mt"><tr><th class="mh" colspan="${cs.length}">${title}</th></tr>
    <tr>${cs.map(c=>`<td class="dy${mk(c)}${c.o?"":" em"}${X.slotRow.get(c.lane+"|"+c.d)?.status==="Reserved"?" rs":""}" ${at(c)} title="${fmt(c.d)} ${DAYN[wd(c.d)]}${X.slotRow.get(c.lane+"|"+c.d)?.status==="Reserved"?" · Reserved":""}&#10;${tip(c)}">${ymd(c.d)[2]}${c.o?.s.locked?"🔒":""}</td>`).join("")}</tr>
    ${multi?`<tr>${cs.map(c=>`<td class="ln" ${at(c)}>${esc((X.lanes.get(c.lane)?.loc||"")+" "+(X.lanes.get(c.lane)?.sim||c.lane))}</td>`).join("")}</tr>`:""}
    <tr>${cs.map(c=>`<td class="tm" ${at(c)} title="Slot ${esc(X.lanes.get(c.lane)?.slot||"")} – yerel saat">${esc(X.lanes.get(c.lane)?.time||"")}</td>`).join("")}</tr>
-   <tr>${cs.map(c=>{const iv=c.o?instrVisa(X,c.o,c.k):"";return`<td class="cl${iv?" vx":""}" ${at(c)} title="Eğitmen${iv?" – "+esc(iv):""}">${c.o?esc(c.o.s.instr?.[c.k]||"?"):""}</td>`}).join("")}</tr>
+   <tr>${cs.map(c=>{const iv=c.o?instrVisa(X,c.o,c.k):"";return`<td class="cl${iv?" vx":""}" ${at(c)}${c.o?` data-dt="i|${c.o.s.id}|${c.k}"${c.o.s.instr?.[c.k]?` draggable="true" data-dg="i|${c.o.s.id}|${c.k}"`:""}`:""} title="Eğitmen${iv?" – "+esc(iv):""}">${c.o?esc(c.o.s.instr?.[c.k]||"?"):""}</td>`}).join("")}</tr>
    <tr>${cs.map(c=>pc(c,0)).join("")}</tr><tr>${cs.map(c=>pc(c,1)).join("")}</tr></table>`)}
   return`<div>${tabs.join('<div style="height:6px"></div>')}</div>`}).join("");
  const load=new Map();R.ses.forEach(o=>(o.s.instr||[]).forEach(t=>t&&load.set(t,(load.get(t)||0)+1)));
  const probs=R.rows.filter(r=>!r.o&&r.err.length),bad=R.ses.filter(o=>o.err.length||o.warn.length).sort((a,b)=>a.dn[0]-b.dn[0]);
  return`${stale()}<div class="cd"><div class="row np"><h2>Taslak plan</h2><span class="mu">${fmt(X.start)} – ${fmt(X.end)}${DB.planAt?" · son planlama "+esc(DB.planAt):""}</span><span class="sp"></span>
  <label class="ck"><input type="checkbox" data-ui="showEmpty"${UI.showEmpty?" checked":""}><span>Boş simülatör günlerini göster</span></label>
- <button class="s" data-newses="1">+ Oturum ekle</button><button class="s" data-lockall="1">Tümünü kilitle</button><button class="s" data-lockall="0">Kilitleri kaldır</button></div>
- ${stats(R)}<div class="mu" style="margin:4px 0 10px"><span class="lg" style="background:var(--lpc)"></span>LPC <span class="lg" style="background:var(--opc)"></span>OPC <span class="lg" style="background:#c6efce"></span>Reserved slot (gün yeşil) · <span style="outline:2px solid #d00000;outline-offset:-2px;padding:0 4px">AB</span> son ayına kalan (kırmızı çerçeve) · <span style="outline:2px dashed #7030a0;outline-offset:-2px;padding:0 4px">AB</span> vizesi geçmiş ya da vize kaydı yok (mor kesik çerçeve; pilot ve eğitmen) · Satırlar: gün, simülatör (birden fazlaysa), slot saati (yerel), eğitmen, öğrenciler · sektör adı ve tarih üzerine gelince görünür · 🔒 kilitli · <span style="color:#d00000">▀</span> hata <span style="color:#0070c0">▀</span> uyarı · Bir sütuna tıklayıp oturumu düzenleyin.
+ ${UI.undo?.length?`<button class="s" data-undo="1" title="Son sürükle-bırak işlemini geri alır">↶ Geri al (${UI.undo.length})</button>`:""}<button class="s" data-newses="1">+ Oturum ekle</button><button class="s" data-lockall="1">Tümünü kilitle</button><button class="s" data-lockall="0">Kilitleri kaldır</button></div>
+ ${stats(R)}<div class="mu" style="margin:4px 0 10px"><span class="lg" style="background:var(--lpc)"></span>LPC <span class="lg" style="background:var(--opc)"></span>OPC <span class="lg" style="background:#c6efce"></span>Reserved slot (gün yeşil) · <span style="outline:2px solid #d00000;outline-offset:-2px;padding:0 4px">AB</span> son ayına kalan (kırmızı çerçeve) · <span style="outline:2px dashed #7030a0;outline-offset:-2px;padding:0 4px">AB</span> vizesi geçmiş ya da vize kaydı yok (mor kesik çerçeve; pilot ve eğitmen) · Satırlar: gün, simülatör (birden fazlaysa), slot saati (yerel), eğitmen, öğrenciler · sektör adı ve tarih üzerine gelince görünür · 🔒 kilitli · <span style="color:#d00000">▀</span> hata <span style="color:#0070c0">▀</span> uyarı · Bir sütuna tıklayıp oturumu düzenleyin; pilotu ya da eğitmeni sürükleyip başka bir pilotun / eğitmenin üzerine bırakarak yer değiştirin (pilotta bütün oturum, eğitmende o gün).
  Eğitmen yükü: ${[...load].sort().map(([t,n])=>esc(t)+" "+n).join(", ")||"—"}</div>
  <div class="months">${blocks||'<div class="mu">Henüz oturum yok. <b>Planı oluştur</b> ile taslak plan hazırlayın.</div>'}</div></div>
  ${probs.length||bad.length?`<div class="cd"><h2>Sorunlar</h2>${probs.map(r=>`<div class="iss"><span class="bad">${esc(r.c.code)} ${esc(r.c.name)}</span> – ${r.ev.type} (geçerlilik ${fmt(r.ev.deadline)}, en erken ${fmt(r.ev.earliest)}): ${esc(r.err.join(", "))} <button class="s np" data-new-for="${esc(r.c.code)}">+ Planla</button></div>`).join("")}
@@ -902,6 +902,7 @@ document.addEventListener("click",e=>{const el=e.target.closest("button,[data-se
   let lane=X.laneArr[0]?.key,date=dt;for(const L of X.laneArr){const f=[...L.avail].filter(x=>x>=dt).sort((a,b)=>a-b)[0];if(f!=null&&(date===dt||f<date)){date=f;lane=L.key}}
   return sessionDlg(null,{pilot:c?.code,type:r?.ev.type,lane,date:toIso(date)})}
  if(d.newses)return sessionDlg(null,{});
+ if(d.undo){const b=UI.undo.pop();if(b){DB.sessions=JSON.parse(b);touch();render();toast("Son yer değiştirme geri alındı")}return}
  if(d.pmv!==undefined){const S=DB.settings,p=prioOf(S),i=+d.pmv,j=i+ +d.dir;if(j<0||j>=p.length)return;[p[i],p[j]]=[p[j],p[i]];S.prio=p;touch();render();return}
  if(d.fillvisa){const have=new Set(DB.visas.map(v=>(v.code||"").toUpperCase()));let n=0;DB.crew.forEach(c=>{if(c.code&&!have.has(c.code.toUpperCase())){DB.visas.push({id:uid(),code:c.code.toUpperCase(),name:c.name||"",green:false});n++}});touch();render();toast(n+" kişi eklendi");return}
  if(d.lockall!==undefined){DB.sessions.forEach(s=>s.locked=d.lockall==="1");save();render();toast(d.lockall==="1"?"Tüm oturumlar kilitlendi":"Kilitler kaldırıldı");return}
@@ -922,6 +923,32 @@ document.addEventListener("input",e=>{const el=e.target,d=el.dataset;let sel=nul
  else if(d.dvf){UI.dev.f[d.dvf]=el.value;sel=`[data-dvf="${d.dvf}"]`}
  if(!sel)return;clearTimeout(window._q);window._q=setTimeout(()=>{const sc=$(".sc")?.scrollLeft||0;render();const i=$(sel);if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}const s2=$(".sc");if(s2)s2.scrollLeft=sc},250)});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#ov").hidden)closeDlg()});
+/* ---- taslak planda sürükle-bırak ile yer değiştirme ---- */
+UI.undo=[];let DRAG=null;
+const dgParse=v=>{const[k,id,i]=String(v).split("|");return{k,id,i:+i}};
+// iki kişiyi takas eder: p = pilot (oturumun tüm sektörleri), i = eğitmen (yalnızca o sektör)
+function doSwap(list,a,b){const A=list.find(x=>x.id===a.id),B=list.find(x=>x.id===b.id);if(!A||!B)return false;
+ if(a.k==="p"){const x=A.pilots[a.i]||"",y=B.pilots[b.i]||"";if(A!==B&&((y&&A.pilots.includes(y))||(x&&B.pilots.includes(x))))return false;A.pilots[a.i]=y;B.pilots[b.i]=x;return true}
+ A.instr=A.instr||[];B.instr=B.instr||[];const x=A.instr[a.i]||"",y=B.instr[b.i]||"";A.instr[a.i]=y;B.instr[b.i]=x;return true}
+// etkilenen oturumların ve kişilerin sorunları (oturum hatası/uyarısı, Hata, son ay, vize)
+function swapIssues(ids,codes){const R=evaluate(ctx()),out=[];
+ R.ses.filter(o=>ids.includes(o.s.id)).forEach(o=>{const lb=fmt(o.dn[0])+" "+o.s.pilots.filter(Boolean).join("/");o.err.forEach(e=>out.push("✖ "+lb+": "+e));o.warn.forEach(w=>out.push("⚠ "+lb+": "+w))});
+ R.rows.filter(r=>codes.includes(r.c.code)).forEach(r=>{const lb=r.c.code+" "+(r.ev.idx+1)+". kontrol ("+r.ev.type+")";if(r.hata)out.push("✖ "+lb+": Hata – "+r.why);if(r.final)out.push("⚠ "+lb+": son ayında");if(r.visa)out.push("⚠ "+lb+": vize "+r.visa);r.err.forEach(e=>out.push("✖ "+lb+": "+e))});
+ return out}
+function dropSwap(src,dst){if(src.k!==dst.k||(src.id===dst.id&&src.i===dst.i))return;
+ const before=JSON.stringify(DB.sessions),A=DB.sessions.find(x=>x.id===src.id),B=DB.sessions.find(x=>x.id===dst.id);if(!A||!B)return;
+ const who=src.k==="p"?[A.pilots[src.i],B.pilots[dst.i]]:[A.instr?.[src.i],B.instr?.[dst.i]];
+ const codes=[...new Set([...A.pilots,...B.pilots,...(A.instr||[]),...(B.instr||[])].filter(Boolean))],ids=[...new Set([src.id,dst.id])],old=new Set(swapIssues(ids,codes));
+ if(!doSwap(DB.sessions,src,dst)){toast("Bu yer değiştirme yapılamaz: aynı kişi bir oturumda iki kez olur");return}
+ const neu=swapIssues(ids,codes).filter(x=>!old.has(x));DB.sessions=JSON.parse(before);
+ const go=()=>{doSwap(DB.sessions,src,dst);UI.undo.push(before);if(UI.undo.length>30)UI.undo.shift();touch();render();toast((who[0]||"boş")+" ↔ "+(who[1]||"boş")+" yer değiştirdi"+(neu.length?" – "+neu.length+" yeni sorun":""))};
+ if(!neu.length)return go();
+ dlg("Kural ihlali",`<div><b>${esc(who[0]||"boş")} ↔ ${esc(who[1]||"boş")}</b> yer değiştirmesi şu yeni sorunları doğuruyor:</div><ul>${neu.map(x=>`<li class="${x[0]==="✖"?"bad":"warn"}">${esc(x.slice(2))}</li>`).join("")}</ul><div class="mu">Yine de yapılsın mı? (Sonra ↶ Geri al ile geri alabilirsiniz.)</div>`,[{l:"Vazgeç"},{l:"Yine de yap",c:"p",f:go}])}
+document.addEventListener("dragstart",e=>{const el=e.target.closest?.("[data-dg]");if(!el)return;DRAG=dgParse(el.dataset.dg);e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain",el.dataset.dg);el.classList.add("dsrc")});
+document.addEventListener("dragover",e=>{const el=e.target.closest?.("[data-dt]");if(!el||!DRAG||dgParse(el.dataset.dt).k!==DRAG.k)return;e.preventDefault();e.dataTransfer.dropEffect="move";$$(".dtg").forEach(x=>{if(x!==el)x.classList.remove("dtg")});el.classList.add("dtg")});
+document.addEventListener("dragleave",e=>{const el=e.target.closest?.("[data-dt]");if(el&&!el.contains(e.relatedTarget))el.classList.remove("dtg")});
+document.addEventListener("drop",e=>{const el=e.target.closest?.("[data-dt]");$$(".dtg,.dsrc").forEach(x=>x.classList.remove("dtg","dsrc"));if(!el||!DRAG)return;e.preventDefault();const s=DRAG;DRAG=null;dropSwap(s,dgParse(el.dataset.dt))});
+document.addEventListener("dragend",()=>{DRAG=null;$$(".dtg,.dsrc").forEach(x=>x.classList.remove("dtg","dsrc"))});
 $("#ov").addEventListener("click",e=>{if(e.target.id==="ov")closeDlg()});
 $("#bPlan").onclick=()=>planDlg(false);$("#bPlanR").onclick=()=>planDlg(true);$("#bImp").onclick=()=>$("#fImp").click();$("#fImp").onchange=e=>{const f=e.target.files[0];e.target.value="";if(f)importFile(f)};
 $("#bTpl").onclick=()=>download(xlsxBlob(inputSheets()),"simulator-plan-veri.xlsx");$("#bExp").onclick=exportPlan;$("#bPrint").onclick=()=>window.print();
