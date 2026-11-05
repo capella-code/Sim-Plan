@@ -85,17 +85,21 @@ const ls={g:k=>{try{return localStorage.getItem(k)}catch(e){return null}},s:(k,v
 
 /* ============ veri ============ */
 const LS_KEY="simplan.v1";
-const DEF={start:"",end:"",lpcSec:2,opcSec:2,maxGap:1,winM:3,gapM:4,lpcM:12,opcM:6,instrPerDay:1,avoidFinal:true,rankFirst:true,visaHard:false,allowMix:true,diffInstr:true};
+const DEF={start:"",end:"",lpcSec:2,opcSec:2,maxGap:1,winM:3,gapM:4,lpcM:12,opcM:6,instrPerDay:1,schengen:"AMS, FRA",avoidFinal:true,rankFirst:true,visaHard:false,allowMix:true,diffInstr:true};
 const LISTS={
  crew:{t:"Ekip",sheet:"Ekip",cols:[
   {k:"rank",l:"Rütbe",t:"sel",o:["CPT","F/O"],al:["rutbe","rank","unvan","gorev","pozisyon"]},
   {k:"name",l:"Ad Soyad",t:"text",al:["adsoyad","namesurname","adisoyadi","name","isim","personel"],w:190},
   {k:"code",l:"Kod",t:"code",al:["kod","code","codes","kisaltma"]},
   {k:"lpc",l:"LPC Geçerlilik",t:"date",al:["lpcgecerlilik","lpcexpiry","lisansgecerlilik","lpcvalid","lpc","valid","gecerlilik"],tip:"OPC geçerliliği bundan hesaplanır: LPC'den 6 ay önce ya da sonra (bugünden sonraki ilk tarih, ay sonuna yuvarlanır)."},
-  {k:"last",l:"Son Sim Tarihi",t:"date",al:["sonsimtarihi","sonsimulatortarihi","sonkontroltarihi","sonkontrol","sonsim","lastsim","lastcheck","sonsimulator"],tip:"En son katıldığı kontrolün (LPC/OPC) tarihi; 4 ay kuralı buna göre uygulanır."},
-  {k:"visa",l:"Vize Bitiş",t:"date",al:["vizebitis","vizegecerlilik","visaexpiry","vize","visa"]}],
+  {k:"last",l:"Son Sim Tarihi",t:"date",al:["sonsimtarihi","sonsimulatortarihi","sonkontroltarihi","sonkontrol","sonsim","lastsim","lastcheck","sonsimulator"],tip:"En son katıldığı kontrolün (LPC/OPC) tarihi; 4 ay kuralı buna göre uygulanır."}],
   // Excel'de bu başlıklar olsa da okunmaz (başka sütunla karışmasın diye)
-  ign:["opc","sonsimyeri","themostrecent","lastlocation","sonyer","not","note","aciklama"]},
+  ign:["vize","visa","opc","sonsimyeri","themostrecent","lastlocation","sonyer","not","note","aciklama"]},
+ visas:{t:"Vize",sheet:"Visa",cols:[
+  {k:"code",l:"CC",t:"code",al:["cc","kod","code","codes"]},
+  {k:"name",l:"NameSurname",t:"text",al:["namesurname","adsoyad","name","adisoyadi","isim"],w:190},
+  {k:"schengen",l:"SCHENGEN",t:"visa",al:["schengen","schengenvize","sengen"],tip:"Tarih ya da Yeşil (vize gerekmez). Sim lokasyonu Schengen listesindeyse (Ayarlar) bu vizeye bakılır."},
+  {k:"uae",l:"UAE",t:"visa",al:["uae","bae","birlesikarap","emirates"],tip:"Tarih ya da Yeşil. Sim lokasyonu Schengen listesinde değilse bu vizeye bakılır."}]},
  instr:{t:"Eğitmenler",sheet:"Egitmenler",cols:[
   {k:"code",l:"Kod",t:"code",al:["kod","code"]},
   {k:"name",l:"Ad Soyad",t:"text",al:["adsoyad","name","adisoyadi","isim"],w:190},
@@ -105,7 +109,6 @@ const LISTS={
   {k:"sim",l:"Simülatör",t:"text",al:["simulator","sim","fstd","cihaz"],w:100},
   {k:"slot",l:"Slot / Saat",t:"text",al:["slot","saat","seans"],w:100},
   {k:"loc",l:"Lokasyon",t:"text",al:["lokasyon","location","yer"],w:60},
-  {k:"visa",l:"Vize gerekli",t:"check",al:["vizegerekli","vize","visa","visarequired"]},
   {k:"from",l:"Başlangıç",t:"date",al:["baslangic","from","start","ilk"]},
   {k:"to",l:"Bitiş",t:"date",al:["bitis","to","end","son"]},
   {k:"days",l:"Günler",t:"days",al:["gunler","days","gun"]}]},
@@ -123,19 +126,22 @@ const LISTS={
   {k:"b",l:"Kod 2",t:"code",al:["kod2","code2","kisi2"]},
   {k:"note",l:"Açıklama",t:"text",al:["aciklama","note","not","neden"],w:220}]}
 };
-const SHEET_ALIAS=[["crew",["ekip","crew","pilot"]],["instr",["egitmen","instructor","ogretmen","tre","tri"]],["nofly",["birlikte","eslesme","nofly","ucmayacak"]],["sims",["simulator","sim","fstd"]],["blackouts",["kapali","tatil","holiday","blackout"]],["leaves",["izin","leave"]]];
-function emptyDB(){const t=todayDn();return{settings:{...DEF,start:toIso(t),end:toIso(addM(t,12)-1)},crew:[],instr:[],sims:[],blackouts:[],leaves:[],nofly:[],sessions:[],dataVer:0,planVer:-1,planAt:null}}
+const SHEET_ALIAS=[["visas",["visa","vize"]],["crew",["ekip","crew","pilot"]],["instr",["egitmen","instructor","ogretmen","tre","tri"]],["nofly",["birlikte","eslesme","nofly","ucmayacak"]],["sims",["simulator","sim","fstd"]],["blackouts",["kapali","tatil","holiday","blackout"]],["leaves",["izin","leave"]]];
+function emptyDB(){const t=todayDn();return{settings:{...DEF,start:toIso(t),end:toIso(addM(t,12)-1)},crew:[],visas:[],instr:[],sims:[],blackouts:[],leaves:[],nofly:[],sessions:[],dataVer:0,planVer:-1,planAt:null}}
 let DB;
 function load(){try{DB=JSON.parse(ls.g(LS_KEY)||"null")}catch(e){DB=null}
  if(!DB||typeof DB!=="object"){DB=sampleDB();save();return}
  const e=emptyDB();for(const k in e)if(DB[k]==null)DB[k]=e[k];DB.settings={...DEF,...DB.settings};
- DB.crew.forEach(c=>{delete c.opc;delete c.lastLoc;delete c.note})}// kaldırılan ekip alanları
+ DB.crew.forEach(c=>{delete c.opc;delete c.lastLoc;delete c.note});migrate(DB)}// kaldırılan ekip alanları
+// eski veri: kişideki tek vize tarihi Schengen sütununa, simülatördeki "vize gerekli" kaldırılır
+function migrate(d){if(!Array.isArray(d.visas)||(!d.visas.length&&(d.crew||[]).some(c=>c.visa)))d.visas=(d.crew||[]).filter(c=>c.code).map(c=>({id:uid(),code:c.code,name:c.name||"",schengen:c.visa||"",uae:""}));
+ (d.crew||[]).forEach(c=>delete c.visa);(d.sims||[]).forEach(s=>delete s.visa)}
 function save(){ls.s(LS_KEY,JSON.stringify(DB))}
 function touch(){DB.dataVer++;save();tabCounts()}
 
 /* ============ örnek veri ============ */
 function sampleDB(){const d=emptyDB();d.settings.start="2026-12-01";d.settings.end="2027-12-31";
- const C=(rank,name,code,lpc,last,visa)=>({id:uid(),rank,name,code,lpc,last,visa});
+ const C=(rank,name,code,lpc,last,visa)=>({id:uid(),rank,name,code,lpc,last,visa});// visa: migrate() ile Visa listesine taşınır
  d.crew=[C("CPT","BARIŞ BARANOĞLU","BA","2027-02-28","2026-06-25","2030-06-22"),C("F/O","ALİHAN ÇEBİ","AN","2027-02-28","2026-08-08","2026-09-10"),
   C("F/O","MERT CAN","MC","2027-03-31","2026-09-15","2029-05-01"),C("F/O","YUSUF ZENGİN","YZ","2027-02-28","2026-07-20","2028-11-30"),
   C("CPT","DENİZ VURAL","DV","2027-04-30","2026-10-10","2029-03-15"),C("F/O","OĞUZ KAYA","OK","2027-04-30","2026-10-05","2028-08-20"),
@@ -146,11 +152,13 @@ function sampleDB(){const d=emptyDB();d.settings.start="2026-12-01";d.settings.e
   C("CPT","HAKAN SOY","HS","2027-07-31","2026-07-10","2029-10-10"),C("F/O","EMRE KILIÇ","EK","2027-07-31","2026-07-15","2029-10-10")];
  d.instr=[{id:uid(),code:"BB",name:"BURAK BULUT",role:"TRI",note:""},{id:uid(),code:"GB",name:"GÖKSEL BAYRAK",role:"TRE",note:""}];
  const P=[["2026-12-14","2026-12-17"],["2027-01-19","2027-01-22"],["2027-02-16","2027-02-19"],["2027-03-23","2027-03-26"],["2027-04-19","2027-04-22"],["2027-05-17","2027-05-20"],["2027-06-14","2027-06-17"],["2027-07-19","2027-07-22"],["2027-08-16","2027-08-19"],["2027-09-13","2027-09-16"],["2027-10-18","2027-10-21"],["2027-11-15","2027-11-18"],["2027-12-13","2027-12-16"]];
- d.sims=P.map(([f,t])=>({id:uid(),sim:"DE-1A-049",slot:"15:05-19:05",loc:"FRA",visa:true,from:f,to:t,days:Array(7).fill(true)}));
- d.sims.push({id:uid(),sim:"EU-NL10",slot:"08:00-12:00",loc:"SHJ",visa:false,from:"2027-06-01",to:"2027-06-04",days:Array(7).fill(true)});
+ d.sims=P.map(([f,t])=>({id:uid(),sim:"DE-1A-049",slot:"15:05-19:05",loc:"FRA",from:f,to:t,days:Array(7).fill(true)}));
+ d.sims.push({id:uid(),sim:"EU-NL10",slot:"08:00-12:00",loc:"SHJ",from:"2027-06-01",to:"2027-06-04",days:Array(7).fill(true)});
  d.blackouts=[["2027-01-01","Yılbaşı"],["2027-04-23","23 Nisan"],["2027-05-01","1 Mayıs"],["2027-05-19","19 Mayıs"],["2027-07-15","15 Temmuz"],["2027-08-30","30 Ağustos"],["2027-10-29","29 Ekim"]].map(([f,n])=>({id:uid(),from:f,to:f,note:n}));
  d.leaves=[{id:uid(),code:"TK",from:"2027-03-01",to:"2027-03-31",note:"Yıllık izin (örnek)"}];
  d.nofly=[{id:uid(),a:"HS",b:"EK",note:"Örnek kısıt"}];
+ migrate(d);d.visas.forEach(v=>{if(["IY","OB","IZ","DV"].includes(v.code))v.schengen="Yesil";v.uae=v.code==="AN"?"2001-01-01":"Yesil"});
+ d.visas.push({id:uid(),code:"BB",name:"BURAK BULUT",schengen:"Yesil",uae:"Yesil"},{id:uid(),code:"GB",name:"GÖKSEL BAYRAK",schengen:"Yesil",uae:"Yesil"});
  return d}
 
 /* ============ kural motoru ============ */
@@ -161,15 +169,20 @@ function ctx(){const S=DB.settings,start=toDn(S.start)??todayDn(),end=toDn(S.end
  const X={S,start,end,sec:{LPC:clampInt(S.lpcSec,1,6),OPC:clampInt(S.opcSec,1,6)}};
  X.crewMap=new Map();X.crew=[];X.order=new Map();
  DB.crew.forEach(c=>{const code=(c.code||"").trim().toUpperCase();if(!code||X.crewMap.has(code)||toDn(c.lpc)==null)return;
-  const o={...c,code,visaDn:toDn(c.visa),lastDn:toDn(c.last)};X.crewMap.set(code,o);X.crew.push(o);X.order.set(code,X.order.size)});
+  const o={...c,code,lastDn:toDn(c.last)};X.crewMap.set(code,o);X.crew.push(o);X.order.set(code,X.order.size)});
+ X.visa=new Map();DB.visas.forEach(v=>{const c=(v.code||"").trim().toUpperCase();if(c&&!X.visa.has(c))X.visa.set(c,v)});
+ X.schengen=new Set(String(S.schengen||"").toUpperCase().split(/[\s,;]+/).filter(Boolean));
  X.instrMap=new Map();X.instr=[];DB.instr.forEach(t=>{const code=(t.code||"").trim().toUpperCase();if(!code||X.instrMap.has(code))return;const o={...t,code,role:(t.role||"").toUpperCase()};X.instrMap.set(code,o);X.instr.push(o)});
  X.black=new Map();DB.blackouts.forEach(b=>expandRange(b.from,b.to,d=>X.black.set(d,b.note||"Kapalı gün")));
  X.leave=new Map();DB.leaves.forEach(l=>{const c=(l.code||"").toUpperCase();if(!c)return;let m=X.leave.get(c);if(!m)X.leave.set(c,m=new Map());expandRange(l.from,l.to,d=>m.set(d,l.note||"izin"))});
  X.nofly=new Map();DB.nofly.forEach(n=>{if(n.a&&n.b)X.nofly.set(pairKey(n.a.toUpperCase(),n.b.toUpperCase()),n.note||"")});
- X.lanes=new Map();DB.sims.forEach(s=>{const k=laneKey(s);if(!s.sim)return;let L=X.lanes.get(k);if(!L)X.lanes.set(k,L={key:k,sim:s.sim.trim(),slot:(s.slot||"").trim(),loc:(s.loc||"").trim(),visa:!!s.visa,avail:new Set()});
-  if(s.visa)L.visa=true;if(s.loc&&!L.loc)L.loc=s.loc.trim();const days=Array.isArray(s.days)?s.days:Array(7).fill(true);
+ X.lanes=new Map();DB.sims.forEach(s=>{const k=laneKey(s);if(!s.sim)return;let L=X.lanes.get(k);if(!L)X.lanes.set(k,L={key:k,sim:s.sim.trim(),slot:(s.slot||"").trim(),loc:(s.loc||"").trim(),avail:new Set()});
+  if(s.loc&&!L.loc)L.loc=s.loc.trim();const days=Array.isArray(s.days)?s.days:Array(7).fill(true);
   expandRange(s.from,s.to,d=>{if(days[wd(d)]!==false&&!X.black.has(d))L.avail.add(d)})});
- X.laneArr=[...X.lanes.values()];return X}
+ X.laneArr=[...X.lanes.values()];X.laneArr.forEach(L=>L.vt=X.schengen.has(L.loc.toUpperCase())?"schengen":"uae");return X}
+// Excel: =IF(OR(Sim="AMS",Sim="FRA"),VLOOKUP(kod,Visa,SCHENGEN),VLOOKUP(kod,Visa,UAE)) ; Visa Control: =IF(Visa<Plan,"Expired","")
+const visaOf=(X,code,loc)=>{const v=X.visa.get(code);if(!v)return{raw:null,dn:null};const raw=(X.schengen.has(String(loc||"").toUpperCase())?v.schengen:v.uae)||"";return{raw,dn:raw==="Yesil"?null:toDn(raw)}};
+const visaExpired=(v,d)=>v.raw!=="Yesil"&&(v.dn==null||v.dn<d);
 const onLeave=(X,code,d)=>X.leave.get(code)?.get(d);
 const noFly=(X,a,b)=>X.nofly.has(pairKey(a,b));
 const sectorLabels=(type,n)=>{if(n<=1)return[type];const r=[type==="LPC"?"LPT":"OPT"];for(let k=1;k<n;k++)r.push(n>2?type+"-"+k:type);return r};
@@ -182,7 +195,8 @@ function initState(c,X){const S=X.S,lpc=toDn(c.lpc),a=eom(addM(lpc,-S.opcM));
 function nextEvent(st,X){const S=X.S;let type,deadline,early=false;
  if(st.op<st.lpc){deadline=st.op;if(addM(st.op,S.gapM)>st.lpc){type="LPC";early=true}else type="OPC"}else{type="LPC";deadline=st.lpc}
  const auto=addM(deadline,-S.winM),gap=st.last!=null?addM(st.last,S.gapM):null,earliest=gap!=null?Math.max(auto,gap):auto;
- return{type,deadline,auto,gap,earliest,gapDriven:gap!=null&&gap>auto,early,expired:deadline<X.start,soft:S.avoidFinal?addM(deadline,-1):deadline,idx:st.n}}
+ return{type,deadline,auto,gap,earliest,gapDriven:gap!=null&&gap>auto,early,expired:deadline<X.start,soft:S.avoidFinal?(([y,m])=>fromYmd(y,m,0))(ymd(deadline)):deadline,idx:st.n}}
+const sameMonth=(a,b)=>{const x=ymd(a),y=ymd(b);return x[0]===y[0]&&x[1]===y[1]};
 // Kontrol yapıldıktan sonraki durum. Son 3 ay içinde yapılırsa yeni geçerlilik eski bitişten sayılır, değilse kontrol tarihinden.
 function applyCheck(st,ev,d,S){const inWin=d>=ev.auto&&d<=ev.deadline,base=inWin?ev.deadline:d;const n={...st,last:d,n:st.n+1,op:eom(addM(base,S.opcM))};
  if(ev.type==="LPC"){const lw=d>=addM(st.lpc,-S.winM)&&d<=st.lpc;n.lpc=lw?addM(st.lpc,S.lpcM):addM(d,S.lpcM)}return n}
@@ -214,10 +228,10 @@ function schedule(X){const S=X.S,out=[];
     if(sc<bs){bs=sc;best=t}}
    if(!best)return null;res.push(best.code)}return res};
  const cands=(L,dates)=>{const c=dates.at(-1),n=dates.length,out=[];
-  for(const p of X.crew){const ev=getPend(p);if(!ev||X.sec[ev.type]!==n)continue;const latest=ev.expired?X.end:ev.deadline;if(c<ev.earliest||c>latest)continue;
+  for(const p of X.crew){const ev=getPend(p);if(!ev||X.sec[ev.type]!==n)continue;const latest=ev.expired?X.end:ev.deadline;if(c<=ev.earliest||c>latest)continue;
    const nl=nextLock(p);if(nl){if(reserved(p,ev))continue;if(c>addM(nl.check,-S.gapM))continue}
    if(dates.some(x=>{const o=day.get(p.code)?.get(x);return(o&&(o.st||o.te))||onLeave(X,p.code,x)}))continue;
-   if(S.visaHard&&L.visa&&(p.visaDn==null||p.visaDn<c))continue;
+   if(S.visaHard&&visaExpired(visaOf(X,p.code,L.loc),c))continue;
    out.push({p,ev,c,latest,soft:ev.soft-c,hard:latest-c})}
   return out.sort((a,b)=>a.soft-b.soft||a.hard-b.hard||X.order.get(a.p.code)-X.order.get(b.p.code))};
  const penalty=(a,b,ta,tb)=>{if(ta!==tb&&!S.allowMix)return null;return(ta!==tb?1:0)+(a.rank===b.rank?2:0)};
@@ -232,7 +246,7 @@ function schedule(X){const S=X.S,out=[];
   for(const q of X.crew){if(q===a.p)continue;const e=getPend(q);if(!e||X.sec[e.type]!==n||reserved(q,e))continue;const ql=e.expired?X.end:e.deadline;
    if(q.rank===a.p.rank&&(pen>=2||e.type===a.ev.type)&&e.earliest<=W&&ql<=W)riv++;
    if(noFly(X,q.code,a.p.code))continue;const pq=penalty(a.p,q,a.ev.type,e.type);if(pq==null||pq>=pen)continue;
-   const from=Math.max(d+1,e.earliest-(n-1)*S.maxGap),to=Math.min(W,ql);if(from>to)continue;
+   const from=Math.max(d+1,e.earliest+1-(n-1)*S.maxGap),to=Math.min(W,ql);if(from>to)continue;
    if(freeIn(q.code,from,to)&&freeIn(a.p.code,from,to)&&cap(from,to,n)>0)better++}
   return better<=riv};
  const pick=(L,d,dates,cs)=>{const n=dates.length;
@@ -288,29 +302,30 @@ function evaluate(X){const S=X.S;
    if(ev.gap!=null&&o.chk<ev.gap)r.err.push("4 ay kuralı: en erken "+fmt(ev.gap));
    else if(o.chk<ev.auto)r.warn.push("Son 3 ay dışında: yeni geçerlilik kontrol tarihinden sayılır");
    if(o.chk>ev.deadline)r.err.push("Geçerlilik bitişinden ("+fmt(ev.deadline)+") sonra");
-   r.final=o.chk>addM(ev.deadline,-1)&&o.chk<=ev.deadline;
-   if(o.L?.visa){if(c.visaDn==null)r.visa="Vize bilgisi yok";else if(c.visaDn<o.chk)r.visa="Vize Geçersiz"}
+   // Excel: Error =IF(AND(Plan>EarliestAuto,Plan<=Valid),"","Hata") ; Final Month =IF(MONTH(Plan)=MONTH(Valid),"Final!","")
+   r.hata=!(o.chk>ev.earliest&&o.chk<=ev.deadline);r.why=o.chk<=ev.earliest?"Plan, Earliest Auto ("+fmt(ev.earliest)+") tarihinden sonra olmalı":o.chk>ev.deadline?"Plan, Valid ("+fmt(ev.deadline)+") tarihinden sonra":"";
+   r.final=sameMonth(o.chk,ev.deadline);r.loc=o.L?.loc||"";r.v=visaOf(X,c.code,r.loc);r.visa=r.v.raw==null?"#N/A":visaExpired(r.v,o.chk)?"Expired":"";
    if(ev.early)r.warn.push("OPC ile LPC arası 4 aydan kısa olduğu için LPC, OPC süresi içinde");
    const ns=applyCheck(st,ev,o.chk,S);r.newValid=ev.type==="LPC"?ns.lpc:ns.op;rows.push(r);st=ns;prevPlanned=true}
   const ev=nextEvent(st,X);
-  if(ev.earliest<=X.end){const r={c,ev,o:null,last:st.last,lastPlanned:prevPlanned,err:[],warn:[],final:false};
+  if(ev.earliest<=X.end){const r={c,ev,o:null,last:st.last,lastPlanned:prevPlanned,err:[],warn:[],final:false,hata:true,why:"Planlanmadı",loc:X.laneArr[0]?.loc||""};r.v=visaOf(X,c.code,r.loc);r.visa=r.v.raw==null?"#N/A":"";
    if(ev.deadline<=X.end)r.err.push("Planlanmadı");else r.warn.push("Planlanmadı – geçerlilik dönem sonrasında ("+fmt(ev.deadline)+")");
    if(ev.expired)r.err.push("Geçerlilik plan başlangıcından önce dolmuş");
-   if(c.visaDn!=null&&c.visaDn<ev.earliest)r.visa="Vize Geçersiz";rows.push(r)}}
+   rows.push(r)}}
  for(const o of ses){if(new Set(Object.values(o.types)).size>1)o.warn.push("Karışık oturum (LPC + OPC)");o.err=[...new Set(o.err)];o.warn=[...new Set(o.warn)]}
  return{rows,ses,byId}}
 
 /* ============ arayüz ============ */
-const TABS=[["settings","Ayarlar"],["crew","Ekip"],["instr","Eğitmenler"],["sims","Simülatörler"],["off","Kapalı günler & izinler"],["nofly","Birlikte uçmayacaklar"],["table","Uygunluk tablosu"],["plan","Taslak plan"]];
+const TABS=[["settings","Ayarlar"],["crew","Ekip"],["visas","Vize"],["instr","Eğitmenler"],["sims","Simülatörler"],["off","Kapalı günler & izinler"],["nofly","Birlikte uçmayacaklar"],["table","Uygunluk tablosu"],["plan","Taslak plan"]];
 let TAB=ls.g("simplan.tab")||"table";
 const UI={sort:"tur",type:"",onlyErr:false,q:"",showEmpty:false};
-function tabCounts(){$("#tabs").innerHTML=TABS.map(([k,l])=>{const n=k==="crew"?DB.crew.length:k==="instr"?DB.instr.length:k==="sims"?DB.sims.length:k==="off"?DB.blackouts.length+DB.leaves.length:k==="nofly"?DB.nofly.length:k==="plan"?DB.sessions.length:null;
+function tabCounts(){$("#tabs").innerHTML=TABS.map(([k,l])=>{const n=k==="crew"?DB.crew.length:k==="visas"?DB.visas.length:k==="instr"?DB.instr.length:k==="sims"?DB.sims.length:k==="off"?DB.blackouts.length+DB.leaves.length:k==="nofly"?DB.nofly.length:k==="plan"?DB.sessions.length:null;
  return`<button data-tab="${k}" class="${k===TAB?"on":""}">${l}${n!=null?`<span class="n">${n}</span>`:""}</button>`}).join("");
  $("#codes").innerHTML=[...DB.crew.map(c=>[c.code,c.name]),...DB.instr.map(t=>[t.code,t.name+" (eğitmen)"])].filter(x=>x[0]).map(([c,n])=>`<option value="${esc(c)}">${esc(n)}</option>`).join("")}
 function show(t){TAB=t;ls.s("simplan.tab",t);tabCounts();render()}
 function render(){const v=$("#view");
- if(TAB==="settings")v.innerHTML=vSettings();else if(TAB==="crew")v.innerHTML=vList("crew",crewHelp());else if(TAB==="instr")v.innerHTML=vList("instr",'<div class="mu">Kontrol sektörüne (LPC, OPC) yalnızca TRE/SFE atanır. Eğitim sektörüne (LPT, OPT) önce TRI/SFI atanır, yoksa TRE/SFE. Eğitmen izinlerini "Kapalı günler & izinler" sekmesinden girin.</div>');
- else if(TAB==="sims")v.innerHTML=vList("sims",'<div class="mu">Her satır bir müsaitlik dönemidir; aynı simülatör + slot için birden fazla satır girebilirsiniz. Her simülatör + slot günde 1 oturumdur (ör. aynı gün 2 slot varsa iki ayrı slot yazın). "Vize gerekli" işaretliyse vize bitişi kontrol tarihinden önce olan kişide <b>Vize Geçersiz</b> yazar.</div>');
+ if(TAB==="settings")v.innerHTML=vSettings();else if(TAB==="visas")v.innerHTML=vList("visas",`<div class="mu">Excel'deki <b>Visa</b> sayfası. Sim lokasyonu <b>${esc(DB.settings.schengen)}</b> ise SCHENGEN, değilse UAE vizesine bakılır (Ayarlar'dan değiştirilebilir). Burada kaydı olmayan kişide tabloda <b>#N/A</b>, vize hücresi boşsa planlandığında <b>Expired</b> yazar (Excel'deki gibi). <button class="s np" data-fillvisa="1">Ekipte olup burada olmayanları ekle</button></div>`);else if(TAB==="crew")v.innerHTML=vList("crew",crewHelp());else if(TAB==="instr")v.innerHTML=vList("instr",'<div class="mu">Kontrol sektörüne (LPC, OPC) yalnızca TRE/SFE atanır. Eğitim sektörüne (LPT, OPT) önce TRI/SFI atanır, yoksa TRE/SFE. Eğitmen izinlerini "Kapalı günler & izinler" sekmesinden girin.</div>');
+ else if(TAB==="sims")v.innerHTML=vList("sims",'<div class="mu">Her satır bir müsaitlik dönemidir; aynı simülatör + slot için birden fazla satır girebilirsiniz. Her simülatör + slot günde 1 oturumdur (ör. aynı gün 2 slot varsa iki ayrı slot yazın). Vize: lokasyon Schengen listesindeyse (Ayarlar) SCHENGEN, değilse UAE vizesine bakılır.</div>');
  else if(TAB==="off")v.innerHTML=vList("blackouts",'<div class="mu">Bu tarihlerde hiçbir simülatöre plan yapılmaz (tatil vb.).</div>')+vList("leaves",'<div class="mu">Pilot ya da eğitmenin plana alınmayacağı tarihler (kod ile).</div>');
  else if(TAB==="nofly")v.innerHTML=vList("nofly",'<div class="mu">Bu iki kişi aynı oturuma (öğrenci–öğrenci ya da öğrenci–eğitmen) konmaz.</div>');
  else if(TAB==="table")v.innerHTML=vTable();else v.innerHTML=vPlan();
@@ -325,7 +340,7 @@ function vSettings(){const S=DB.settings;
  return`<div class="cd"><h2>Plan dönemi ve sektör sayıları</h2><div class="g">${fld("start","Plan başlangıcı","date")}${fld("end","Plan bitişi","date")}
  ${fld("lpcSec","LPC kaç sektör?","sec",`<span class="mu">${sectorLabels("LPC",S.lpcSec).join(" → ")}</span>`)}${fld("opcSec","OPC kaç sektör?","sec",`<span class="mu">${sectorLabels("OPC",S.opcSec).join(" → ")}</span>`)}</div></div>
  <div class="cd"><h2>Kurallar</h2><div class="g">${fld("winM","Son … ay kuralı (ay)","number")}${fld("gapM","İki kontrol arası en az (ay)","number")}${fld("lpcM","LPC geçerlilik süresi (ay)","number")}${fld("opcM","OPC geçerlilik süresi (ay, ay sonuna yuvarlanır)","number")}
- ${fld("maxGap","Sektörler arası en fazla gün farkı","number",'<span class="mu">1 = art arda günler</span>')}${fld("instrPerDay","Eğitmen günde en fazla oturum","number")}</div>
+ ${fld("maxGap","Sektörler arası en fazla gün farkı","number",'<span class="mu">1 = art arda günler</span>')}${fld("instrPerDay","Eğitmen günde en fazla oturum","number")}${fld("schengen","Schengen vizesi gereken sim lokasyonları","text",'<span class="mu">Diğer lokasyonlarda UAE vizesine bakılır</span>')}</div>
  <div class="g" style="margin-top:10px">${fld("avoidFinal","Mümkünse kişiyi son ayında planlama","check")}${fld("rankFirst","1 CPT + 1 F/O eşleşmesi son aydan kaçınmadan önce gelsin (iki CPT / iki F/O yerine gerekirse son aya kayar)","check")}${fld("allowMix","Mecbur kalınca LPC ve OPC aynı oturumda olabilir (sektör sayıları eşitse)","check")}
  ${fld("diffInstr","Kontrolü, eğitimi verenden farklı eğitmen yapsın (mümkünse)","check")}${fld("visaHard","Vizesi geçersiz kişiyi vize gereken simülatöre hiç planlama","check")}</div></div>
  <div class="cd"><h2>Planlama nasıl yapılır</h2><ul class="rules">
@@ -333,7 +348,8 @@ function vSettings(){const S=DB.settings;
  <li><b>${S.gapM} ay kuralı:</b> yılda iki kontrol; art arda iki kontrol ${S.gapM} aydan yakın olamaz. En erken tarih = son kontrol + ${S.gapM} ay (tabloda kırmızı kalın ise bu kural belirleyicidir).</li>
  <li><b>OPC:</b> LPC'den ${S.opcM} ay önce ya da sonra (bugünden sonraki ilk tarih). LPC'ler turuncu, OPC'ler sarı gösterilir. LPC aynı zamanda OPC yerine geçer.</li>
  <li>Her oturumda en az 2 öğrenci + 1 eğitmen; mecbur kalınmadıkça 1 CPT + 1 F/O ve aynı kontrol tipi (LPC ile LPC, OPC ile OPC) birlikte.</li>
- <li>Mümkünse kişi son ayında (geçerlilik − 1 ay sonrası) planlanmaz; süresi en yakın olan önce yerleştirilir.</li>
+ <li>Mümkünse kişi son ayında (geçerliliğin bittiği takvim ayında: Excel'de "Final!") planlanmaz; süresi en yakın olan önce yerleştirilir.</li>
+ <li>Excel'deki gibi plan tarihi <b>Earliest Auto'dan sonra</b> (eşit olamaz) ve <b>Valid'e kadar</b> olmalı; değilse ya da planlanmamışsa "Hata".</li>
  <li>Kontrol tarihi = son sektörün tarihi. Kilitli oturumlar yeniden planlamada korunur; diğerleri silinip yeniden dağıtılır.</li></ul></div>`}
 
 /* ---- liste düzenleyiciler ---- */
@@ -343,6 +359,7 @@ function cellInput(key,i,col,v){const a=`data-l="${key}" data-i="${i}" data-k="$
   case"date":return`<input type="date" ${a} value="${esc(v||"")}">`;
   case"check":return`<input type="checkbox" ${a}${v?" checked":""}>`;
   case"days":{const dv=Array.isArray(v)?v:Array(7).fill(true);return`<span class="days">${DAYN.map((n,j)=>`<label title="${n}"><input type="checkbox" ${a} data-j="${j}"${dv[j]!==false?" checked":""}>${n.slice(0,2)}</label>`).join("")}</span>`}
+  case"visa":{const y=v==="Yesil";return`<span style="white-space:nowrap"><label style="font-size:12px"><input type="checkbox" ${a} data-y="1"${y?" checked":""}> Yeşil</label> <input type="date" ${a} value="${y?"":esc(v||"")}"${y?" disabled":""}></span>`}
   case"code":return`<input ${a} class="code" maxlength="6" list="codes" value="${esc(v||"")}">`;
   default:return`<input ${a} value="${esc(v||"")}" style="width:${col.w||120}px">`}}
 function vList(key,help=""){const L=LISTS[key],arr=DB[key];
@@ -356,30 +373,29 @@ function crewDerived(){const X=ctx(),seen=new Map();DB.crew.forEach((c,i)=>{cons
   const ev=nextEvent(initState({...c},X),X);td.innerHTML=`<b>${ev.type}</b> ${fmt(ev.deadline)} · en erken <span class="${ev.gapDriven?"bad":""}">${fmt(ev.earliest)}</span>${ev.expired?' <span class="bad">süresi dolmuş</span>':""}`})}
 
 /* ---- uygunluk tablosu ---- */
-const TH=[["Rank","Rütbe"],["Name - Surname","Ad Soyad"],["Code","Kod"],["Plan","Planlanan kontrol tarihi (son sektör). Tıklayın: oturumu düzenle"],["Error","Kural ihlali / uyarı"],["Sim","Simülatör lokasyonu"],
- ["Son Kontrol","Önceki kontrol tarihi. Kırmızı: bu plandan gelen tarih"],["Earliest Automatic","Geçerlilik − son 3 ay: bu tarihten sonra yapılırsa yeni geçerlilik eski bitişten sayılır"],["Earliest Plan","En erken planlanabilir tarih = en geç(Geçerlilik − 3 ay, Son kontrol + 4 ay). Kırmızı kalın: 4 ay kuralı belirleyici"],
- ["Valid","Geçerlilik bitişi (en geç tarih)"],["Type","Kontrol tipi"],["Visa","Vize bitişi"],["Visa Control","Vize kontrolü"],["Final Month","Son ayda mı?"],["New Valid","Kontrolden sonraki yeni geçerlilik"],["Sektörler","Sektör tarihleri"],["Eğitmen","Sektör eğitmenleri"],["Ekip Arkadaşı","Aynı oturumdaki diğer öğrenci"]];
+const TH=[["Rank","Rütbe"],["Name - Surname","Ad Soyad"],["Codes","Kod"],["Plan","Planlanan kontrol tarihi (son sektör). Tıklayın: oturumu düzenle"],["Error",'Excel: =IF(AND(Plan>Earliest Auto, Plan<=Valid),"","Hata")'],["Sim","Simülatör lokasyonu"],
+ ["Last Sim","Önceki kontrol tarihi. Kırmızı: bu plandan gelen tarih"],["Earliest (3 months)","Excel: =EDATE(Valid,-3)"],["Earliest Auto","Excel: =IF(EDATE(Valid,-3)>=EDATE(Last Sim,4),EDATE(Valid,-3),EDATE(Last Sim,4)). Kırmızı kalın: 4 ay kuralı belirleyici"],
+ ["Valid","Geçerlilik bitişi"],["Type","Kontrol tipi"],["Visa","Excel: Sim AMS/FRA ise Visa sayfasından SCHENGEN, değilse UAE"],["Visa Control",'Excel: =IF(Visa<Plan,"Expired","")'],["Final Month",'Excel: =IF(MONTH(Plan)=MONTH(Valid),"Final!","")']];
+const visaTxt=v=>v.raw==null?"#N/A":v.raw==="Yesil"?"Yesil":v.dn!=null?fmt(v.dn):"";
+const tableSort=(X,rows)=>{const ord=r=>X.order.get(r.c.code);return[...rows].sort((a,b)=>(a.o?0:1)-(b.o?0:1)||(a.o?a.chk:a.ev.earliest)-(b.o?b.chk:b.ev.earliest)||ord(a)-ord(b))};
 function stale(){return DB.sessions.length&&DB.planVer!==DB.dataVer?'<div class="banner np">Girdi verileri plan oluşturulduktan sonra değişti. Tablo ve hatalar güncel verilerle yeniden hesaplandı; oturumları yeniden dağıtmak için <b>Planı oluştur</b>.</div>':""}
-function stats(R){const pl=R.rows.filter(r=>r.o),er=R.rows.filter(r=>r.err.length||(r.o&&r.o.err.length)),fm=pl.filter(r=>r.final),vi=R.rows.filter(r=>r.visa),un=R.rows.filter(r=>!r.o&&r.err.length);
- const sw=R.ses.filter(o=>o.warn.length).length;
- return`<div class="chips"><span class="chip">Oturum <b>${R.ses.length}</b></span><span class="chip">Planlanan kontrol <b>${pl.length}</b></span><span class="chip ${un.length?"e":""}">Planlanamayan <b>${un.length}</b></span><span class="chip ${er.length?"e":""}">Hatalı satır <b>${er.length}</b></span><span class="chip ${fm.length?"w":""}">Son ayda <b>${fm.length}</b></span><span class="chip ${vi.length?"w":""}">Vize sorunu <b>${vi.length}</b></span><span class="chip ${sw?"w":""}">Uyarılı oturum <b>${sw}</b></span></div>`}
+function stats(R){const pl=R.rows.filter(r=>r.o),h=R.rows.filter(r=>r.hata),fm=R.rows.filter(r=>r.final),vi=R.rows.filter(r=>r.visa),un=R.rows.filter(r=>!r.o);
+ const se=R.ses.filter(o=>o.err.length).length,sw=R.ses.filter(o=>o.warn.length).length;
+ return`<div class="chips"><span class="chip">Oturum <b>${R.ses.length}</b></span><span class="chip">Planlanan kontrol <b>${pl.length}</b></span><span class="chip ${un.length?"e":""}">Planlanmamış <b>${un.length}</b></span><span class="chip ${h.length?"e":""}">Hata <b>${h.length}</b></span><span class="chip ${fm.length?"w":""}">Final! <b>${fm.length}</b></span><span class="chip ${vi.length?"w":""}">Expired / #N/A <b>${vi.length}</b></span><span class="chip ${se?"e":""}">Hatalı oturum <b>${se}</b></span><span class="chip ${sw?"w":""}">Uyarılı oturum <b>${sw}</b></span></div>`}
 function vTable(){const X=ctx(),R=evaluate(X);let rows=R.rows;
- if(UI.type)rows=rows.filter(r=>r.ev.type===UI.type);if(UI.onlyErr)rows=rows.filter(r=>r.err.length||r.final||r.visa||(r.o&&(r.o.err.length)));
+ if(UI.type)rows=rows.filter(r=>r.ev.type===UI.type);if(UI.onlyErr)rows=rows.filter(r=>r.hata||r.final||r.visa);
  if(UI.q){const q=norm(UI.q);rows=rows.filter(r=>norm(r.c.name+r.c.code).includes(q))}
- const ord=r=>X.order.get(r.c.code),pd=r=>r.o?r.chk:r.ev.earliest;
- rows=[...rows].sort(UI.sort==="kisi"?(a,b)=>ord(a)-ord(b)||a.ev.idx-b.ev.idx:UI.sort==="tarih"?(a,b)=>pd(a)-pd(b)||ord(a)-ord(b):(a,b)=>a.ev.idx-b.ev.idx||(a.ev.type<b.ev.type?-1:a.ev.type>b.ev.type?1:0)||a.ev.deadline-b.ev.deadline||ord(a)-ord(b));
- const body=rows.map(r=>{const o=r.o,partner=o?o.s.pilots.filter(c=>c&&c!==r.c.code).join(", "):"",errs=[...r.err,...(o?o.err:[])],warns=[...r.warn,...(o?o.warn:[])];
+ rows=tableSort(X,rows);
+ const body=rows.map(r=>{const o=r.o;
   return`<tr class="${r.ev.type}"><td class="c">${esc(r.c.rank)}</td><td>${esc(r.c.name)}</td><td class="c">${esc(r.c.code)}</td>
   <td class="c">${o?`<a data-ses="${o.s.id}">${fmt(r.chk)}</a>${o.s.locked?" 🔒":""}`:`<button class="s np" data-new-for="${esc(r.c.code)}">+ Planla</button>`}</td>
-  <td class="c">${errs.map(e=>`<div class="r iss">${esc(e)}</div>`).join("")}${warns.map(e=>`<div class="wn iss">${esc(e)}</div>`).join("")}</td>
-  <td class="c" title="${esc(o?.L?.key||"")}">${esc(o?.L?.loc||"")}</td><td class="c ${r.lastPlanned?"r2":""}">${fmt(r.last)}</td><td class="c">${fmt(r.ev.auto)}</td>
-  <td class="c ${r.ev.gapDriven?"r":""}">${fmt(r.ev.earliest)}</td><td class="c">${fmt(r.ev.deadline)}</td><td class="c"><b>${r.ev.type}</b></td><td class="c">${fmt(r.c.visaDn)}</td>
-  <td class="c r">${esc(r.visa||"")}</td><td class="c r">${r.final?"son ay":""}</td><td class="c">${r.newValid!=null?fmt(r.newValid):""}</td>
-  <td>${o?o.dn.map((d,k)=>fmtS(d)+" "+(o.labels[r.c.code]?.[k]||"")).join(" · "):""}</td><td class="c">${o?(o.s.instr||[]).map(t=>t||"?").join(" / "):""}</td><td class="c">${esc(partner)}</td></tr>`}).join("");
- return`${stale()}<div class="cd"><div class="row np"><h2>Uygunluk tablosu</h2><span class="mu">${fmt(X.start)} – ${fmt(X.end)}</span><span class="sp"></span>
+  <td class="c r" title="${esc(r.why)}">${r.hata?"Hata":""}</td><td class="c" title="${esc(o?.L?.key||"")}">${esc(r.loc)}</td><td class="c ${r.lastPlanned?"r2":""}">${fmt(r.last)}</td><td class="c">${fmt(r.ev.auto)}</td>
+  <td class="c ${r.ev.gapDriven?"r":""}">${fmt(r.ev.earliest)}</td><td class="c">${fmt(r.ev.deadline)}</td><td class="c"><b>${r.ev.type}</b></td><td class="c" title="${r.v.raw==null?"Vize sekmesinde kaydı yok":""}">${visaTxt(r.v)}</td>
+  <td class="c r">${r.visa}</td><td class="c r">${r.final?"Final!":""}</td></tr>`}).join("");
+ return`${stale()}<div class="cd"><div class="row np"><h2>Uygunluk tablosu</h2><span class="mu">${fmt(X.start)} – ${fmt(X.end)} · Excel 2027 sayfası formülleri</span><span class="sp"></span>
  <input placeholder="Ara (ad / kod)" data-ui="q" value="${esc(UI.q)}" style="width:150px"><select data-ui="type"><option value="">Tümü</option><option${UI.type==="LPC"?" selected":""}>LPC</option><option${UI.type==="OPC"?" selected":""}>OPC</option></select>
- <select data-ui="sort"><option value="tur"${UI.sort==="tur"?" selected":""}>Sıra: tur</option><option value="kisi"${UI.sort==="kisi"?" selected":""}>Sıra: kişi</option><option value="tarih"${UI.sort==="tarih"?" selected":""}>Sıra: tarih</option></select>
- <label class="ck"><input type="checkbox" data-ui="onlyErr"${UI.onlyErr?" checked":""}><span>Yalnızca sorunlular</span></label></div>${stats(R)}
+ <label class="ck"><input type="checkbox" data-ui="onlyErr"${UI.onlyErr?" checked":""}><span>Yalnızca Hata / Final! / Expired</span></label></div>${stats(R)}
+ <div class="mu" style="margin:0 0 6px">Sütun başlığının üzerine gelince Excel formülü, "Hata" üzerine gelince nedeni görünür.</div>
  <div class="sc"><table class="ot"><thead><tr>${TH.map(([h,t])=>`<th title="${esc(t)}">${h}</th>`).join("")}</tr></thead><tbody>${body||`<tr><td colspan="${TH.length}">Gösterilecek satır yok. Ekip verisi girip <b>Planı oluştur</b>'a basın.</td></tr>`}</tbody></table></div></div>`}
 
 /* ---- taslak plan ---- */
@@ -533,7 +549,7 @@ function rowsToItems(key,rows){const L=LISTS[key],H=rows.slice(0,6);let hi=-1,ma
  const out=[];for(const r of rows.slice(hi+1)){if(!r||!r.some(v=>v!==""&&v!=null))continue;const it={id:uid()};
   L.cols.forEach(c=>{it[c.k]=c.t==="days"?Array(7).fill(true):c.t==="check"?false:""});
   for(const ci in map){const c=map[ci],v=r[ci];if(v==null||v==="")continue;
-   it[c.k]=c.t==="date"?cellDate(v):c.t==="check"?cellBool(v):c.t==="days"?parseDays(v):c.t==="code"?String(v).trim().toUpperCase():c.k==="rank"?normRank(v):c.k==="role"?String(v).trim().toUpperCase():String(v).trim()}
+   it[c.k]=c.t==="date"?cellDate(v):c.t==="visa"?(/^(yesil|green)/.test(norm(v))?"Yesil":cellDate(v)):c.t==="check"?cellBool(v):c.t==="days"?parseDays(v):c.t==="code"?String(v).trim().toUpperCase():c.k==="rank"?normRank(v):c.k==="role"?String(v).trim().toUpperCase():String(v).trim()}
   if(key==="blackouts"&&!it.to)it.to=it.from;if(key==="leaves"&&!it.to)it.to=it.from;out.push(it)}return out}
 function sheetKey(name){const n=norm(name);for(const[k,al]of SHEET_ALIAS)if(al.some(a=>n.includes(a)))return k;return null}
 function applyImport(found,mode){found.forEach(({key,items})=>{DB[key]=mode==="add"?DB[key].concat(items):items});touch();render();toast("Yüklendi: "+found.map(f=>LISTS[f.key].t+" "+f.items.length).join(", "))}
@@ -550,14 +566,13 @@ function pasteDlg(key){const L=LISTS[key];dlg(L.t+" – Excel'den yapıştır",`
  [{l:"Vazgeç"},{l:"Sona ekle",f:()=>doPaste(key,"add")},{l:"Listeyi değiştir",c:"p",f:()=>doPaste(key,"replace")}],()=>$("#pT").focus())}
 function doPaste(key,mode){const items=rowsToItems(key,parseCSV($("#pT").value));if(!items.length){toast("Satır bulunamadı");return false}applyImport([{key,items}],mode)}
 function inputSheets(){return Object.entries(LISTS).map(([key,L])=>({name:L.sheet,freeze:1,widths:L.cols.map(c=>c.t==="date"?13:c.t==="code"?8:c.w?Math.round(c.w/7):14),
- rows:[L.cols.map(c=>({v:c.l,b:1,fill:"D9D9D9",bd:1})),...DB[key].map(it=>L.cols.map(c=>{const v=it[c.k];if(c.t==="date")return{v:toDn(v),d:toDn(v)!=null,bd:1};if(c.t==="check")return{v:v?"E":"H",bd:1,c:1};if(c.t==="days")return{v:daysStr(v),bd:1};return{v:v??"",bd:1}}))]}))}
+ rows:[L.cols.map(c=>({v:c.l,b:1,fill:"D9D9D9",bd:1})),...DB[key].map(it=>L.cols.map(c=>{const v=it[c.k];if(c.t==="date"||(c.t==="visa"&&v!=="Yesil"))return{v:toDn(v),d:toDn(v)!=null,bd:1};if(c.t==="check")return{v:v?"E":"H",bd:1,c:1};if(c.t==="days")return{v:daysStr(v),bd:1};return{v:v??"",bd:1}}))]}))}
 function exportPlan(){const X=ctx(),R=evaluate(X),FILL={LPC:"FFC000",OPC:"FFFF00"};
  const head=TH.map(([h])=>({v:h,b:1,fill:"BFBFBF",bd:1,c:1,wrap:1}));
- const rows=[...R.rows].sort((a,b)=>a.ev.idx-b.ev.idx||(a.ev.type<b.ev.type?-1:a.ev.type>b.ev.type?1:0)||a.ev.deadline-b.ev.deadline||X.order.get(a.c.code)-X.order.get(b.c.code)).map(r=>{const o=r.o,f=FILL[r.ev.type],C=(v,x={})=>({v,fill:f,bd:1,c:1,...x}),D=(dn,x={})=>C(dn,{d:dn!=null,...x});
-  const errs=[...r.err,...(o?o.err:[])],warns=[...r.warn,...(o?o.warn:[])];
-  return[C(r.c.rank),C(r.c.name,{c:0}),C(r.c.code),o?D(r.chk,{b:1}):C(""),C([...errs,...warns].join("; "),{red:errs.length,b:errs.length,wrap:1,c:0}),C(o?.L?.loc||""),D(r.last,{red:r.lastPlanned}),D(r.ev.auto),D(r.ev.earliest,{red:r.ev.gapDriven,b:r.ev.gapDriven}),D(r.ev.deadline),C(r.ev.type,{b:1}),D(r.c.visaDn),C(r.visa||"",{red:1,b:1}),C(r.final?"final month":"",{red:1,b:1}),D(r.newValid??null),
-   C(o?o.dn.map((d,k)=>fmtS(d)+" "+(o.labels[r.c.code]?.[k]||"")).join(" · "):"",{c:0}),C(o?(o.s.instr||[]).map(t=>t||"?").join(" / "):""),C(o?o.s.pilots.filter(c=>c&&c!==r.c.code).join(", "):"")]});
- const t1={name:"Uygunluk Tablosu",freeze:1,widths:[7,24,7,12,34,7,12,12,12,12,7,12,14,12,12,28,12,10],rows:[head,...rows]};
+ const rows=tableSort(X,R.rows).map(r=>{const o=r.o,f=FILL[r.ev.type],C=(v,x={})=>({v,fill:f,bd:1,c:1,...x}),D=(dn,x={})=>C(dn,{d:dn!=null,...x});
+  return[C(r.c.rank),C(r.c.name,{c:0}),C(r.c.code),o?D(r.chk):C(""),C(r.hata?"Hata":"",{red:1,b:1}),C(r.loc),D(r.last,{red:r.lastPlanned}),D(r.ev.auto),D(r.ev.earliest,{red:r.ev.gapDriven,b:r.ev.gapDriven}),D(r.ev.deadline),C(r.ev.type),
+   r.v.dn!=null?D(r.v.dn):C(visaTxt(r.v)),C(r.visa,{red:1,b:1}),C(r.final?"Final!":"",{red:1,b:1})]});
+ const t1={name:String(ymd(X.end)[0]),freeze:1,widths:[7,26,7,11,8,6,11,12,12,11,7,11,12,11],rows:[head,...rows]};
  const months=planCols(X,R),pr=[],merges=[],CH=8,multi=X.laneArr.length>1;
  for(const[k,cols]of months){const y=Math.floor(k/12),m=k%12;for(let i=0;i<cols.length;i+=CH){const cs=cols.slice(i,i+CH),r0=pr.length;
   pr.push([{v:MON[m]+"."+String(y).slice(2),b:1,fill:"BFBFBF",bd:1,c:1},...cs.slice(1).map(()=>({v:"",fill:"BFBFBF",bd:1}))]);if(cs.length>1)merges.push(`A${r0+1}:${colL(cs.length-1)}${r0+1}`);
@@ -570,7 +585,7 @@ function exportPlan(){const X=ctx(),R=evaluate(X),FILL={LPC:"FFC000",OPC:"FFFF00
 /* ============ olaylar ============ */
 document.addEventListener("click",e=>{const el=e.target.closest("button,[data-ses],[data-new],a");if(!el)return;const d=el.dataset;
  if(d.tab)return show(d.tab);
- if(d.add){const L=LISTS[d.add],it={id:uid()};L.cols.forEach(c=>it[c.k]=c.t==="days"?Array(7).fill(true):c.t==="check"?false:"");if(d.add==="sims"&&DB.sims.length){const p=DB.sims.at(-1);Object.assign(it,{sim:p.sim,slot:p.slot,loc:p.loc,visa:p.visa})}DB[d.add].push(it);touch();render();return}
+ if(d.add){const L=LISTS[d.add],it={id:uid()};L.cols.forEach(c=>it[c.k]=c.t==="days"?Array(7).fill(true):c.t==="check"?false:"");if(d.add==="sims"&&DB.sims.length){const p=DB.sims.at(-1);Object.assign(it,{sim:p.sim,slot:p.slot,loc:p.loc})}DB[d.add].push(it);touch();render();return}
  if(d.del){DB[d.del].splice(+d.i,1);touch();render();return}
  if(d.clear)return confirmDlg("Tümünü sil",`<b>${LISTS[d.clear].t}</b> listesindeki ${DB[d.clear].length} satır silinecek.`,"Sil",()=>{DB[d.clear]=[];touch();render()},"d");
  if(d.paste)return pasteDlg(d.paste);
@@ -580,11 +595,12 @@ document.addEventListener("click",e=>{const el=e.target.closest("button,[data-se
   let lane=X.laneArr[0]?.key,date=dt;for(const L of X.laneArr){const f=[...L.avail].filter(x=>x>=dt).sort((a,b)=>a-b)[0];if(f!=null&&(date===dt||f<date)){date=f;lane=L.key}}
   return sessionDlg(null,{pilot:c?.code,type:r?.ev.type,lane,date:toIso(date)})}
  if(d.newses)return sessionDlg(null,{});
+ if(d.fillvisa){const have=new Set(DB.visas.map(v=>(v.code||"").toUpperCase()));let n=0;DB.crew.forEach(c=>{if(c.code&&!have.has(c.code.toUpperCase())){DB.visas.push({id:uid(),code:c.code.toUpperCase(),name:c.name||"",schengen:"",uae:""});n++}});touch();render();toast(n+" kişi eklendi");return}
  if(d.lockall!==undefined){DB.sessions.forEach(s=>s.locked=d.lockall==="1");save();render();toast(d.lockall==="1"?"Tüm oturumlar kilitlendi":"Kilitler kaldırıldı");return}
 });
 document.addEventListener("change",e=>{const el=e.target,d=el.dataset;
  if(d.l){const it=DB[d.l][+d.i],col=LISTS[d.l].cols.find(c=>c.k===d.k);if(!it||!col)return;
-  if(col.t==="days"){if(!Array.isArray(it.days))it.days=Array(7).fill(true);it.days[+d.j]=el.checked}else if(col.t==="check")it[d.k]=el.checked;else if(col.t==="code"){it[d.k]=el.value.trim().toUpperCase();el.value=it[d.k]}else it[d.k]=el.value;
+  if(col.t==="days"){if(!Array.isArray(it.days))it.days=Array(7).fill(true);it.days[+d.j]=el.checked}else if(col.t==="check")it[d.k]=el.checked;else if(col.t==="visa"){it[d.k]=d.y?(el.checked?"Yesil":""):el.value;if(d.y)render()}else if(col.t==="code"){it[d.k]=el.value.trim().toUpperCase();el.value=it[d.k]}else it[d.k]=el.value;
   touch();if(d.l==="crew")crewDerived();return}
  if(d.s){const S=DB.settings;S[d.s]=el.type==="checkbox"?el.checked:el.type==="number"?Math.max(0,+el.value||0):el.value;if(d.s==="winM"||d.s==="gapM"||d.s==="lpcM"||d.s==="opcM"||d.s==="maxGap"||d.s==="instrPerDay")S[d.s]=Math.max(1,S[d.s]);touch();render();return}
  if(d.ui){UI[d.ui]=el.type==="checkbox"?el.checked:el.value;render()}});
