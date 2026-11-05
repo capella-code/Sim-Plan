@@ -556,18 +556,17 @@ function vPlan(){const X=ctx(),R=evaluate(X),months=planCols(X,R),multi=X.laneAr
    const pc=(c,j)=>{if(!c.o)return`<td class="x" ${at(c)}></td>`;const code=c.o.s.pilots[j]||"",t=c.o.types[code]||"",cr=X.crewMap.get(code);
     return`<td class="cl ${t}" ${at(c)} title="${esc(cr?cr.name+" ("+cr.rank+")":code)}${t?" – "+(c.o.labels[code]?.[c.k]||t):""}">${esc(code)||"<span style='color:#999'>—</span>"}</td>`};
    tabs.push(`<table class="mt"><tr><th class="mh" colspan="${cs.length}">${title}</th></tr>
-   <tr>${cs.map(c=>`<td class="dy${mk(c)}${c.o?"":" em"}" ${at(c)} title="${tip(c)}">${ymd(c.d)[2]}${c.o?.s.locked?"🔒":""}<small>${DAYN[wd(c.d)]}</small></td>`).join("")}</tr>
+   <tr>${cs.map(c=>`<td class="dy${mk(c)}${c.o?"":" em"}" ${at(c)} title="${fmt(c.d)} ${DAYN[wd(c.d)]}&#10;${tip(c)}">${ymd(c.d)[2]}${c.o?.s.locked?"🔒":""}</td>`).join("")}</tr>
    ${multi?`<tr>${cs.map(c=>`<td class="ln" ${at(c)}>${esc((X.lanes.get(c.lane)?.loc||"")+" "+(X.lanes.get(c.lane)?.sim||c.lane))}</td>`).join("")}</tr>`:""}
    <tr>${cs.map(c=>`<td class="cl" ${at(c)} title="Eğitmen">${c.o?esc(c.o.s.instr?.[c.k]||"?"):""}</td>`).join("")}</tr>
-   <tr>${cs.map(c=>pc(c,0)).join("")}</tr><tr>${cs.map(c=>pc(c,1)).join("")}</tr>
-   <tr>${cs.map(c=>`<td class="lb" ${at(c)}>${c.o?esc([...new Set(c.o.s.pilots.filter(Boolean).map(p=>c.o.labels[p]?.[c.k]).filter(Boolean))].join("/")):""}</td>`).join("")}</tr></table>`)}
+   <tr>${cs.map(c=>pc(c,0)).join("")}</tr><tr>${cs.map(c=>pc(c,1)).join("")}</tr></table>`)}
   return`<div>${tabs.join('<div style="height:6px"></div>')}</div>`}).join("");
  const load=new Map();R.ses.forEach(o=>(o.s.instr||[]).forEach(t=>t&&load.set(t,(load.get(t)||0)+1)));
  const probs=R.rows.filter(r=>!r.o&&r.err.length),bad=R.ses.filter(o=>o.err.length||o.warn.length).sort((a,b)=>a.dn[0]-b.dn[0]);
  return`${stale()}<div class="cd"><div class="row np"><h2>Taslak plan</h2><span class="mu">${fmt(X.start)} – ${fmt(X.end)}${DB.planAt?" · son planlama "+esc(DB.planAt):""}</span><span class="sp"></span>
  <label class="ck"><input type="checkbox" data-ui="showEmpty"${UI.showEmpty?" checked":""}><span>Boş simülatör günlerini göster</span></label>
  <button class="s" data-newses="1">+ Oturum ekle</button><button class="s" data-lockall="1">Tümünü kilitle</button><button class="s" data-lockall="0">Kilitleri kaldır</button></div>
- ${stats(R)}<div class="mu" style="margin:4px 0 10px"><span class="lg" style="background:var(--lpc)"></span>LPC <span class="lg" style="background:var(--opc)"></span>OPC · 1. satır gün, 2. satır eğitmen, sonra öğrenciler ve sektör adı · 🔒 kilitli · <span style="color:#d00000">▀</span> hata <span style="color:#ff8c00">▀</span> uyarı · Bir sütuna tıklayıp oturumu düzenleyin.
+ ${stats(R)}<div class="mu" style="margin:4px 0 10px"><span class="lg" style="background:var(--lpc)"></span>LPC <span class="lg" style="background:var(--opc)"></span>OPC · Satırlar: gün, simülatör (birden fazlaysa), eğitmen, öğrenciler · sektör adı ve tarih üzerine gelince görünür · 🔒 kilitli · <span style="color:#d00000">▀</span> hata <span style="color:#ff8c00">▀</span> uyarı · Bir sütuna tıklayıp oturumu düzenleyin.
  Eğitmen yükü: ${[...load].sort().map(([t,n])=>esc(t)+" "+n).join(", ")||"—"}</div>
  <div class="months">${blocks||'<div class="mu">Henüz oturum yok. <b>Planı oluştur</b> ile taslak plan hazırlayın.</div>'}</div></div>
  ${probs.length||bad.length?`<div class="cd"><h2>Sorunlar</h2>${probs.map(r=>`<div class="iss"><span class="bad">${esc(r.c.code)} ${esc(r.c.name)}</span> – ${r.ev.type} (geçerlilik ${fmt(r.ev.deadline)}, en erken ${fmt(r.ev.earliest)}): ${esc(r.err.join(", "))} <button class="s np" data-new-for="${esc(r.c.code)}">+ Planla</button></div>`).join("")}
@@ -726,7 +725,7 @@ function exportPlan(){const X=ctx(),R=evaluate(X),FILL={LPC:"FFC000",OPC:"FFFF00
   pr.push(cs.map(c=>({v:ymd(c.d)[2],bd:1,c:1})));if(multi)pr.push(cs.map(c=>({v:X.lanes.get(c.lane)?.loc||c.lane,bd:1,c:1,sz:8})));
   pr.push(cs.map(c=>({v:c.o?c.o.s.instr?.[c.k]||"":"",bd:1,c:1})));
   for(const j of[0,1])pr.push(cs.map(c=>{const code=c.o?.s.pilots[j]||"";return{v:code,bd:1,c:1,fill:FILL[c.o?.types[code]]}}));
-  pr.push(cs.map(c=>({v:c.o?[...new Set(c.o.s.pilots.filter(Boolean).map(p=>c.o.labels[p]?.[c.k]).filter(Boolean))].join("/"):"",bd:1,c:1,sz:8})));pr.push([])}}
+  pr.push([])}}
  download(xlsxBlob([t1,{name:"Taslak Plan",widths:Array(CH).fill(9),rows:pr,merges},...inputSheets()]),"simulator-plani-"+toIso(todayDn())+".xlsx")}
 
 /* ============ olaylar ============ */
