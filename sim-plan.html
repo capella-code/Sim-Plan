@@ -38,7 +38,7 @@ tr.fr th{padding:2px 3px;background:var(--hd)}tr.fr input{width:100%;min-width:4
 .mt th.mh{background:var(--gr);font-weight:700;font-size:15px}.mt td.dy{font-size:15px;cursor:pointer;position:relative}.mt td.dy small{display:block;font-size:10px;color:#555;line-height:1}
 .mt td.ln{font-size:10px;color:#333}.mt td.tm{font-size:11px;color:#000;white-space:nowrap}.mt td.lb{font-size:10px;color:#333;background:#f2f2f2}
 .mt td.LPC{background:var(--lpc)}.mt td.OPC{background:var(--opc)}.mt td.x{background:#eee;color:#777}
-.mt td.cl{cursor:pointer}.mt td.rs{background:#c6efce;color:#006100;font-weight:700}.mt td.fm{box-shadow:inset 0 0 0 2px #d00000}.mt td.vx{outline:2px dashed #7030a0;outline-offset:-5px}.mt td[draggable=true]{cursor:grab}.mt td.dtg{outline:3px solid #0070c0!important;outline-offset:-3px}.mt td.dsrc{opacity:.45}.mt td.ce{box-shadow:inset 0 4px 0 #d00000}.mt td.cw{box-shadow:inset 0 4px 0 #0070c0}.mt td.em{color:#999;cursor:pointer}
+.mt td.cl{cursor:pointer}.mt td.rs{background:#c6efce;color:#006100;font-weight:700}.mt td.fm{box-shadow:inset 0 0 0 2px #d00000}.mt td.vx{outline:2px dashed #7030a0;outline-offset:-5px}.mt td[draggable=true]{cursor:grab}.mt td.cl small{font-size:9px;margin-left:1px}.mt td.cp{font-weight:700}.mt td.dtg{outline:3px solid #0070c0!important;outline-offset:-3px}.mt td.dsrc{opacity:.45}.mt td.ce{box-shadow:inset 0 4px 0 #d00000}.mt td.cw{box-shadow:inset 0 4px 0 #0070c0}.mt td.em{color:#999;cursor:pointer}
 .lg{display:inline-block;width:14px;height:14px;border:1px solid #000;vertical-align:-2px;margin-right:3px}
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;z-index:50;padding:30px 10px;overflow:auto}
 .dl{background:var(--cd);border-radius:12px;max-width:760px;width:100%;padding:16px;box-shadow:0 10px 40px rgba(0,0,0,.35)}
@@ -171,6 +171,11 @@ const defSlot=d=>SLOTS.find(k=>d.s?.[k]&&d.s[k][0]>="08:00"&&d.s[k][0]<="16:00")
 const normStatus=v=>/tahmin|tentative|opsiyon|planned/.test(norm(v))?"Tahmini":"Reserved";
 // plandaki her oturum günü için müsaitlik satırı (yoksa "Tahmini" açılır); hiçbir oturumun kullanmadığı tahmini satır silinir, Reserved satırlar hep kalır
 // yeniden planlamada korunan oturum: kilitli VE bütün günleri Reserved satırda (Tahmini slottaki oturum her planlamada yeniden yerleştirilir)
+// kişi bazında kilit: se.lk={p:[öğrenci1,öğrenci2],i:[sektör eğitmenleri]}; lk yoksa se.locked herkes için geçerli. se.locked = en az biri kilitli
+const pLk=(se,j)=>se.lk?!!se.lk.p?.[j]:!!se.locked,iLk=(se,k)=>se.lk?!!se.lk.i?.[k]:!!se.locked;
+const lkOf=se=>({p:[0,1].map(j=>pLk(se,j)),i:se.dates.map((_,k)=>iLk(se,k))});
+function setLk(se,L){const a=[...L.p,...L.i];delete se.lk;se.locked=a.some(Boolean);if(se.locked&&!a.every(Boolean))se.lk={p:[...L.p],i:[...L.i]}}
+const lkTxt=se=>!se.locked?"":se.lk?"kısmen kilitli":"kilitli";
 const isKept=se=>!!se.locked&&se.dates.length>0&&se.dates.every((dt,i)=>DB.sims.some(r=>r.status==="Reserved"&&r.date===dt&&rowLane(r)===laneAt(se,i)));
 function syncSlots(){if(!DB||!Array.isArray(DB.sims)||!Array.isArray(DB.devices))return false;const keyOf=new Map();
  DB.devices.forEach(dv=>{if(isAC(dv))keyOf.set(devLane(dv,""),[dv,""]);else SLOTS.forEach(k=>{if(dv.s?.[k])keyOf.set(devLane(dv,k),[dv,k])})});
@@ -338,14 +343,14 @@ function schedule(X,tent=new Map()){const S=X.S,out=[];
     if(opts.length){nx=x;nl=opts[0]}}
    if(nx==null)return null;r.push(nx);ls.push(nl);cur=nx;last=nl}
   r.lanes=ls;return r};
- const assign=(L,dates,pil)=>{const n=dates.length;if(!X.instr.length)return dates.map(()=>"");const res=[];
-  for(let k=0;k<n;k++){const d=dates[k],chk=isCheckSector(k,n);let best=null,bs=Infinity;
+ const assign=(L,dates,pil,fx)=>{const n=dates.length;if(!X.instr.length)return dates.map((_,k)=>fx?.[k]||"");const res=[];
+  for(let k=0;k<n;k++){if(fx?.[k]){res.push(fx[k]);continue}const d=dates[k],chk=isCheckSector(k,n);let best=null,bs=Infinity;
    for(const t of X.instr){const o=day.get(t.code)?.get(d);if(o&&(o.st||o.te>=S.instrPerDay))continue;if(onLeave(X,t.code,d))continue;if(chk&&!EXAM.has(t.role))continue;
     if(pil.some(p=>p.code===t.code||noFly(X,p.code,t.code)))continue;
     const vx=visaExpired(visaOf(X,t.code,L.loc),d);if(vx&&S.visaHard)continue;
     let sc=(load.get(t.code)||0)*.01+(vx?20:0);if(!chk&&EXAM.has(t.role))sc+=3;if(chk&&S.diffInstr&&n>1&&res[0]===t.code)sc+=5;if(!chk&&k>0&&res[k-1]===t.code)sc-=1;
     if(sc<bs){bs=sc;best=t}}
-   if(!best)return null;res.push(best.code)}return res};
+   if(!best){if(!fx)return null;res.push("");continue}res.push(best.code)}return res};
  const cands=(L,dates)=>{const c=dates.at(-1),n=dates.length,out=[];
   for(const p of X.crew){const ev=getPend(p);if(!ev||X.sec[ev.type]!==n)continue;const latest=ev.expired?X.end:ev.deadline;if(c<=ev.earliest||c>latest)continue;
    const nl=nextLock(p);if(nl){if(reserved(p,ev))continue;if(c>addM(nl.check,-S.gapM))continue}
@@ -373,24 +378,42 @@ function schedule(X,tent=new Map()){const S=X.S,out=[];
    const from=Math.max(d+1,e.earliest+1-(n-1)*S.maxGap),to=Math.min(W,ql);if(from>to)continue;
    if(freeIn(q.code,from,to)&&freeIn(a.p.code,from,to)&&C(from,to,n)>0)better++}
   return better<=riv};
- const pick=(L,d,dates,cs)=>{const n=dates.length,tb=dates.some((x,i)=>!dates.lanes[i].res.has(x));
+ const pick=(L,d,dates,cs,fx)=>{const n=dates.length,tb=dates.some((x,i)=>!dates.lanes[i].res.has(x));
   for(let i=0;i<cs.length;i++){const a=cs[i],parts=[];if(tb&&!allowTent(a,d,n))continue;
    for(let j=0;j<cs.length;j++){if(i===j)continue;const b=cs[j];if(noFly(X,a.p.code,b.p.code))continue;const pen=penalty(a.p,b.p,a.ev.type,b.ev.type);if(pen!=null)parts.push({b,pen,j})}
    // şimdi alınmazsa son ayına düşecek eş: öncelik sırasında "son ay"ın altındaki eşleşme kuralları onun için esner (cezası sayılmaz)
    const ce=dates.at(-1);parts.forEach(q=>{const urg=ruleOn(S,"final")&&q.b.soft>=0&&cap(ce+1,q.b.ev.soft,n)===0;
     q.eff=urg?((q.pen&(WT.mix||0))&&above("mix")?WT.mix:0)+((q.pen&(WT.rank||0))&&above("rank")?WT.rank:0):q.pen});
    parts.sort((x,y)=>x.eff-y.eff||x.j-y.j);const ok=new Map();
-   for(const q of parts){if(q.eff>0){if(!ok.has(q.pen))ok.set(q.pen,acceptPen(a,d,n,q.pen,!tb));if(!ok.get(q.pen))continue}const ins=assign(L,dates,[a.p,q.b.p]);if(ins)return{a,b:q.b,ins,dates,L,pen:q.pen}}
-   if(cap(d,a.latest,n)-1<=0){const ins=assign(L,dates,[a.p]);if(ins)return{a,b:null,ins,dates,L,pen:9}}}
+   for(const q of parts){if(q.eff>0){if(!ok.has(q.pen))ok.set(q.pen,acceptPen(a,d,n,q.pen,!tb));if(!ok.get(q.pen))continue}const ins=assign(L,dates,[a.p,q.b.p],fx);if(ins)return{a,b:q.b,ins,dates,L,pen:q.pen}}
+   if(cap(d,a.latest,n)-1<=0){const ins=assign(L,dates,[a.p],fx);if(ins)return{a,b:null,ins,dates,L,pen:9}}}
   return null};
  const commit=dec=>{const{a,b,ins,dates,L}=dec;dates.forEach((x,k)=>{laneBusy.get(dates.lanes[k].key).add(x);P(a.p.code,x).st=1;if(b)P(b.p.code,x).st=1;if(ins[k]){P(ins[k],x).te++;addLoad(ins[k])}});
   const pl=[a.p,b?.p].filter(Boolean).sort((x,y)=>(x.rank==="CPT"?0:1)-(y.rank==="CPT"?0:1));
   const lk=dates.lanes.map(M=>M.key);out.push({id:uid(),lane:lk[0],...(lk.some(k=>k!==lk[0])?{lanes:lk}:{}),dates:dates.map(toIso),pilots:[pl[0].code,pl[1]?.code||""],instr:ins,locked:false});
   apply(a.p,dates.at(-1));if(b)apply(b.p,dates.at(-1))};
+ // kısmen kilitli (Reserved) oturum: kilitsiz koltuklar boş gelir; oturumun ilk günü gelince uygun pilot / eğitmen konur
+ const freeI=new Map(),fillP=new Set();
+ const fillSes=(o,d)=>{const se=o.s;if(!se.lk)return;const n=o.dn.length;
+  const lns=o.dn.map((_,k)=>lmap.get(laneAt(se,k))||X.lanes.get(laneAt(se,k))||{key:laneAt(se,k),res:new Set(),loc:""});
+  const dates=[...o.dn];dates.lanes=lns;const L=lns[0];
+  const fx=dates.map((_,k)=>se.instr?.[k]||""),freeK=dates.map((_,k)=>!iLk(se,k)&&!fx[k]);
+  const emp=[0,1].filter(j=>!pLk(se,j)&&!se.pilots[j]);let pil=se.pilots.map(c=>X.crewMap.get(c)).filter(Boolean);
+  if(emp.length){const cs=cands(L,dates);
+   if(emp.length===2){const dec=cs.length?pick(L,d,dates,cs,fx):null;if(dec){const pl=[dec.a.p,dec.b?.p].filter(Boolean).sort((x,y)=>(x.rank==="CPT"?0:1)-(y.rank==="CPT"?0:1));se.pilots=[pl[0].code,pl[1]?.code||""]}}
+   else{const j=emp[0],fp=X.crewMap.get(se.pilots[1-j]),fe=fp?getPend(fp):null,ce=dates.at(-1);let best=null;
+    cs.forEach(b=>{if(fp&&(b.p===fp||noFly(X,fp.code,b.p.code)))return;const pen=fp&&fe?penalty(fp,b.p,fe.type,b.ev.type):0;if(pen==null)return;
+     const urg=ruleOn(S,"final")&&b.soft>=0&&cap(ce+1,b.ev.soft,n)===0;const eff=urg?((pen&(WT.mix||0))&&above("mix")?WT.mix:0)+((pen&(WT.rank||0))&&above("rank")?WT.rank:0):pen;
+     if(!best||eff<best.eff)best={b,eff}});
+    if(best)se.pilots[j]=best.b.p.code}
+   emp.forEach(j=>{const c=se.pilots[j];if(c){fillP.add(se.id+"|"+c);o.dn.forEach(x=>P(c,x).st=1)}});
+   pil=se.pilots.map(c=>X.crewMap.get(c)).filter(Boolean)}
+  if(freeK.some(Boolean)){const ins=assign(L,dates,pil,fx)||fx;se.instr=dates.map((_,k)=>freeK[k]?ins[k]||"":fx[k]);const ks=new Set();
+   freeK.forEach((f,k)=>{const t=se.instr[k];if(f&&t){P(t,o.dn[k]).te++;addLoad(t);ks.add(k)}});if(ks.size)freeI.set(se,ks)}};
  const lockedQ=[...lockedS].sort((a,b)=>a.dn[0]-b.dn[0]);let li=0;
  const secs=[...new Set([X.sec.LPC,X.sec.OPC])];
  for(let d=X.start;d<=X.end;d++){
-  while(li<lockedQ.length&&lockedQ[li].dn[0]<=d){const o=lockedQ[li++];o.s.pilots.forEach(code=>{const c=X.crewMap.get(code);if(!c)return;apply(c,o.dn.at(-1));lockPtr.set(code,(lockPtr.get(code)||0)+1)})}
+  while(li<lockedQ.length&&lockedQ[li].dn[0]<=d){const o=lockedQ[li++];fillSes(o,d);o.s.pilots.forEach(code=>{const c=X.crewMap.get(code);if(!c)return;apply(c,o.dn.at(-1));if(!fillP.has(o.s.id+"|"+code))lockPtr.set(code,(lockPtr.get(code)||0)+1)})}
   const order=lanes.filter(L=>use(L,d)).sort((x,y)=>(y.res.has(d)?1:0)-(x.res.has(d)?1:0));// o gün Reserved slotu olan simülatör önce
   for(const L of order){if(laneBusy.get(L.key).has(d))continue;let best=null;
    for(const n of secs){const dates=block(L,d,n);if(!dates)continue;const cs=cands(L,dates);if(!cs.length)continue;const dec=pick(L,d,dates,cs);
@@ -400,10 +423,10 @@ function schedule(X,tent=new Map()){const S=X.S,out=[];
  if(S.sameInstr!==false&&X.instr.length){
   const locOf=(se,k)=>(lmap.get(laneAt(se,k))||X.lanes.get(laneAt(se,k)))?.loc||"",gk=(se,k,d)=>mKey(d)+"|"+locOf(se,k);
   const trip=new Map(),add=(g,c)=>{if(!trip.has(g))trip.set(g,new Set());trip.get(g).add(c)},stu=new Set(),te=new Map(),inc=(m,k)=>m.set(k,(m.get(k)||0)+1),ld=new Map();
-  lockedS.forEach(o=>o.dn.forEach((d,k)=>{const t=o.s.instr?.[k];if(t){inc(te,t+"|"+d);add(gk(o.s,k,d),t)}}));
+  lockedS.forEach(o=>o.dn.forEach((d,k)=>{const t=o.s.instr?.[k];if(t&&!freeI.get(o.s)?.has(k)){inc(te,t+"|"+d);add(gk(o.s,k,d),t)}}));
   [...lockedS.map(o=>[o.s,o.dn]),...out.map(se=>[se,se.dates.map(toDn)])].forEach(([se,dn])=>dn.forEach((d,k)=>se.pilots.forEach(c=>{if(!c)return;stu.add(c+"|"+d);if(X.instrMap.has(c))add(gk(se,k,d),c)})));
-  [...out].sort((a,b)=>a.dates[0].localeCompare(b.dates[0])).forEach(se=>{const dn=se.dates.map(toDn),n=dn.length,res=[];
-   for(let k=0;k<n;k++){const d=dn[k],chk=isCheckSector(k,n),g=gk(se,k,d),loc=locOf(se,k);let best=null,bs=Infinity;
+  [...out,...freeI.keys()].sort((a,b)=>a.dates[0].localeCompare(b.dates[0])).forEach(se=>{const fk=freeI.get(se),dn=se.dates.map(toDn),n=dn.length,res=[];
+   for(let k=0;k<n;k++){if(fk&&!fk.has(k)){res.push(se.instr?.[k]||"");continue}const d=dn[k],chk=isCheckSector(k,n),g=gk(se,k,d),loc=locOf(se,k);let best=null,bs=Infinity;
     for(const t of X.instr){if(stu.has(t.code+"|"+d)||(te.get(t.code+"|"+d)||0)>=S.instrPerDay||onLeave(X,t.code,d))continue;if(chk&&!EXAM.has(t.role))continue;
      if(se.pilots.some(c=>c&&(c===t.code||noFly(X,c,t.code))))continue;const vx=visaExpired(visaOf(X,t.code,loc),d);if(vx&&S.visaHard)continue;
      let sc=(trip.get(g)?.has(t.code)?0:10)+(vx?20:0)+(ld.get(t.code)||0)*.01;if(!chk&&EXAM.has(t.role))sc+=3;if(chk&&S.diffInstr&&n>1&&res[0]===t.code)sc+=5;if(!chk&&k>0&&res[k-1]===t.code)sc-=1;
@@ -527,7 +550,7 @@ const cellSort=(c,v)=>c.t==="dev"?(devById(v)?.c||""):c.t==="date"?toDn(v)??"":c
 const DERIVED={crew:[{k:"_next",l:"Sıradaki",ev:(it,X)=>toDn(it.lpc)==null||!it.rank?null:nextEvent(initState({...it},X),X),txt(it,X){const e=this.ev(it,X);return e?e.type+" "+fmt(e.deadline)+" en erken "+fmt(e.earliest):""},sv(it,X){return this.ev(it,X)?.deadline??""}}],
  sims:[{k:"_loc",l:"Lokasyon",after:"dev",x:true,txt:it=>devById(it.dev)?.loc||"",sv:it=>devById(it.dev)?.loc||""},
   {k:"_time",l:"Saat",after:"slot",x:true,txt:it=>slotTime(devById(it.dev),it.slot),sv:it=>slotTime(devById(it.dev),it.slot)},
-  {k:"_use",l:"Oturum",x:true,txt:it=>{const se=slotSession(it);return se?se.pilots.filter(Boolean).join(", ")+" · sektör "+(se.dates.indexOf(it.date)+1)+"/"+se.dates.length+(se.locked?" · kilitli":""):"boş"},sv(it){return this.txt(it)}},
+  {k:"_use",l:"Oturum",x:true,txt:it=>{const se=slotSession(it);return se?se.pilots.filter(Boolean).join(", ")+" · sektör "+(se.dates.indexOf(it.date)+1)+"/"+se.dates.length+(se.locked?" · "+lkTxt(se):""):"boş"},sv(it){return this.txt(it)}},
   {k:"_st",l:"Cihaz",txt:it=>{const d=devById(it.dev);return!d?"cihaz yok":d.a?"":"pasif"},sv:it=>devById(it.dev)?.a?0:1}],
  visas:[{k:"_role",l:"Görev",txt:it=>personRole(it.code),sv:it=>personRole(it.code)}]};
 const lfOf=key=>UI.lf[key]||(UI.lf[key]={s:null,d:1,f:{}});
@@ -666,12 +689,12 @@ function vPlan(){const X=ctx(),R=evaluate(X),months=planCols(X,R),multi=X.laneAr
    const mk=c=>c.o?(c.o.err.length?" ce":c.o.warn.length?" cw":""):"";
    const tip=c=>c.o?esc([c.o.L?.label||c.o.s.lane,...c.o.err.map(e=>"✖ "+e),...c.o.warn.map(e=>"⚠ "+e)].join("\n")):"Boş simülatör günü – oturum eklemek için tıklayın";
    const pc=(c,j)=>{if(!c.o)return`<td class="x" ${at(c)}></td>`;const code=c.o.s.pilots[j]||"",t=c.o.types[code]||"",cr=X.crewMap.get(code);
-    const fm=FM.has(c.o.s.id+"|"+code),vx=VX.get(c.o.s.id+"|"+code);return`<td class="cl ${t}${fm?" fm":""}${vx?" vx":""}" ${at(c)} data-dt="p|${c.o.s.id}|${j}"${code?` draggable="true" data-dg="p|${c.o.s.id}|${j}"`:""} title="${esc(cr?cr.name+" ("+cr.rank+")":code)}${t?" – "+(c.o.labels[code]?.[c.k]||t):""}${fm?" – SON AYINDA (Final!)":""}${vx?" – "+esc(vx):""}">${esc(code)||"<span style='color:#999'>—</span>"}</td>`};
+    const fm=FM.has(c.o.s.id+"|"+code),vx=VX.get(c.o.s.id+"|"+code);return`<td class="cl ${t}${cr?.rank==="CPT"?" cp":""}${fm?" fm":""}${vx?" vx":""}" ${at(c)} data-dt="p|${c.o.s.id}|${j}"${code?` draggable="true" data-dg="p|${c.o.s.id}|${j}"`:""} title="${esc(cr?cr.name+" ("+cr.rank+")":code)}${t?" – "+(c.o.labels[code]?.[c.k]||t):""}${fm?" – SON AYINDA (Final!)":""}${vx?" – "+esc(vx):""}${c.o.s.lk&&pLk(c.o.s,j)?" – kilitli":""}">${esc(code)||"<span style='color:#999'>—</span>"}${c.o.s.lk&&pLk(c.o.s,j)&&code?"<small>🔒</small>":""}</td>`};
    tabs.push(`<table class="mt"><tr><th class="mh" colspan="${cs.length}">${title}</th></tr>
-   <tr>${cs.map(c=>`<td class="dy${mk(c)}${c.o?"":" em"}${X.slotRow.get(c.lane+"|"+c.d)?.status==="Reserved"?" rs":""}" ${at(c)} title="${fmt(c.d)} ${DAYN[wd(c.d)]}${X.slotRow.get(c.lane+"|"+c.d)?.status==="Reserved"?" · Reserved":""}&#10;${tip(c)}">${ymd(c.d)[2]}${c.o?.s.locked?"🔒":""}</td>`).join("")}</tr>
+   <tr>${cs.map(c=>`<td class="dy${mk(c)}${c.o?"":" em"}${X.slotRow.get(c.lane+"|"+c.d)?.status==="Reserved"?" rs":""}" ${at(c)} title="${fmt(c.d)} ${DAYN[wd(c.d)]}${X.slotRow.get(c.lane+"|"+c.d)?.status==="Reserved"?" · Reserved":""}&#10;${tip(c)}">${ymd(c.d)[2]}${c.o?.s.locked&&!c.o.s.lk?"🔒":""}</td>`).join("")}</tr>
    ${multi?`<tr>${cs.map(c=>`<td class="ln" ${at(c)}>${esc((X.lanes.get(c.lane)?.loc||"")+" "+(X.lanes.get(c.lane)?.sim||c.lane))}</td>`).join("")}</tr>`:""}
    <tr>${cs.map(c=>`<td class="tm" ${at(c)} title="Slot ${esc(X.lanes.get(c.lane)?.slot||"")} – yerel saat">${esc(X.lanes.get(c.lane)?.time||"")}</td>`).join("")}</tr>
-   <tr>${cs.map(c=>{const iv=c.o?instrVisa(X,c.o,c.k):"";return`<td class="cl${iv?" vx":""}" ${at(c)}${c.o?` data-dt="i|${c.o.s.id}|${c.k}"${c.o.s.instr?.[c.k]?` draggable="true" data-dg="i|${c.o.s.id}|${c.k}"`:""}`:""} title="Eğitmen${iv?" – "+esc(iv):""}">${c.o?esc(c.o.s.instr?.[c.k]||"?"):""}</td>`}).join("")}</tr>
+   <tr>${cs.map(c=>{const iv=c.o?instrVisa(X,c.o,c.k):"";return`<td class="cl${iv?" vx":""}" ${at(c)}${c.o?` data-dt="i|${c.o.s.id}|${c.k}"${c.o.s.instr?.[c.k]?` draggable="true" data-dg="i|${c.o.s.id}|${c.k}"`:""}`:""} title="Eğitmen${iv?" – "+esc(iv):""}${c.o?.s.lk&&iLk(c.o.s,c.k)?" – kilitli":""}">${c.o?esc(c.o.s.instr?.[c.k]||"?"):""}${c.o?.s.lk&&iLk(c.o.s,c.k)&&c.o.s.instr?.[c.k]?"<small>🔒</small>":""}</td>`}).join("")}</tr>
    <tr>${cs.map(c=>pc(c,0)).join("")}</tr><tr>${cs.map(c=>pc(c,1)).join("")}</tr></table>`)}
   return`<div>${tabs.join('<div style="height:6px"></div>')}</div>`}).join("");
  const load=new Map();R.ses.forEach(o=>(o.s.instr||[]).forEach(t=>t&&load.set(t,(load.get(t)||0)+1)));
@@ -714,7 +737,7 @@ function planDlg(resOnly){const S=DB.settings,locked=DB.sessions.filter(isKept).
  ${firmHtml||'<div class="bad">Aktif simülatör yok (FSTD / Uçak sekmesi).</div>'}`}
  <div class="mu" style="margin-top:10px">Kurallar (Ayarlar'dan): ${prioOf(S).map((k,i)=>`${i+1}. ${PRULES[k]}${ruleOn(S,k)?"":" <i>(uygulanmıyor)</i>"}`).join(" · ")}</div>
  <div class="mu" style="margin-top:6px">Ekip: <b>${X.crew.length}</b>${bad?` <span class="bad">(${bad} kişi kod/LPC eksik ya da kod tekrarı yüzünden dışarıda)</span>`:""} · Eğitmen: <b>${X.instr.length}</b><br>
- ${locked?`<b>${locked}</b> kilitli ve slotları Reserved oturum korunacak; `:""}${DB.sessions.length-locked} oturum yeniden dağıtılacak${lockedTent?` (bunların ${lockedTent} tanesi kilitli ama slotu Tahmini olduğu için yeni seçime göre taşınır)`:""}.</div>
+ ${locked?`<b>${locked}</b> kilitli ve slotları Reserved oturum korunacak${(()=>{const p=DB.sessions.filter(se=>isKept(se)&&se.lk).length;return p?` (${p} tanesi kısmen kilitli: kilitsiz kişilerin yerine uygun kişi konur)`:""})()}; `:""}${DB.sessions.length-locked} oturum yeniden dağıtılacak${lockedTent?` (bunların ${lockedTent} tanesi kilitli ama slotu Tahmini olduğu için yeni seçime göre taşınır)`:""}.</div>
  `,
  [{l:"Vazgeç"},{l:"Planla",c:"p",f:()=>{S.lpcSec=+$("#pL").value;S.opcSec=+$("#pO").value;S.start=$("#pS").value;S.end=$("#pE").value;
    if(!S.start||!S.end||S.end<S.start){toast("Plan dönemi geçersiz");return false}
@@ -723,15 +746,16 @@ function planDlg(resOnly){const S=DB.settings,locked=DB.sessions.filter(isKept).
    if(!Object.keys(np).length&&!days){toast("En az bir simülatör seçin");return false}S.pref=np;runPlan()}}],
  ()=>{const u=()=>{$("#pLn").textContent=sectorLabels("LPC",+$("#pL").value).join(" → ");$("#pOn").textContent=sectorLabels("OPC",+$("#pO").value).join(" → ")};u();$("#pL").onchange=u;$("#pO").onchange=u})}
 // kilitsiz oturumlar ve onların tahmini satırları silinir, bloklar hesaplanır; süresi dönem içinde bitip sığmayan kontrol olursa o ayın bloğu büyütülüp yeniden denenir
-function runPlan(resOnly){const t0=performance.now();DB.sessions=DB.sessions.filter(isKept);syncSlots();const X=ctx(),S=X.S;
+function runPlan(resOnly){const t0=performance.now();DB.sessions=DB.sessions.filter(isKept);
+ DB.sessions.forEach(se=>{if(!se.lk)return;se.pilots=se.pilots.map((c,j)=>pLk(se,j)?c:"");se.instr=se.dates.map((_,k)=>iLk(se,k)?se.instr?.[k]||"":"")});syncSlots();const X=ctx(),S=X.S,base=JSON.stringify(DB.sessions);
  X.prefLanes=resOnly?[]:Object.entries(S.pref||{}).map(([id,k])=>{const dv=devById(id);return dv&&dv.a&&!isAC(dv)&&dv.s?.[k]?{key:devLane(dv,k),dk:[dv,k]}:null}).filter(Boolean);
- const extra=new Map();let out=null,bestUn=Infinity;const finOn=ruleOn(S,"final");
- for(let it=0;it<12;it++){const tent=monthBlocks(X,X.prefLanes,extra),o=schedule(X,tent);DB.sessions=DB.sessions.filter(isKept).concat(o);
+ const extra=new Map();let out=null,outK=null,bestUn=Infinity;const finOn=ruleOn(S,"final");
+ for(let it=0;it<12;it++){DB.sessions=JSON.parse(base);const tent=monthBlocks(X,X.prefLanes,extra),o=schedule(X,tent),kp=DB.sessions;DB.sessions=kp.concat(o);
   const R0=evaluate(ctx()),un=R0.rows.filter(r=>!r.o&&r.ev.deadline<=X.end&&!r.ev.expired),fin=finOn?R0.rows.filter(r=>r.o&&r.final&&r.ev.soft>=r.ev.earliest):[];
-  const sc=un.length*100+fin.length;if(sc<bestUn){bestUn=sc;out=o}if(!sc||!X.prefLanes.length)break;
+  const sc=un.length*100+fin.length;if(sc<bestUn){bestUn=sc;out=o;outK=kp}if(!sc||!X.prefLanes.length)break;
   // sığmayan ya da son aya kalan kontrol: son aydan önceki ayın bloğu bir oturum büyütülür
   [...un,...fin].forEach(r=>{const k=Math.max(mKey(X.start),Math.min(mKey(r.ev.soft>=r.ev.earliest?r.ev.soft:r.ev.deadline),mKey(X.end)));extra.set(k,(extra.get(k)||0)+1)})}
- DB.sessions=DB.sessions.filter(isKept).concat(out);syncSlots();
+ DB.sessions=outK.concat(out);syncSlots();
  DB.planVer=DB.dataVer;const n=new Date();DB.planAt=fmt(todayDn())+" "+pad(n.getHours())+":"+pad(n.getMinutes());save();
  const R=evaluate(ctx()),un=R.rows.filter(r=>!r.o&&r.err.length).length;const tn=DB.sims.filter(r=>r.status==="Tahmini").length;show("plan");toast(`${out.length} oturum planlandı${un?`, ${un} kontrol planlanamadı`:""}; müsaitlik listesinde ${tn} tahmini gün (${Math.round(performance.now()-t0)} ms)`)}
 
@@ -747,25 +771,29 @@ function sessionDlg(id,preset={}){const X=ctx();const orig=id?DB.sessions.find(s
  const laneOpt=[...lanesAll,...(s.lane&&!lanesAll.some(x=>x[0]===s.lane)?[[s.lane,s.lane+" (tanımsız)"]]:[])].map(([k,l])=>`<option value="${esc(k)}"${k===s.lane?" selected":""}>${esc(l)}</option>`).join("");
  // sektör slotları: seçilen simülatörün slotları; s.lanes[k] yoksa üstteki seçim
  const devOfLane=l=>DB.devices.find(d=>l===d.c||l.startsWith(d.c+" "));
+ const W=lkOf(s),sm=()=>{const a=[...W.p,...W.i],m=$("#sK");if(!m)return;m.checked=a.every(Boolean);m.indeterminate=!m.checked&&a.some(Boolean)};
  const draw=()=>{const n=s.dates.length,dv=devOfLane($("#sL")?.value||s.lane),ks=dv&&!isAC(dv)?SLOTS.filter(k=>dv.s?.[k]):[];
-  $("#sx").innerHTML=`<table class="ed"><tr><th>Sektör</th><th>Tarih</th><th>Slot</th><th>Eğitmen</th></tr>${s.dates.map((d,k)=>{const cur=(laneAt(s,k)||"").slice((dv?.c||"").length+1);
-   return`<tr><td>${k+1}. ${isCheckSector(k,n)?"kontrol":"eğitim"}</td><td><input type="date" data-sd="${k}" value="${esc(d)}"></td><td>${ks.length?`<select data-sk="${k}">${ks.map(x=>`<option value="${x}"${x===cur?" selected":""}>${x} · ${esc(slotTime(dv,x))}</option>`).join("")}</select>`:'<span class="mu">—</span>'}</td><td><select data-si="${k}">${insOpt(s.instr[k]||"",isCheckSector(k,n))}</select></td></tr>`}).join("")}</table>`};
+  $("#sx").innerHTML=`<table class="ed"><tr><th>Sektör</th><th>Tarih</th><th>Slot</th><th>Eğitmen</th><th>Kilit</th></tr>${s.dates.map((d,k)=>{const cur=(laneAt(s,k)||"").slice((dv?.c||"").length+1);
+   return`<tr><td>${k+1}. ${isCheckSector(k,n)?"kontrol":"eğitim"}</td><td><input type="date" data-sd="${k}" value="${esc(d)}"></td><td>${ks.length?`<select data-sk="${k}">${ks.map(x=>`<option value="${x}"${x===cur?" selected":""}>${x} · ${esc(slotTime(dv,x))}</option>`).join("")}</select>`:'<span class="mu">—</span>'}</td><td><select data-si="${k}">${insOpt(s.instr[k]||"",isCheckSector(k,n))}</select></td><td style="text-align:center"><input type="checkbox" data-ik="${k}" title="Bu sektörün eğitmeni kilitli"${W.i[k]?" checked":""}></td></tr>`}).join("")}</table>`};
  dlg(orig?"Oturumu düzenle":"Yeni oturum",`<div class="g"><label class="f"><span>Simülatör / slot</span><select id="sL">${laneOpt}</select></label>
  <label class="f"><span>Sektör sayısı</span><select id="sN">${[1,2,3,4,5].map(k=>`<option${k===s.dates.length?" selected":""}>${k}</option>`).join("")}</select></label>
- <label class="f"><span>Öğrenci 1</span><select id="sP0">${crewOpt(s.pilots[0])}</select></label><label class="f"><span>Öğrenci 2</span><select id="sP1">${crewOpt(s.pilots[1])}</select></label></div>
+ </div><table class="ed" style="margin-top:10px"><tr><th>Öğrenci</th><th>Pilot</th><th>Kilit</th></tr>${[0,1].map(j=>`<tr><td>${j+1}. öğrenci</td><td><select id="sP${j}">${crewOpt(s.pilots[j])}</select></td><td style="text-align:center"><input type="checkbox" data-pk="${j}" title="Bu öğrenci kilitli"${W.p[j]?" checked":""}></td></tr>`).join("")}</table>
  <div id="sx" style="margin-top:10px"></div><div class="mu">İlk sektör tarihini değiştirince diğerleri aynı miktarda kayar. Kontrol tarihi = son sektör.</div>
- <label class="ck" style="margin-top:8px"><input type="checkbox" id="sK" checked><span>Kilitli (slotları Reserved ise yeniden planlamada korunur; Tahmini slottaki oturum yeni plana göre taşınır)</span></label>
+ <label class="ck" style="margin-top:8px"><input type="checkbox" id="sK"><span><b>Tümü kilitli</b> (slotları Reserved ise yeniden planlamada korunur; Tahmini slottaki oturum yeni plana göre taşınır). Öğrenci ve eğitmenler tek tek de kilitlenebilir: oturum korunur, kilitsiz kişinin yerine yeniden planlamada uygun biri konur.</span></label>
  ${o&&(o.err.length||o.warn.length)?`<div style="margin-top:8px">${o.err.map(e=>`<div class="bad iss">✖ ${esc(e)}</div>`).join("")}${o.warn.map(e=>`<div class="warn iss">⚠ ${esc(e)}</div>`).join("")}</div>`:""}`,
  [...(orig?[{l:"Sil",c:"d",f:()=>{DB.sessions=DB.sessions.filter(x=>x.id!==id);save();render();tabCounts();toast("Oturum silindi")}}]:[]),{l:"Vazgeç"},
   {l:"Kaydet",c:"p",f:()=>{const dv=devOfLane($("#sL").value),lk=s.dates.map((_,k)=>{const sel=$(`#sx [data-sk="${k}"]`);return dv&&sel?devLane(dv,sel.value):$("#sL").value});
-   s.pilots=[$("#sP0").value,$("#sP1").value];s.locked=$("#sK").checked;
-   const ord=s.dates.map((d,k)=>[d,s.instr[k]||"",lk[k]]).filter(x=>x[0]).sort((a,b)=>a[0]<b[0]?-1:1);if(!ord.length){toast("En az bir sektör tarihi girin");return false}
-   s.dates=ord.map(x=>x[0]);s.instr=ord.map(x=>x[1]);const L2=ord.map(x=>x[2]);s.lane=L2[0];if(L2.some(k=>k!==L2[0]))s.lanes=L2;else delete s.lanes;
-   if(orig)Object.assign(orig,s);else DB.sessions.push(s);save();tabCounts();render();const R2=evaluate(ctx()),o2=R2.byId.get(s.id);toast(o2&&o2.err.length?"Kaydedildi – "+o2.err.length+" hata var":"Kaydedildi")}}],
- ()=>{draw();$("#sN").onchange=()=>{const n=+$("#sN").value;while(s.dates.length<n){const l=toDn(s.dates.at(-1))??X.start;if(s.lanes)s.lanes.push(s.lanes.at(-1));s.dates.push(toIso(l+1))}s.dates.length=n;if(s.lanes)s.lanes.length=n;s.instr.length=Math.min(s.instr.length,n);draw()};
+   s.pilots=[$("#sP0").value,$("#sP1").value];
+   const ord=s.dates.map((d,k)=>[d,s.instr[k]||"",lk[k],W.i[k]]).filter(x=>x[0]).sort((a,b)=>a[0]<b[0]?-1:1);if(!ord.length){toast("En az bir sektör tarihi girin");return false}
+   s.dates=ord.map(x=>x[0]);s.instr=ord.map(x=>x[1]);setLk(s,{p:W.p,i:ord.map(x=>!!x[3])});const L2=ord.map(x=>x[2]);s.lane=L2[0];if(L2.some(k=>k!==L2[0]))s.lanes=L2;else delete s.lanes;
+   if(orig){Object.assign(orig,s);if(!s.lk)delete orig.lk}else DB.sessions.push(s);save();tabCounts();render();const R2=evaluate(ctx()),o2=R2.byId.get(s.id);toast(o2&&o2.err.length?"Kaydedildi – "+o2.err.length+" hata var":"Kaydedildi")}}],
+ ()=>{draw();$("#sN").onchange=()=>{const n=+$("#sN").value;while(s.dates.length<n){const l=toDn(s.dates.at(-1))??X.start;if(s.lanes)s.lanes.push(s.lanes.at(-1));s.dates.push(toIso(l+1))}s.dates.length=n;if(s.lanes)s.lanes.length=n;s.instr.length=Math.min(s.instr.length,n);while(W.i.length<n)W.i.push(W.i.at(-1)??true);W.i.length=n;draw();sm()};
+  sm();$("#sK").onchange=()=>{const v=$("#sK").checked;W.p=W.p.map(()=>v);W.i=W.i.map(()=>v);$$("[data-pk]").forEach(x=>x.checked=v);draw();sm()};
+  $$("[data-pk]").forEach(el=>el.onchange=()=>{W.p[+el.dataset.pk]=el.checked;sm()});
   $("#sL").onchange=()=>{delete s.lanes;s.lane=$("#sL").value;draw()};
   $("#sx").onchange=e=>{const el=e.target;if(el.dataset.sd!=null){const k=+el.dataset.sd,old=toDn(s.dates[k]),nw=toDn(el.value);if(k===0&&old!=null&&nw!=null){const dl=nw-old;s.dates=s.dates.map(d=>toIso(toDn(d)+dl));draw()}else s.dates[k]=el.value}
    if(el.dataset.si!=null)s.instr[+el.dataset.si]=el.value;
+   if(el.dataset.ik!=null){W.i[+el.dataset.ik]=el.checked;sm()}
    if(el.dataset.sk!=null){const dv=devOfLane($("#sL").value);if(dv){const L2=s.dates.map((_,k)=>laneAt(s,k));L2[+el.dataset.sk]=devLane(dv,el.value);s.lanes=L2}}}})}
 
 /* ============ Excel (xlsx okuma/yazma, kütüphanesiz) ============ */
@@ -874,7 +902,7 @@ function exportPlan(){const X=ctx(),R=evaluate(X),FILL={LPC:"FFC000",OPC:"FFFF00
   pr.push([{v:MON[m]+"."+String(y).slice(2),b:1,fill:"BFBFBF",bd:1,c:1},...cs.slice(1).map(()=>({v:"",fill:"BFBFBF",bd:1}))]);if(cs.length>1)merges.push(`A${r0+1}:${colL(cs.length-1)}${r0+1}`);
   pr.push(cs.map(c=>({v:ymd(c.d)[2],bd:1,c:1,...(X.slotRow.get(c.lane+"|"+c.d)?.status==="Reserved"?{fill:"C6EFCE",b:1}:{})})));if(multi)pr.push(cs.map(c=>({v:X.lanes.get(c.lane)?.loc||c.lane,bd:1,c:1,sz:8})));pr.push(cs.map(c=>({v:X.lanes.get(c.lane)?.time||"",bd:1,c:1,sz:9})));
   pr.push(cs.map(c=>({v:c.o?c.o.s.instr?.[c.k]||"":"",bd:1,c:1,...(c.o&&instrVisa(X,c.o,c.k)?{vbd:1}:{})})));
-  for(const j of[0,1])pr.push(cs.map(c=>{const code=c.o?.s.pilots[j]||"",fm=c.o&&FM.has(c.o.s.id+"|"+code),vx=c.o&&VX.has(c.o.s.id+"|"+code);return{v:code,bd:1,c:1,fill:FILL[c.o?.types[code]],...(fm?{rbd:1}:{}),...(vx?{vbd:1}:{})}}));
+  for(const j of[0,1])pr.push(cs.map(c=>{const code=c.o?.s.pilots[j]||"",fm=c.o&&FM.has(c.o.s.id+"|"+code),vx=c.o&&VX.has(c.o.s.id+"|"+code);return{v:code,bd:1,c:1,fill:FILL[c.o?.types[code]],...(X.crewMap.get(code)?.rank==="CPT"?{b:1}:{}),...(fm?{rbd:1}:{}),...(vx?{vbd:1}:{})}}));
   pr.push([])}}
  download(xlsxBlob([t1,{name:"Taslak Plan",widths:Array(CH).fill(12),rows:pr,merges},...inputSheets()]),"simulator-plani-"+toIso(todayDn())+".xlsx")}
 
@@ -905,7 +933,7 @@ document.addEventListener("click",e=>{const el=e.target.closest("button,[data-se
  if(d.undo){const b=UI.undo.pop();if(b){DB.sessions=JSON.parse(b);touch();render();toast("Son yer değiştirme geri alındı")}return}
  if(d.pmv!==undefined){const S=DB.settings,p=prioOf(S),i=+d.pmv,j=i+ +d.dir;if(j<0||j>=p.length)return;[p[i],p[j]]=[p[j],p[i]];S.prio=p;touch();render();return}
  if(d.fillvisa){const have=new Set(DB.visas.map(v=>(v.code||"").toUpperCase()));let n=0;DB.crew.forEach(c=>{if(c.code&&!have.has(c.code.toUpperCase())){DB.visas.push({id:uid(),code:c.code.toUpperCase(),name:c.name||"",green:false});n++}});touch();render();toast(n+" kişi eklendi");return}
- if(d.lockall!==undefined){DB.sessions.forEach(s=>s.locked=d.lockall==="1");save();render();toast(d.lockall==="1"?"Tüm oturumlar kilitlendi":"Kilitler kaldırıldı");return}
+ if(d.lockall!==undefined){DB.sessions.forEach(s=>{s.locked=d.lockall==="1";delete s.lk});save();render();toast(d.lockall==="1"?"Tüm oturumlar kilitlendi":"Kilitler kaldırıldı");return}
 });
 document.addEventListener("change",e=>{const el=e.target,d=el.dataset;
  if(d.l){const it=DB[d.l][+d.i],col=LISTS[d.l].cols.find(c=>c.k===d.k);if(!it||!col)return;
@@ -927,9 +955,10 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#ov").hidden)cl
 UI.undo=[];let DRAG=null;
 const dgParse=v=>{const[k,id,i]=String(v).split("|");return{k,id,i:+i}};
 // iki kişiyi takas eder: p = pilot (oturumun tüm sektörleri), i = eğitmen (yalnızca o sektör)
+function swapLk(A,B,f,i,j){const LA=lkOf(A),LB=A===B?LA:lkOf(B),t=LA[f][i];LA[f][i]=LB[f][j];LB[f][j]=t;setLk(A,LA);if(B!==A)setLk(B,LB)}
 function doSwap(list,a,b){const A=list.find(x=>x.id===a.id),B=list.find(x=>x.id===b.id);if(!A||!B)return false;
- if(a.k==="p"){const x=A.pilots[a.i]||"",y=B.pilots[b.i]||"";if(A!==B&&((y&&A.pilots.includes(y))||(x&&B.pilots.includes(x))))return false;A.pilots[a.i]=y;B.pilots[b.i]=x;return true}
- A.instr=A.instr||[];B.instr=B.instr||[];const x=A.instr[a.i]||"",y=B.instr[b.i]||"";A.instr[a.i]=y;B.instr[b.i]=x;return true}
+ if(a.k==="p"){const x=A.pilots[a.i]||"",y=B.pilots[b.i]||"";if(A!==B&&((y&&A.pilots.includes(y))||(x&&B.pilots.includes(x))))return false;A.pilots[a.i]=y;B.pilots[b.i]=x;swapLk(A,B,"p",a.i,b.i);return true}
+ A.instr=A.instr||[];B.instr=B.instr||[];const x=A.instr[a.i]||"",y=B.instr[b.i]||"";A.instr[a.i]=y;B.instr[b.i]=x;swapLk(A,B,"i",a.i,b.i);return true}
 // etkilenen oturumların ve kişilerin sorunları (oturum hatası/uyarısı, Hata, son ay, vize)
 function swapIssues(ids,codes){const R=evaluate(ctx()),out=[];
  R.ses.filter(o=>ids.includes(o.s.id)).forEach(o=>{const lb=fmt(o.dn[0])+" "+o.s.pilots.filter(Boolean).join("/");o.err.forEach(e=>out.push("✖ "+lb+": "+e));o.warn.forEach(w=>out.push("⚠ "+lb+": "+w))});
