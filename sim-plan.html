@@ -36,7 +36,7 @@ tr.fr th{padding:2px 3px;background:var(--hd)}tr.fr input{width:100%;min-width:4
 .months{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start}
 .mt{border-collapse:collapse;background:#fff;break-inside:avoid}.mt td,.mt th{border:1px solid #000;text-align:center;padding:3px 6px;min-width:46px;color:#000;font-size:15px}
 .mt th.mh{background:var(--gr);font-weight:700;font-size:15px}.mt td.dy{font-size:15px;cursor:pointer;position:relative}.mt td.dy small{display:block;font-size:10px;color:#555;line-height:1}
-.mt td.ln{font-size:10px;color:#333}.mt td.lb{font-size:10px;color:#333;background:#f2f2f2}
+.mt td.ln{font-size:10px;color:#333}.mt td.tm{font-size:11px;color:#000;white-space:nowrap}.mt td.lb{font-size:10px;color:#333;background:#f2f2f2}
 .mt td.LPC{background:var(--lpc)}.mt td.OPC{background:var(--opc)}.mt td.x{background:#eee;color:#777}
 .mt td.cl{cursor:pointer}.mt td.ce{box-shadow:inset 0 4px 0 #d00000}.mt td.cw{box-shadow:inset 0 4px 0 #ff8c00}.mt td.em{color:#999;cursor:pointer}
 .lg{display:inline-block;width:14px;height:14px;border:1px solid #000;vertical-align:-2px;margin-right:3px}
@@ -558,6 +558,7 @@ function vPlan(){const X=ctx(),R=evaluate(X),months=planCols(X,R),multi=X.laneAr
    tabs.push(`<table class="mt"><tr><th class="mh" colspan="${cs.length}">${title}</th></tr>
    <tr>${cs.map(c=>`<td class="dy${mk(c)}${c.o?"":" em"}" ${at(c)} title="${fmt(c.d)} ${DAYN[wd(c.d)]}&#10;${tip(c)}">${ymd(c.d)[2]}${c.o?.s.locked?"🔒":""}</td>`).join("")}</tr>
    ${multi?`<tr>${cs.map(c=>`<td class="ln" ${at(c)}>${esc((X.lanes.get(c.lane)?.loc||"")+" "+(X.lanes.get(c.lane)?.sim||c.lane))}</td>`).join("")}</tr>`:""}
+   <tr>${cs.map(c=>`<td class="tm" ${at(c)} title="Slot ${esc(X.lanes.get(c.lane)?.slot||"")} – yerel saat">${esc(X.lanes.get(c.lane)?.time||"")}</td>`).join("")}</tr>
    <tr>${cs.map(c=>`<td class="cl" ${at(c)} title="Eğitmen">${c.o?esc(c.o.s.instr?.[c.k]||"?"):""}</td>`).join("")}</tr>
    <tr>${cs.map(c=>pc(c,0)).join("")}</tr><tr>${cs.map(c=>pc(c,1)).join("")}</tr></table>`)}
   return`<div>${tabs.join('<div style="height:6px"></div>')}</div>`}).join("");
@@ -566,7 +567,7 @@ function vPlan(){const X=ctx(),R=evaluate(X),months=planCols(X,R),multi=X.laneAr
  return`${stale()}<div class="cd"><div class="row np"><h2>Taslak plan</h2><span class="mu">${fmt(X.start)} – ${fmt(X.end)}${DB.planAt?" · son planlama "+esc(DB.planAt):""}</span><span class="sp"></span>
  <label class="ck"><input type="checkbox" data-ui="showEmpty"${UI.showEmpty?" checked":""}><span>Boş simülatör günlerini göster</span></label>
  <button class="s" data-newses="1">+ Oturum ekle</button><button class="s" data-lockall="1">Tümünü kilitle</button><button class="s" data-lockall="0">Kilitleri kaldır</button></div>
- ${stats(R)}<div class="mu" style="margin:4px 0 10px"><span class="lg" style="background:var(--lpc)"></span>LPC <span class="lg" style="background:var(--opc)"></span>OPC · Satırlar: gün, simülatör (birden fazlaysa), eğitmen, öğrenciler · sektör adı ve tarih üzerine gelince görünür · 🔒 kilitli · <span style="color:#d00000">▀</span> hata <span style="color:#ff8c00">▀</span> uyarı · Bir sütuna tıklayıp oturumu düzenleyin.
+ ${stats(R)}<div class="mu" style="margin:4px 0 10px"><span class="lg" style="background:var(--lpc)"></span>LPC <span class="lg" style="background:var(--opc)"></span>OPC · Satırlar: gün, simülatör (birden fazlaysa), slot saati (yerel), eğitmen, öğrenciler · sektör adı ve tarih üzerine gelince görünür · 🔒 kilitli · <span style="color:#d00000">▀</span> hata <span style="color:#ff8c00">▀</span> uyarı · Bir sütuna tıklayıp oturumu düzenleyin.
  Eğitmen yükü: ${[...load].sort().map(([t,n])=>esc(t)+" "+n).join(", ")||"—"}</div>
  <div class="months">${blocks||'<div class="mu">Henüz oturum yok. <b>Planı oluştur</b> ile taslak plan hazırlayın.</div>'}</div></div>
  ${probs.length||bad.length?`<div class="cd"><h2>Sorunlar</h2>${probs.map(r=>`<div class="iss"><span class="bad">${esc(r.c.code)} ${esc(r.c.name)}</span> – ${r.ev.type} (geçerlilik ${fmt(r.ev.deadline)}, en erken ${fmt(r.ev.earliest)}): ${esc(r.err.join(", "))} <button class="s np" data-new-for="${esc(r.c.code)}">+ Planla</button></div>`).join("")}
@@ -722,11 +723,11 @@ function exportPlan(){const X=ctx(),R=evaluate(X),FILL={LPC:"FFC000",OPC:"FFFF00
  const months=planCols(X,R),pr=[],merges=[],CH=8,multi=X.laneArr.length>1;
  for(const[k,cols]of months){const y=Math.floor(k/12),m=k%12;for(let i=0;i<cols.length;i+=CH){const cs=cols.slice(i,i+CH),r0=pr.length;
   pr.push([{v:MON[m]+"."+String(y).slice(2),b:1,fill:"BFBFBF",bd:1,c:1},...cs.slice(1).map(()=>({v:"",fill:"BFBFBF",bd:1}))]);if(cs.length>1)merges.push(`A${r0+1}:${colL(cs.length-1)}${r0+1}`);
-  pr.push(cs.map(c=>({v:ymd(c.d)[2],bd:1,c:1})));if(multi)pr.push(cs.map(c=>({v:X.lanes.get(c.lane)?.loc||c.lane,bd:1,c:1,sz:8})));
+  pr.push(cs.map(c=>({v:ymd(c.d)[2],bd:1,c:1})));if(multi)pr.push(cs.map(c=>({v:X.lanes.get(c.lane)?.loc||c.lane,bd:1,c:1,sz:8})));pr.push(cs.map(c=>({v:X.lanes.get(c.lane)?.time||"",bd:1,c:1,sz:9})));
   pr.push(cs.map(c=>({v:c.o?c.o.s.instr?.[c.k]||"":"",bd:1,c:1})));
   for(const j of[0,1])pr.push(cs.map(c=>{const code=c.o?.s.pilots[j]||"";return{v:code,bd:1,c:1,fill:FILL[c.o?.types[code]]}}));
   pr.push([])}}
- download(xlsxBlob([t1,{name:"Taslak Plan",widths:Array(CH).fill(9),rows:pr,merges},...inputSheets()]),"simulator-plani-"+toIso(todayDn())+".xlsx")}
+ download(xlsxBlob([t1,{name:"Taslak Plan",widths:Array(CH).fill(12),rows:pr,merges},...inputSheets()]),"simulator-plani-"+toIso(todayDn())+".xlsx")}
 
 /* ============ olaylar ============ */
 document.addEventListener("click",e=>{const el=e.target.closest("button,[data-ses],[data-new],[data-ls],[data-ts],[data-ds],a");if(!el)return;const d=el.dataset;
