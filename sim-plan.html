@@ -112,10 +112,9 @@ const LISTS={
   {k:"name",l:"Ad Soyad",t:"text",al:["adsoyad","name","adisoyadi","isim"],w:190},
   {k:"role",l:"Yetki",t:"sel",o:["TRE","SFE","TRI","SFI"],al:["yetki","role","rol","yetkisi","rating"],tip:"Kontrol sektörlerine (LPC/OPC) yalnızca TRE ve SFE atanır; eğitim sektörlerine (LPT/OPT) herkes."},
   {k:"note",l:"Not",t:"text",al:["not","note","aciklama"],w:130}]},
- sims:{t:"Simülatörler",sheet:"Simulatorler",cols:[
-  {k:"sim",l:"Simülatör",t:"text",al:["simulator","sim","fstd","cihaz"],w:100},
-  {k:"slot",l:"Slot / Saat",t:"text",al:["slot","saat","seans"],w:100},
-  {k:"loc",l:"Lokasyon",t:"text",al:["lokasyon","location","yer"],w:60},
+ sims:{t:"Simülatör müsaitliği",sheet:"Simulatorler",cols:[
+  {k:"dev",l:"FSTD / Uçak",t:"dev",al:["fstducak","fstd","simulator","sim","ucak","cihaz","kodtescil","kod","tescil"],tip:"FSTD / Uçak listesinden seçin"},
+  {k:"slot",l:"Slot",t:"slot",al:["slot","seans","saat","slotsaat"],tip:"Seçilen simülatörün slotu (A–F). Uçakta slot yoktur."},
   {k:"from",l:"Başlangıç",t:"date",al:["baslangic","from","start","ilk"]},
   {k:"to",l:"Bitiş",t:"date",al:["bitis","to","end","son"]},
   {k:"days",l:"Günler",t:"days",al:["gunler","days","gun"]}]},
@@ -133,21 +132,49 @@ const LISTS={
   {k:"b",l:"Kod 2",t:"code",al:["kod2","code2","kisi2"]},
   {k:"note",l:"Açıklama",t:"text",al:["aciklama","note","not","neden"],w:220}]}
 };
-const SHEET_ALIAS=[["visaTypes",["vizetur","visatype"]],["visas",["visa","vize"]],["crew",["ekip","crew","pilot"]],["instr",["egitmen","instructor","ogretmen","tre","tri"]],["nofly",["birlikte","eslesme","nofly","ucmayacak"]],["sims",["simulator","sim","fstd"]],["blackouts",["kapali","tatil","holiday","blackout"]],["leaves",["izin","leave"]]];
+const SHEET_ALIAS=[["visaTypes",["vizetur","visatype"]],["visas",["visa","vize"]],["crew",["ekip","crew","pilot"]],["instr",["egitmen","instructor","ogretmen","tre","tri"]],["nofly",["birlikte","eslesme","nofly","ucmayacak"]],["devices",["fstd","ucak","cihaz","device"]],["sims",["simulator","musait","sim"]],["blackouts",["kapali","tatil","holiday","blackout"]],["leaves",["izin","leave"]]];
+// FSTD / Uçak: SHGM form uygulamasındaki tabloyla aynı yapı (k: FFS/AC, c: kod/tescil, ac: tip, op, mf, loc, tz, a: aktif, s: slotlar A–F)
+const SLOTS=["A","B","C","D","E","F"],TZS=["Europe/Istanbul","Europe/Amsterdam","Europe/Berlin","Europe/London","Europe/Paris","Europe/Zurich","Asia/Dubai","Asia/Qatar","UTC"];
+const DEV0=[
+{id:0,k:"FFS",c:"EU-NL9",ac:"B744",op:"CAE",mf:"CAE",loc:"AMS",tz:"Europe/Amsterdam",a:1,s:{A:["06:30","10:30"],B:["10:45","14:45"],C:["15:00","19:00"],D:["19:15","23:15"],E:["23:30","03:30"]}},
+{id:1,k:"FFS",c:"DE-1A-007",ac:"B744",op:"LFT FT16",mf:"CAE",loc:"FRA",tz:"Europe/Berlin",a:1,s:{A:["03:15","06:45"],B:["06:50","10:50"],C:["10:55","14:55"],D:["15:00","19:00"],E:["19:05","23:05"],F:["23:10","03:10"]}},
+{id:2,k:"FFS",c:"DE-1A-049",ac:"B744",op:"LFT FT48",mf:"Thales",loc:"FRA",tz:"Europe/Berlin",a:1,s:{A:["03:20","06:50"],B:["06:55","10:55"],C:["11:00","15:00"],D:["15:05","19:05"],E:["19:10","23:10"],F:["23:15","03:15"]}},
+{id:3,k:"FFS",c:"EU-NL10",ac:"B744",op:"FZC",mf:"CAE",loc:"SHJ",tz:"Asia/Dubai",a:1,s:{A:["08:00","12:00"],B:["12:30","16:30"],C:["17:00","21:00"],D:["21:30","01:30"],E:["02:00","06:30"]}},
+{id:4,k:"AC",c:"TC-ABC",ac:"B744",op:"",mf:"",loc:"IST",tz:"Europe/Istanbul",a:1,s:{}}];
+const DEVMETA={t:"FSTD / Uçak",sheet:"FSTD"};
+const cloneDev=d=>({...d,s:JSON.parse(JSON.stringify(d.s||{}))});
+const formDevices=()=>{try{const a=JSON.parse(ls.g("shgm_dev")||"null");return Array.isArray(a)&&a.length?a.filter(d=>d&&d.c):null}catch(e){return null}};// form uygulamasının listesi (aynı tarayıcı)
+const seedDevices=()=>(formDevices()||DEV0).map(cloneDev);
+const isAC=d=>!!d&&d.k==="AC";
+const devById=id=>DB.devices.find(d=>id!==""&&id!=null&&String(d.id)===String(id));
+const slotTime=(d,k)=>d&&!isAC(d)&&d.s?.[k]?d.s[k][0]+"–"+d.s[k][1]:"";
+const devLane=(d,k)=>d.c+(isAC(d)||!k?"":" "+k);
+const nextDevId=list=>Math.max(-1,...list.map(d=>+d.id).filter(n=>!isNaN(n)))+1;
+const parseSlot=v=>{const m=/(\d{1,2})[:.](\d{2})\s*[-–]\s*(\d{1,2})[:.](\d{2})/.exec(String(v||""));return m?[pad(m[1])+":"+m[2],pad(m[3])+":"+m[4]]:null};
 const defVisaTypes=()=>[{id:"schengen",name:"SCHENGEN",locs:"AMS, FRA",green:true},{id:"uae",name:"UAE",locs:"*",green:true}];
-function emptyDB(){const t=todayDn();return{settings:{...DEF,start:toIso(t),end:toIso(addM(t,12)-1)},crew:[],visaTypes:defVisaTypes(),visas:[],instr:[],sims:[],blackouts:[],leaves:[],nofly:[],sessions:[],dataVer:0,planVer:-1,planAt:null}}
+function emptyDB(){const t=todayDn();return{settings:{...DEF,start:toIso(t),end:toIso(addM(t,12)-1)},crew:[],devices:seedDevices(),visaTypes:defVisaTypes(),visas:[],instr:[],sims:[],blackouts:[],leaves:[],nofly:[],sessions:[],dataVer:0,planVer:-1,planAt:null}}
 let DB;
 function load(){try{DB=JSON.parse(ls.g(LS_KEY)||"null")}catch(e){DB=null}
  if(!DB||typeof DB!=="object"){DB=sampleDB();save();return}
  const e=emptyDB();for(const k in e)if(DB[k]==null)DB[k]=e[k];DB.settings={...DEF,...DB.settings};
- DB.crew.forEach(c=>{delete c.opc;delete c.lastLoc;delete c.note});migrate(DB);if(syncVisas())save()}// kaldırılan ekip alanları
+ DB.crew.forEach(c=>{delete c.opc;delete c.lastLoc;delete c.note});migrate(DB);syncVisas();save()}// kaldırılan ekip alanları
 // eski veri: kişideki tek vize tarihi Schengen sütununa, simülatördeki "vize gerekli" kaldırılır
 function migrate(d){if(!Array.isArray(d.visas)||(!d.visas.length&&(d.crew||[]).some(c=>c.visa)))d.visas=(d.crew||[]).filter(c=>c.code).map(c=>({id:uid(),code:c.code,name:c.name||"",schengen:c.visa||"",uae:""}));
  if(!Array.isArray(d.visaTypes))d.visaTypes=defVisaTypes();
  if(d.settings&&d.settings.schengen!=null){const t=d.visaTypes.find(t=>t.id==="schengen");if(t)t.locs=d.settings.schengen;delete d.settings.schengen}
  // eski SCHENGEN/UAE hücrelerindeki "Yesil" kişinin yeşil pasaportuna dönüşür
  d.visas.forEach(v=>{if("schengen"in v||"uae"in v){if(v.schengen==="Yesil"||v.uae==="Yesil")v.green=true;if(v.schengen&&v.schengen!=="Yesil")v.v_schengen=v.schengen;if(v.uae&&v.uae!=="Yesil")v.v_uae=v.uae;delete v.schengen;delete v.uae}if(v.green==null)v.green=false});
- (d.crew||[]).forEach(c=>delete c.visa);(d.sims||[]).forEach(s=>delete s.visa)}
+ (d.crew||[]).forEach(c=>delete c.visa);(d.sims||[]).forEach(s=>delete s.visa);
+ if(!Array.isArray(d.devices))d.devices=seedDevices();
+ const lm=new Map();
+ (d.sims||[]).forEach(s=>{if(s.dev!=null||!s.sim)return;const code=s.sim.trim().toUpperCase();let dv=d.devices.find(x=>(x.c||"").toUpperCase()===code);
+  if(!dv){dv={id:nextDevId(d.devices),k:"FFS",c:code,ac:"",op:"",mf:"",loc:(s.loc||"").trim().toUpperCase(),tz:"",a:1,s:{}};d.devices.push(dv)}
+  const t=parseSlot(s.slot);let k="";
+  if(t){k=SLOTS.find(x=>dv.s[x]&&dv.s[x][0]===t[0]&&dv.s[x][1]===t[1])||"";if(!k&&!isAC(dv)){k=SLOTS.find(x=>!dv.s[x])||"";if(k)dv.s[k]=t}}
+  else if(/^[A-F]$/i.test((s.slot||"").trim()))k=s.slot.trim().toUpperCase();
+  if(!k&&!isAC(dv))k=SLOTS.find(x=>dv.s[x])||"";
+  lm.set(oldLaneKey(s),devLane(dv,k));s.dev=dv.id;s.slot=isAC(dv)?"":k;delete s.sim;delete s.loc});
+ if(lm.size)(d.sessions||[]).forEach(x=>{if(lm.has(x.lane))x.lane=lm.get(x.lane)})}
 function save(){ls.s(LS_KEY,JSON.stringify(DB))}
 function syncVisas(){const by=new Map(DB.visas.map(v=>[(v.code||"").toUpperCase(),v]));let n=0;
  [...DB.crew,...DB.instr].forEach(p=>{const c=(p.code||"").trim().toUpperCase();if(!c)return;const v=by.get(c);
@@ -167,8 +194,9 @@ function sampleDB(){const d=emptyDB();d.settings.start="2026-12-01";d.settings.e
   C("CPT","HAKAN SOY","HS","2027-07-31","2026-07-10","2029-10-10"),C("F/O","EMRE KILIÇ","EK","2027-07-31","2026-07-15","2029-10-10")];
  d.instr=[{id:uid(),code:"BB",name:"BURAK BULUT",role:"TRI",note:""},{id:uid(),code:"GB",name:"GÖKSEL BAYRAK",role:"TRE",note:""}];
  const P=[["2026-12-14","2026-12-17"],["2027-01-19","2027-01-22"],["2027-02-16","2027-02-19"],["2027-03-23","2027-03-26"],["2027-04-19","2027-04-22"],["2027-05-17","2027-05-20"],["2027-06-14","2027-06-17"],["2027-07-19","2027-07-22"],["2027-08-16","2027-08-19"],["2027-09-13","2027-09-16"],["2027-10-18","2027-10-21"],["2027-11-15","2027-11-18"],["2027-12-13","2027-12-16"]];
- d.sims=P.map(([f,t])=>({id:uid(),sim:"DE-1A-049",slot:"15:05-19:05",loc:"FRA",from:f,to:t,days:Array(7).fill(true)}));
- d.sims.push({id:uid(),sim:"EU-NL10",slot:"08:00-12:00",loc:"SHJ",from:"2027-06-01",to:"2027-06-04",days:Array(7).fill(true)});
+ d.devices=DEV0.map(cloneDev);
+ d.sims=P.map(([f,t])=>({id:uid(),dev:2,slot:"D",from:f,to:t,days:Array(7).fill(true)}));
+ d.sims.push({id:uid(),dev:3,slot:"A",from:"2027-06-01",to:"2027-06-04",days:Array(7).fill(true)});
  d.blackouts=[["2027-01-01","Yılbaşı"],["2027-04-23","23 Nisan"],["2027-05-01","1 Mayıs"],["2027-05-19","19 Mayıs"],["2027-07-15","15 Temmuz"],["2027-08-30","30 Ağustos"],["2027-10-29","29 Ekim"]].map(([f,n])=>({id:uid(),from:f,to:f,note:n}));
  d.leaves=[{id:uid(),code:"TK",from:"2027-03-01",to:"2027-03-31",note:"Yıllık izin (örnek)"}];
  d.nofly=[{id:uid(),a:"HS",b:"EK",note:"Örnek kısıt"}];
@@ -177,7 +205,7 @@ function sampleDB(){const d=emptyDB();d.settings.start="2026-12-01";d.settings.e
  return d}
 
 /* ============ kural motoru ============ */
-const laneKey=s=>(s.sim||"").trim()+((s.slot||"").trim()?" "+s.slot.trim():"");
+const oldLaneKey=s=>(s.sim||"").trim()+((s.slot||"").trim()?" "+s.slot.trim():"");
 const pairKey=(a,b)=>a<b?a+"|"+b:b+"|"+a;
 function expandRange(from,to,cb){const a=toDn(from),b=toDn(to||from);if(a==null||b==null||b<a)return;for(let d=a;d<=Math.min(b,a+1500);d++)cb(d)}
 function ctx(){const S=DB.settings,start=toDn(S.start)??todayDn(),end=toDn(S.end)??addM(start,12)-1;
@@ -191,8 +219,9 @@ function ctx(){const S=DB.settings,start=toDn(S.start)??todayDn(),end=toDn(S.end
  X.black=new Map();DB.blackouts.forEach(b=>expandRange(b.from,b.to,d=>X.black.set(d,b.note||"Kapalı gün")));
  X.leave=new Map();DB.leaves.forEach(l=>{const c=(l.code||"").toUpperCase();if(!c)return;let m=X.leave.get(c);if(!m)X.leave.set(c,m=new Map());expandRange(l.from,l.to,d=>m.set(d,l.note||"izin"))});
  X.nofly=new Map();DB.nofly.forEach(n=>{if(n.a&&n.b)X.nofly.set(pairKey(n.a.toUpperCase(),n.b.toUpperCase()),n.note||"")});
- X.lanes=new Map();DB.sims.forEach(s=>{const k=laneKey(s);if(!s.sim)return;let L=X.lanes.get(k);if(!L)X.lanes.set(k,L={key:k,sim:s.sim.trim(),slot:(s.slot||"").trim(),loc:(s.loc||"").trim(),avail:new Set()});
-  if(s.loc&&!L.loc)L.loc=s.loc.trim();const days=Array.isArray(s.days)?s.days:Array(7).fill(true);
+ X.lanes=new Map();DB.sims.forEach(s=>{const dv=devById(s.dev);if(!dv)return;const k=isAC(dv)?"":s.slot;if(!isAC(dv)&&!dv.s?.[k])return;const key=devLane(dv,k);let L=X.lanes.get(key);
+  if(!L){const t=slotTime(dv,k);X.lanes.set(key,L={key,sim:dv.c,slot:k,time:t,label:key+(t?" ("+t+")":isAC(dv)?" (uçak)":""),loc:(dv.loc||"").toUpperCase(),kind:dv.k,active:!!dv.a,avail:new Set()})}
+  if(!L.active)return;const days=Array.isArray(s.days)?s.days:Array(7).fill(true);
   expandRange(s.from,s.to,d=>{if(days[wd(d)]!==false&&!X.black.has(d))L.avail.add(d)})});
  X.laneArr=[...X.lanes.values()];return X}
 // Sim lokasyonuna göre vize türü (Excel: AMS/FRA → SCHENGEN, diğerleri → UAE). Yeşil pasaport, "yeşil pasaportla gerekmez" türlerde vizenin yerine geçer.
@@ -296,7 +325,7 @@ function evaluate(X){const S=X.S;
  const push=(m,k,v)=>{let a=m.get(k);if(!a)m.set(k,a=[]);a.push(v)};
  for(const o of ses){o.dn.forEach((d,k)=>{push(laneDay,o.s.lane+"|"+d,o);o.s.pilots.forEach(c=>{if(c)push(pd,c+"|"+d,{o,r:"st"})});const t=o.s.instr?.[k];if(t)push(pd,t+"|"+d,{o,r:"te"})})}
  for(const o of ses){const n=o.dn.length,pil=o.s.pilots.filter(Boolean);
-  if(!o.L)o.err.push("Simülatör tanımlı değil: "+o.s.lane);else o.dn.forEach(d=>{if(!o.L.avail.has(d))o.err.push(fmt(d)+(X.black.has(d)?" kapalı gün ("+X.black.get(d)+")":" simülatör müsait değil"))});
+  if(!o.L)o.err.push("Simülatör tanımlı değil: "+o.s.lane);else if(!o.L.active)o.err.push(o.L.key+" pasif (FSTD / Uçak)");else o.dn.forEach(d=>{if(!o.L.avail.has(d))o.err.push(fmt(d)+(X.black.has(d)?" kapalı gün ("+X.black.get(d)+")":" simülatör müsait değil"))});
   o.dn.forEach(d=>{if(laneDay.get(o.s.lane+"|"+d).length>1)o.err.push(fmt(d)+" aynı simülatörde başka oturum var")});
   for(let i=1;i<n;i++)if(o.dn[i]-o.dn[i-1]>S.maxGap||o.dn[i]<=o.dn[i-1])o.warn.push("Sektör tarihleri ardışık değil");
   if(!pil.length)o.err.push("Öğrenci yok");else if(pil.length<2)o.warn.push("Tek öğrenci – koltuk doldurucu gerekli");
@@ -337,23 +366,23 @@ function evaluate(X){const S=X.S;
  return{rows,ses,byId}}
 
 /* ============ arayüz ============ */
-const TABS=[["settings","Ayarlar"],["crew","Ekip"],["visas","Vize"],["instr","Eğitmenler"],["sims","Simülatörler"],["off","Kapalı günler & izinler"],["nofly","Birlikte uçmayacaklar"],["table","Uygunluk tablosu"],["plan","Taslak plan"]];
+const TABS=[["settings","Ayarlar"],["crew","Ekip"],["visas","Vize"],["instr","Eğitmenler"],["sims","FSTD / Uçak"],["off","Kapalı günler & izinler"],["nofly","Birlikte uçmayacaklar"],["table","Uygunluk tablosu"],["plan","Taslak plan"]];
 let TAB=ls.g("simplan.tab")||"table";
-const UI={type:"",onlyErr:false,q:"",showEmpty:false,lf:{},ts:{s:null,d:1},tf:{}};
+const UI={type:"",onlyErr:false,q:"",showEmpty:false,lf:{},ts:{s:null,d:1},tf:{},devShow:"a",dev:{s:null,d:1,f:{}}};
 // sıralama / filtre yardımcıları: boş değerler her zaman sonda
 const cmpV=(x,y,d)=>{const ex=x===""||x==null,ey=y===""||y==null;if(ex&&ey)return 0;if(ex)return 1;if(ey)return-1;
  return(typeof x==="number"&&typeof y==="number"?x-y:String(x).localeCompare(String(y),"tr",{numeric:true,sensitivity:"base"}))*d};
 const arrow=(on,d)=>on?`<span class="ar">${d>0?"▲":"▼"}</span>`:"";
 const nextSort=(cur,k)=>cur.s!==k?{s:k,d:1}:cur.d===1?{s:k,d:-1}:{s:null,d:1};
 const matchF=(txt,q)=>{q=norm(q);return!q||norm(txt).includes(q)};
-function tabCounts(){$("#tabs").innerHTML=TABS.map(([k,l])=>{const n=k==="crew"?DB.crew.length:k==="visas"?DB.visas.length:k==="instr"?DB.instr.length:k==="sims"?DB.sims.length:k==="off"?DB.blackouts.length+DB.leaves.length:k==="nofly"?DB.nofly.length:k==="plan"?DB.sessions.length:null;
+function tabCounts(){$("#tabs").innerHTML=TABS.map(([k,l])=>{const n=k==="crew"?DB.crew.length:k==="visas"?DB.visas.length:k==="instr"?DB.instr.length:k==="sims"?DB.devices.filter(d=>d.a).length:k==="off"?DB.blackouts.length+DB.leaves.length:k==="nofly"?DB.nofly.length:k==="plan"?DB.sessions.length:null;
  return`<button data-tab="${k}" class="${k===TAB?"on":""}">${l}${n!=null?`<span class="n">${n}</span>`:""}</button>`}).join("");
  $("#codes").innerHTML=[...DB.crew.map(c=>[c.code,c.name]),...DB.instr.map(t=>[t.code,t.name+" (eğitmen)"])].filter(x=>x[0]).map(([c,n])=>`<option value="${esc(c)}">${esc(n)}</option>`).join("")}
 function show(t){TAB=t;ls.s("simplan.tab",t);tabCounts();render()}
 function render(){const v=$("#view");
  if(TAB==="settings")v.innerHTML=vSettings();else if(TAB==="visas")v.innerHTML=vList("visaTypes",'<div class="mu">Hangi simülatör lokasyonunda hangi vizenin gerektiğini belirler. Yeni tür (ör. UK – lokasyon LHR) eklediğinizde aşağıdaki listeye sütunu eklenir. <b>*</b> = başka türde yazmayan tüm lokasyonlar. Bir lokasyon hiçbir türde yoksa vize aranmaz.</div>')+vList("visas",`<div class="mu">Excel'deki <b>Visa</b> sayfası. <b>Yeşil Pasaport</b> işaretli kişide "yeşil pasaportla gerekmez" türlere (${esc(DB.visaTypes.filter(t=>t.green).map(t=>t.name).join(", ")||"—")}) bakılmaz, tabloda <b>Yesil</b> yazar; diğer türler yine kontrol edilir. Kaydı olmayan kişide <b>#N/A</b>, tarih boşsa planlandığında <b>Expired</b> yazar. Ekip ve eğitmen listesine eklenen herkes buraya otomatik gelir. Eğitmenin vizesi de oturumdaki simülatör lokasyonuna göre kontrol edilir.</div>`);
  else if(TAB==="crew")v.innerHTML=vList("crew",crewHelp());else if(TAB==="instr")v.innerHTML=vList("instr",'<div class="mu">Kontrol sektörüne (LPC, OPC) yalnızca TRE/SFE atanır. Eğitim sektörüne (LPT, OPT) önce TRI/SFI atanır, yoksa TRE/SFE. Eğitmen izinlerini "Kapalı günler &amp; izinler" sekmesinden girin.</div>');
- else if(TAB==="sims")v.innerHTML=vList("sims",'<div class="mu">Her satır bir müsaitlik dönemidir; aynı simülatör + slot için birden fazla satır girebilirsiniz. Her simülatör + slot günde 1 oturumdur (ör. aynı gün 2 slot varsa iki ayrı slot yazın). Vize: lokasyon Schengen listesindeyse (Ayarlar) SCHENGEN, değilse UAE vizesine bakılır.</div>');
+ else if(TAB==="sims")v.innerHTML=vDevices()+vList("sims",'<div class="mu">Her satır bir müsaitlik dönemidir: FSTD / uçak, slot, tarih aralığı ve günler. Aynı simülatör + slot için birden fazla satır girebilirsiniz; her simülatör + slot günde 1 oturumdur (aynı gün 2 slot için iki satır). Lokasyon FSTD listesinden gelir; vize türü lokasyona göre belirlenir (Vize sekmesi). Pasif cihazın müsaitliği planlamada kullanılmaz.</div>');
  else if(TAB==="off")v.innerHTML=vList("blackouts",'<div class="mu">Bu tarihlerde hiçbir simülatöre plan yapılmaz (tatil vb.).</div>')+vList("leaves",'<div class="mu">Pilot ya da eğitmenin plana alınmayacağı tarihler (kod ile).</div>');
  else if(TAB==="nofly")v.innerHTML=vList("nofly",'<div class="mu">Bu iki kişi aynı oturuma (öğrenci–öğrenci ya da öğrenci–eğitmen) konmaz.</div>');
  else if(TAB==="table")v.innerHTML=vTable();else v.innerHTML=vPlan();
@@ -385,16 +414,21 @@ function personRole(code){const c=(code||"").toUpperCase(),p=DB.crew.find(x=>(x.
  return[p&&p.rank,t&&"Eğitmen ("+(t.role||"?")+")"].filter(Boolean).join(" · ")||"listede yok"}
 function crewHelp(){const r=DB.crew.reduce((a,c)=>(a[c.rank]=(a[c.rank]||0)+1,a),{});return`<div class="mu">CPT: ${r.CPT||0} · F/O: ${r["F/O"]||0}. Zorunlu: Rütbe, Kod, LPC Geçerlilik. "Sıradaki" sütunu girilen bilgilere göre hesaplanır.</div>`}
 function cellInput(key,i,col,v){const a=`data-l="${key}" data-i="${i}" data-k="${col.k}"`;
- switch(col.t){case"sel":return`<select ${a}>${["",...col.o].map(o=>`<option${o===v?" selected":""}>${esc(o)}</option>`).join("")}</select>`;
+ switch(col.t){case"dev":{const opts=DB.devices.filter(d=>d.a||String(d.id)===String(v)).sort((a,b)=>(isAC(a)-isAC(b))||a.c.localeCompare(b.c));
+   return`<select ${a}><option value="">Seçin…</option>${opts.map(d=>`<option value="${esc(d.id)}"${String(d.id)===String(v)?" selected":""}>${esc(d.c)}${d.loc?" · "+esc(d.loc):""}${isAC(d)?" (uçak)":""}${d.a?"":" (pasif)"}</option>`).join("")}</select>`}
+  case"slot":{const dv=devById(DB[key][i]?.dev);if(!dv)return'<span class="mu">önce FSTD seçin</span>';if(isAC(dv))return'<span class="mu">— (uçak)</span>';const ks=SLOTS.filter(k=>dv.s?.[k]);
+   return`<select ${a}>${ks.map(k=>`<option value="${k}"${k===v?" selected":""}>${k} · ${esc(slotTime(dv,k))}</option>`).join("")}${v&&!ks.includes(v)?`<option value="${esc(v)}" selected>${esc(v)} (tanımsız)</option>`:""}</select>`}
+  case"sel":return`<select ${a}>${["",...col.o].map(o=>`<option${o===v?" selected":""}>${esc(o)}</option>`).join("")}</select>`;
   case"date":return`<input type="date" ${a} value="${esc(v||"")}">`;
   case"check":return`<input type="checkbox" ${a}${v?" checked":""}>`;
   case"days":{const dv=Array.isArray(v)?v:Array(7).fill(true);return`<span class="days">${DAYN.map((n,j)=>`<label title="${n}"><input type="checkbox" ${a} data-j="${j}"${dv[j]!==false?" checked":""}>${n.slice(0,2)}</label>`).join("")}</span>`}
   case"code":return`<input ${a} class="code" maxlength="6" list="codes" value="${esc(v||"")}">`;
   default:return`<input ${a} value="${esc(v||"")}" style="width:${col.w||120}px">`}}
-const cellText=(c,v)=>c.t==="date"?(v?fmt(toDn(v)):""):c.t==="check"?(v?"✓ evet":"hayır"):c.t==="days"?daysStr(v):String(v??"");
-const cellSort=(c,v)=>c.t==="date"?toDn(v)??"":c.t==="check"?(v?0:1):c.t==="days"?daysStr(v):String(v??"").trim();
+const cellText=(c,v)=>c.t==="dev"?(devById(v)?.c||""):c.t==="date"?(v?fmt(toDn(v)):""):c.t==="check"?(v?"✓ evet":"hayır"):c.t==="days"?daysStr(v):String(v??"");
+const cellSort=(c,v)=>c.t==="dev"?(devById(v)?.c||""):c.t==="date"?toDn(v)??"":c.t==="check"?(v?0:1):c.t==="days"?daysStr(v):String(v??"").trim();
 // listelerde hesaplanan sütunlar (sıralanabilir / filtrelenebilir)
 const DERIVED={crew:[{k:"_next",l:"Sıradaki",ev:(it,X)=>toDn(it.lpc)==null||!it.rank?null:nextEvent(initState({...it},X),X),txt(it,X){const e=this.ev(it,X);return e?e.type+" "+fmt(e.deadline)+" en erken "+fmt(e.earliest):""},sv(it,X){return this.ev(it,X)?.deadline??""}}],
+ sims:[{k:"_loc",l:"Lokasyon",txt:it=>devById(it.dev)?.loc||"",sv:it=>devById(it.dev)?.loc||""},{k:"_st",l:"Durum",txt:it=>{const d=devById(it.dev);return!d?"cihaz yok":d.a?"":"pasif"},sv:it=>devById(it.dev)?.a?0:1}],
  visas:[{k:"_role",l:"Görev",txt:it=>personRole(it.code),sv:it=>personRole(it.code)}]};
 const lfOf=key=>UI.lf[key]||(UI.lf[key]={s:null,d:1,f:{}});
 function vList(key,help=""){const L=LISTS[key],arr=DB[key],st=lfOf(key),der=DERIVED[key]||[],X=der.length?ctx():null;
@@ -413,6 +447,67 @@ function crewDerived(){const X=ctx(),seen=new Map();DB.crew.forEach((c,i)=>{cons
  DB.crew.forEach((c,i)=>{const td=$(`[data-nx="${i}"]`);const inp=$(`input[data-l="crew"][data-i="${i}"][data-k="code"]`);if(inp)inp.classList.toggle("dup",!c.code||seen.get(c.code.toUpperCase())>1);
   if(!td)return;if(toDn(c.lpc)==null){td.innerHTML='<span class="bad">LPC geçerlilik yok</span>';return}if(!c.rank){td.innerHTML='<span class="bad">Rütbe yok</span>';return}
   const ev=nextEvent(initState({...c},X),X);td.innerHTML=`<b>${ev.type}</b> ${fmt(ev.deadline)} · en erken <span class="${ev.gapDriven?"bad":""}">${fmt(ev.earliest)}</span>${ev.expired?' <span class="bad">süresi dolmuş</span>':""}`})}
+
+/* ---- FSTD / Uçak ---- */
+const DEVCOLS=[["k","Tür",d=>isAC(d)?"Uçak":"FFS"],["c","Kod / Tescil",d=>d.c],["ac","Tip",d=>d.ac],["op","Operatör",d=>d.op],["loc","Lokasyon",d=>d.loc],...SLOTS.map(k=>[k,k,d=>slotTime(d,k)]),["a","Durum",d=>d.a?"Aktif":"Pasif"]];
+function vDevices(){const st=UI.dev;let L=DB.devices.filter(d=>UI.devShow==="t"||(UI.devShow==="a")===!!d.a);const all=L.length;
+ const fs=Object.entries(st.f).filter(([,v])=>v);if(fs.length)L=L.filter(d=>fs.every(([k,q])=>matchF(DEVCOLS.find(c=>c[0]===k)[2](d),q)));
+ L=[...L].sort(st.s?(a,b)=>{const g=DEVCOLS.find(c=>c[0]===st.s)[2];return cmpV(g(a)||"",g(b)||"",st.d)}:(a,b)=>(isAC(a)-isAC(b))||a.c.localeCompare(b.c));
+ const fd=formDevices();
+ return`<div class="cd"><div class="row"><h2>FSTD / Uçak</h2><span class="mu">${fs.length?L.length+" / ":""}${all} kayıt</span><span class="sp"></span>
+ <label class="f" style="flex-direction:row;align-items:center;gap:6px"><span>Göster</span><select data-ui="devShow"><option value="a"${UI.devShow==="a"?" selected":""}>Aktif</option><option value="p"${UI.devShow==="p"?" selected":""}>Pasif</option><option value="t"${UI.devShow==="t"?" selected":""}>Tümü</option></select></label>
+ ${fs.length||st.s?'<button class="s np" data-devclear="1">Filtre / sıralamayı temizle</button>':""}<button class="s p np" data-devnew="FFS">+ Yeni simülatör</button><button class="s p np" data-devnew="AC">+ Yeni uçak</button>${fd?'<button class="s np" data-devform="1">Form uygulamasından al</button>':""}<button class="s np" data-devreset="1">Örnek listeye dön</button></div>
+ <div class="mu">Slot saatleri yerel saattir; gece yarısını geçen slot ertesi gün biter. Uçakta uçuş saati değişken olduğu için slot yoktur. Liste SHGM form uygulamasındaki FSTD / Uçak tablosuyla aynı yapıdadır${fd?"; o uygulamadaki değişiklikleri <b>Form uygulamasından al</b> ile buraya aktarabilirsiniz":""}.</div>
+ <div class="sc" style="margin-top:6px"><table class="ed"><thead><tr><th></th>${DEVCOLS.map(([k,l])=>`<th class="so" data-ds="${k}" title="Sıralamak için tıklayın">${l}${arrow(st.s===k,st.d)}</th>`).join("")}</tr>
+ <tr class="fr np"><th></th>${DEVCOLS.map(([k])=>`<th><input data-dvf="${k}" value="${esc(st.f[k]||"")}" placeholder="Filtre"></th>`).join("")}</tr></thead>
+ <tbody>${L.map(d=>`<tr><td style="white-space:nowrap"><button class="s np" data-deved="${esc(d.id)}">Düzelt</button> <button class="s d np" data-devdel="${esc(d.id)}">Sil</button></td><td>${isAC(d)?"Uçak":"FFS"}</td><td><b>${esc(d.c)}</b></td><td>${esc(d.ac)}</td><td>${esc(d.op)}</td><td>${esc(d.loc)}</td>${SLOTS.map(k=>`<td>${esc(slotTime(d,k))}</td>`).join("")}<td>${d.a?'<span class="good">Aktif</span>':'<span class="mu">Pasif</span>'}</td></tr>`).join("")||`<tr><td colspan="${DEVCOLS.length+1}" class="mu">${all?"Filtreye uyan kayıt yok.":"Kayıt yok."}</td></tr>`}</tbody></table></div></div>`}
+function devErr(x){const b=[],ac=isAC(x),o=DB.devices.filter(d=>String(d.id)!==String(x.id));
+ if(!x.c)b.push(ac?"Tescil gerekli":"FSTD kodu gerekli");else if(!(ac?/^[A-Z0-9]{1,2}-?[A-Z0-9]{2,5}$/:/^[A-Z0-9][A-Z0-9-]{1,19}$/).test(x.c))b.push(ac?"Tescil biçimi geçersiz (ör. TC-ABC)":"FSTD kodu yalnızca harf, rakam ve tire içerebilir (ör. DE-1A-049)");
+ else if(o.some(d=>d.c===x.c))b.push(x.c+" zaten kayıtlı");
+ if(!x.ac)b.push("Hava aracı tipi gerekli (ör. B744)");
+ if(x.loc&&!/^[A-Z]{3}$/.test(x.loc))b.push("Lokasyon 3 harfli IATA kodu olmalı (ör. FRA)");
+ if(!ac){if(!x.loc)b.push("Simülatörün lokasyonu gerekli");if(!x.tz)b.push("Saat dilimi gerekli (slot saatleri yerel)");
+  const S2=SLOTS.filter(k=>x.s[k]&&(x.s[k][0]||x.s[k][1]));if(!S2.length)b.push("En az bir slot girilmeli");
+  S2.forEach(k=>{const[a,e]=x.s[k];if(!a||!e)b.push("Slot "+k+": başlangıç ve bitiş birlikte girilmeli");else if(a===e)b.push("Slot "+k+": başlangıç ve bitiş aynı olamaz")});
+  const used=new Set(DB.sims.filter(r=>String(r.dev)===String(x.id)).map(r=>r.slot));used.forEach(k=>{if(k&&!(x.s[k]&&x.s[k][0]&&x.s[k][1]))b.push("Slot "+k+" müsaitlik listesinde kullanılıyor; silinemez")})}
+ else if(x.loc&&!x.tz)b.push("Üs girildiyse saat dilimi de seçilmeli");
+ return b}
+function devDlg(id,kind){const orig=id!=null?devById(id):null;const x=orig?cloneDev(orig):{id:nextDevId(DB.devices),k:kind,c:"",ac:"B744",op:"",mf:"",loc:"",tz:"",a:1,s:{}};const ac=isAC(x);
+ const I=(k,l,a="")=>`<label class="f"><span>${l}</span><input data-dd="${k}" value="${esc(x[k]||"")}" autocomplete="off" ${a}></label>`;
+ dlg(orig?(ac?"Uçağı düzenle – ":"Simülatörü düzenle – ")+esc(x.c):(ac?"Yeni uçak":"Yeni simülatör"),`<div class="g">${I("c",ac?"Tescil (ör. TC-ABC)":"FSTD kodu (ör. DE-1A-049)")}${I("ac","Hava aracı tipi")}${I("op","Operatör")}${ac?"":I("mf","Üretici")}${I("loc",ac?"Üs (IATA, opsiyonel)":"Lokasyon (IATA)",'maxlength="3" placeholder="FRA"')}
+ <label class="f"><span>Saat dilimi</span><select data-dd="tz"><option value="">${ac?"—":"Seçin…"}</option>${[...new Set([...TZS,x.tz].filter(Boolean))].map(z=>`<option${x.tz===z?" selected":""}>${esc(z)}</option>`).join("")}</select></label>
+ <label class="ck" style="align-self:end"><input type="checkbox" data-dd="a"${x.a?" checked":""}><span>Aktif</span></label></div>
+ ${ac?'<p class="mu">Uçakta uçuş saati değişken olduğu için slot tanımlanmaz.</p>':`<div class="mu" style="margin-top:10px">Slot saatleri (yerel; kullanılmayan slotu boş bırakın)</div><div class="g" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-top:4px">${SLOTS.map(k=>`<label class="f"><span>Slot ${k}</span><span style="display:flex;gap:4px;align-items:center"><input type="time" data-sl="${k}" data-j="0" value="${esc((x.s[k]||[])[0]||"")}" style="flex:1;min-width:0"> – <input type="time" data-sl="${k}" data-j="1" value="${esc((x.s[k]||[])[1]||"")}" style="flex:1;min-width:0"></span></label>`).join("")}</div>`}
+ <ul id="der" class="bad" style="padding-left:18px;font-size:13px;margin:8px 0 0"></ul>`,
+ [{l:"Vazgeç"},{l:"Kaydet",c:"p",f:()=>{const N={c:v=>v.toUpperCase().replace(/\s/g,""),loc:v=>v.toUpperCase().replace(/[^A-Z]/g,""),ac:v=>v.toUpperCase().trim()};
+  $$("#dl [data-dd]").forEach(i=>{const k=i.dataset.dd;x[k]=i.type==="checkbox"?(i.checked?1:0):N[k]?N[k](i.value):i.value.trim()});
+  const sl={};$$("#dl [data-sl]").forEach(i=>{const k=i.dataset.sl;(sl[k]=sl[k]||["",""])[+i.dataset.j]=i.value});x.s={};if(!ac)SLOTS.forEach(k=>{if(sl[k]&&(sl[k][0]||sl[k][1]))x.s[k]=sl[k]});
+  const b=devErr(x);if(b.length){$("#der").innerHTML=b.map(m=>`<li>${esc(m)}</li>`).join("");return false}
+  if(!ac)SLOTS.forEach(k=>{if(x.s[k]&&!(x.s[k][0]&&x.s[k][1]))delete x.s[k]});
+  if(orig&&orig.c!==x.c)DB.sessions.forEach(se=>{if(se.lane===orig.c)se.lane=x.c;else if(se.lane.startsWith(orig.c+" "))se.lane=x.c+se.lane.slice(orig.c.length)});// kod değişince oturumlar izler
+  if(orig)Object.assign(orig,x);else DB.devices.push(x);touch();render();toast("Kaydedildi: "+x.c)}}])}
+function devUses(d){const n1=DB.sims.filter(r=>String(r.dev)===String(d.id)).length,n2=DB.sessions.filter(se=>se.lane===d.c||se.lane.startsWith(d.c+" ")).length;return[n1,n2]}
+function devDel(id){const d=devById(id);if(!d)return;const[n1,n2]=devUses(d);
+ if(n1||n2)dlg("Silinemez",`<b>${esc(d.c)}</b> ${n1?n1+" müsaitlik satırında":""}${n1&&n2?" ve ":""}${n2?n2+" oturumda":""} kullanılıyor; silinemez. Pasif yaparsanız planlamada kullanılmaz, mevcut oturumlarda uyarı görünür.`,[{l:"Vazgeç"},...(d.a?[{l:"Pasif yap",c:"p",f:()=>{d.a=0;touch();render()}}]:[])]);
+ else confirmDlg("Sil",`<b>${esc(d.c)}</b> kalıcı olarak silinsin mi?`,"Sil",()=>{DB.devices=DB.devices.filter(x=>x!==d);touch();render()},"d")}
+// listeyi koda göre birleştirir (id'ler korunur, müsaitlik satırları bozulmaz)
+function upsertDevices(list){let a=0,u=0;list.forEach(src=>{const c=(src.c||"").toUpperCase();if(!c)return;const ex=DB.devices.find(d=>(d.c||"").toUpperCase()===c);
+  if(ex){Object.assign(ex,cloneDev({...src,id:ex.id}));u++}else{const id=DB.devices.some(d=>String(d.id)===String(src.id))||src.id==null?nextDevId(DB.devices):src.id;DB.devices.push(cloneDev({...src,id}));a++}});return[a,u]}
+function devRowsToItems(rows){const H=(rows[0]||[]).map(norm),col=(...al)=>H.findIndex(h=>al.includes(h));
+ const ix={k:col("tur","type","kind"),c:col("kodtescil","kod","tescil","fstd","code","fstdkodu"),ac:col("tip","actype","hava aracitipi","havaracitipi","type2"),op:col("operator"),mf:col("uretici","manufacturer"),loc:col("lokasyon","location","us"),tz:col("saatdilimi","timezone","tz"),a:col("durum","aktif","status")};
+ if(ix.c<0)return[];const sl=SLOTS.map(k=>H.indexOf(norm(k)));
+ return rows.slice(1).filter(r=>r&&String(r[ix.c]??"").trim()).map(r=>{const g=i=>i<0?"":String(r[i]??"").trim();const k=/ucak|ac|aircraft/.test(norm(g(ix.k)))?"AC":"FFS";
+  const d={k,c:g(ix.c).toUpperCase().replace(/\s/g,""),ac:g(ix.ac).toUpperCase(),op:g(ix.op),mf:g(ix.mf),loc:g(ix.loc).toUpperCase(),tz:g(ix.tz),a:ix.a<0||!/pasif|passive|hayir|^h$|^0$|false/.test(norm(g(ix.a)))?1:0,s:{}};
+  if(k!=="AC")SLOTS.forEach((n,j)=>{const t=parseSlot(sl[j]<0?"":r[sl[j]]);if(t)d.s[n]=t});return d})}
+function devSheet(){return{name:"FSTD",freeze:1,widths:[7,13,7,11,9,9,17,12,12,12,12,12,12,8],rows:[["Tür","Kod / Tescil","Tip","Operatör","Üretici","Lokasyon","Saat dilimi",...SLOTS,"Durum"].map(v=>({v,b:1,fill:"D9D9D9",bd:1})),
+ ...DB.devices.map(d=>[isAC(d)?"Uçak":"FFS",d.c,d.ac,d.op,d.mf,d.loc,d.tz,...SLOTS.map(k=>slotTime(d,k)),d.a?"Aktif":"Pasif"].map(v=>({v:v??"",bd:1})))]}}
+// müsaitlik satırındaki cihaz kodu / slot metnini (Excel, yapıştırma) cihaz + slota çevirir; bilinmeyen kod yeni FFS kaydı olur
+function resolveSimRow(it){if(it._dev==null&&it._slot==null)return it;const code=String(it._dev??"").trim().toUpperCase().replace(/\s/g,"");let dv=code?DB.devices.find(d=>(d.c||"").toUpperCase()===code):devById(it.dev);
+ if(!dv&&code){dv={id:nextDevId(DB.devices),k:"FFS",c:code,ac:"",op:"",mf:"",loc:"",tz:"",a:1,s:{}};DB.devices.push(dv)}
+ if(dv){it.dev=dv.id;const raw=String(it._slot??"").trim(),t=parseSlot(raw);let k=/^[A-F]$/i.test(raw)?raw.toUpperCase():"";
+  if(t&&!isAC(dv)){k=SLOTS.find(x=>dv.s[x]&&dv.s[x][0]===t[0]&&dv.s[x][1]===t[1])||"";if(!k){k=SLOTS.find(x=>!dv.s[x])||"";if(k)dv.s[k]=t}}
+  if(!k&&!isAC(dv))k=SLOTS.find(x=>dv.s[x])||"";it.slot=isAC(dv)?"":k}
+ delete it._dev;delete it._slot;return it}
 
 /* ---- uygunluk tablosu ---- */
 const TH=[["Rank","Rütbe"],["Name - Surname","Ad Soyad"],["Codes","Kod"],["Plan","Planlanan kontrol tarihi (son sektör). Tıklayın: oturumu düzenle"],["Error",'Excel: =IF(AND(Plan>Earliest Auto, Plan<=Valid),"","Hata")'],["Sim","Simülatör lokasyonu"],
@@ -436,7 +531,7 @@ function vTable(){const X=ctx(),R=evaluate(X);let rows=R.rows;
  const body=rows.map(r=>{const o=r.o;
   return`<tr class="${r.ev.type}"><td class="c">${esc(r.c.rank)}</td><td>${esc(r.c.name)}</td><td class="c">${esc(r.c.code)}</td>
   <td class="c">${o?`<a data-ses="${o.s.id}">${fmt(r.chk)}</a>${o.s.locked?" 🔒":""}`:`<button class="s np" data-new-for="${esc(r.c.code)}">+ Planla</button>`}</td>
-  <td class="c r" title="${esc(r.why)}">${r.hata?"Hata":""}</td><td class="c" title="${esc(o?.L?.key||"")}">${esc(r.loc)}</td><td class="c ${r.lastPlanned?"r2":""}">${fmt(r.last)}</td><td class="c">${fmt(r.ev.auto)}</td>
+  <td class="c r" title="${esc(r.why)}">${r.hata?"Hata":""}</td><td class="c" title="${esc(o?.L?.label||"")}">${esc(r.loc)}</td><td class="c ${r.lastPlanned?"r2":""}">${fmt(r.last)}</td><td class="c">${fmt(r.ev.auto)}</td>
   <td class="c ${r.ev.gapDriven?"r":""}">${fmt(r.ev.earliest)}</td><td class="c">${fmt(r.ev.deadline)}</td><td class="c"><b>${r.ev.type}</b></td><td class="c" title="${esc(r.v.none?"Bu lokasyonda vize aranmıyor":(r.v.t?.name||"")+(r.v.raw==null?" – Vize sekmesinde kaydı yok":""))}">${visaTxt(r.v)}</td>
   <td class="c r">${r.visa}</td><td class="c r">${r.final?"Final!":""}</td></tr>`}).join("");
  return`${stale()}<div class="cd"><div class="row np"><h2>Uygunluk tablosu</h2><span class="mu">${fmt(X.start)} – ${fmt(X.end)} · Excel 2027 sayfası formülleri</span><span class="sp"></span>
@@ -457,7 +552,7 @@ function vPlan(){const X=ctx(),R=evaluate(X),months=planCols(X,R),multi=X.laneAr
    const cell=(c,fn)=>c.o?fn(c):"";
    const at=c=>c.o?`data-ses="${c.o.s.id}"`:`data-new="${esc(c.lane)}|${toIso(c.d)}"`;
    const mk=c=>c.o?(c.o.err.length?" ce":c.o.warn.length?" cw":""):"";
-   const tip=c=>c.o?esc([c.o.L?.key||c.o.s.lane,...c.o.err.map(e=>"✖ "+e),...c.o.warn.map(e=>"⚠ "+e)].join("\n")):"Boş simülatör günü – oturum eklemek için tıklayın";
+   const tip=c=>c.o?esc([c.o.L?.label||c.o.s.lane,...c.o.err.map(e=>"✖ "+e),...c.o.warn.map(e=>"⚠ "+e)].join("\n")):"Boş simülatör günü – oturum eklemek için tıklayın";
    const pc=(c,j)=>{if(!c.o)return`<td class="x" ${at(c)}></td>`;const code=c.o.s.pilots[j]||"",t=c.o.types[code]||"",cr=X.crewMap.get(code);
     return`<td class="cl ${t}" ${at(c)} title="${esc(cr?cr.name+" ("+cr.rank+")":code)}${t?" – "+(c.o.labels[code]?.[c.k]||t):""}">${esc(code)||"<span style='color:#999'>—</span>"}</td>`};
    tabs.push(`<table class="mt"><tr><th class="mh" colspan="${cs.length}">${title}</th></tr>
@@ -495,7 +590,7 @@ function planDlg(){const S=DB.settings,locked=DB.sessions.filter(s=>s.locked).le
  <label class="f"><span>Plan başlangıcı</span><input type="date" id="pS" value="${esc(S.start)}"></label><label class="f"><span>Plan bitişi</span><input type="date" id="pE" value="${esc(S.end)}"></label></div>
  <div class="mu" style="margin-top:10px">Ekip: <b>${X.crew.length}</b>${bad?` <span class="bad">(${bad} kişi kod/LPC eksik ya da kod tekrarı yüzünden dışarıda)</span>`:""} · Eğitmen: <b>${X.instr.length}</b> · Dönemde müsait simülatör günü: <b>${days}</b><br>
  ${locked?`<b>${locked}</b> kilitli oturum korunacak; `:""}${DB.sessions.length-locked} kilitsiz oturum silinip yeniden dağıtılacak.</div>
- ${!X.laneArr.length?'<div class="bad" style="margin-top:8px">Simülatör müsaitliği girilmemiş; Simülatörler sekmesinden ekleyin.</div>':""}`,
+ ${!X.laneArr.length?'<div class="bad" style="margin-top:8px">Simülatör müsaitliği girilmemiş; FSTD / Uçak sekmesinden ekleyin.</div>':""}`,
  [{l:"Vazgeç"},{l:"Planla",c:"p",f:()=>{S.lpcSec=+$("#pL").value;S.opcSec=+$("#pO").value;S.start=$("#pS").value;S.end=$("#pE").value;
    if(!S.start||!S.end||S.end<S.start){toast("Plan dönemi geçersiz");return false}runPlan()}}],
  ()=>{const u=()=>{$("#pLn").textContent=sectorLabels("LPC",+$("#pL").value).join(" → ");$("#pOn").textContent=sectorLabels("OPC",+$("#pO").value).join(" → ")};u();$("#pL").onchange=u;$("#pO").onchange=u})}
@@ -511,7 +606,7 @@ function sessionDlg(id,preset={}){const X=ctx();const orig=id?DB.sessions.find(s
  const R=evaluate(X),o=orig?R.byId.get(id):null;
  const crewOpt=v=>`<option value="">— boş (koltuk doldurucu) —</option>`+[...X.crew].sort((a,b)=>(a.rank>b.rank?1:a.rank<b.rank?-1:0)||a.code.localeCompare(b.code)).map(c=>`<option value="${esc(c.code)}"${c.code===v?" selected":""}>${esc(c.code)} – ${esc(c.name)} (${esc(c.rank)})</option>`).join("")+(v&&!X.crewMap.has(v)?`<option selected>${esc(v)}</option>`:"");
  const insOpt=(v,chk)=>`<option value="">—</option>`+X.instr.map(t=>`<option value="${esc(t.code)}"${t.code===v?" selected":""}${chk&&!EXAM.has(t.role)?' style="color:#999"':""}>${esc(t.code)} (${esc(t.role)})</option>`).join("");
- const laneOpt=[...X.laneArr.map(L=>L.key),...(s.lane&&!X.lanes.has(s.lane)?[s.lane]:[])].map(k=>`<option${k===s.lane?" selected":""}>${esc(k)}</option>`).join("");
+ const laneOpt=[...X.laneArr.map(L=>[L.key,L.label+(L.loc?" · "+L.loc:"")]),...(s.lane&&!X.lanes.has(s.lane)?[[s.lane,s.lane+" (tanımsız)"]]:[])].map(([k,l])=>`<option value="${esc(k)}"${k===s.lane?" selected":""}>${esc(l)}</option>`).join("");
  const draw=()=>{const n=s.dates.length;$("#sx").innerHTML=`<table class="ed"><tr><th>Sektör</th><th>Tarih</th><th>Eğitmen</th></tr>${s.dates.map((d,k)=>`<tr><td>${k+1}. ${isCheckSector(k,n)?"kontrol":"eğitim"}</td><td><input type="date" data-sd="${k}" value="${esc(d)}"></td><td><select data-si="${k}">${insOpt(s.instr[k]||"",isCheckSector(k,n))}</select></td></tr>`).join("")}</table>`};
  dlg(orig?"Oturumu düzenle":"Yeni oturum",`<div class="g"><label class="f"><span>Simülatör / slot</span><select id="sL">${laneOpt}</select></label>
  <label class="f"><span>Sektör sayısı</span><select id="sN">${[1,2,3,4,5].map(k=>`<option${k===s.dates.length?" selected":""}>${k}</option>`).join("")}</select></label>
@@ -598,24 +693,27 @@ function rowsToItems(key,rows){const L=LISTS[key],H=rows.slice(0,6);let hi=-1,ma
   L.cols.forEach(c=>{it[c.k]=c.t==="days"?Array(7).fill(true):c.t==="check"?false:""});
   for(const ci in map){const c=map[ci],v=r[ci];if(v==null||v==="")continue;
    if(key==="visas"&&c.t==="date"&&/^(yesil|green)/.test(norm(v))){it.green=true;continue}// Excel'deki "Yesil" hücresi = yeşil pasaport
+   if(c.t==="dev"){it._dev=String(v);continue}if(c.t==="slot"){it._slot=String(v);continue}
    it[c.k]=c.t==="date"?cellDate(v):c.t==="check"?cellBool(v):c.t==="days"?parseDays(v):c.t==="code"?String(v).trim().toUpperCase():c.k==="rank"?normRank(v):c.k==="role"?String(v).trim().toUpperCase():String(v).trim()}
   if(key==="blackouts"&&!it.to)it.to=it.from;if(key==="leaves"&&!it.to)it.to=it.from;out.push(it)}return out}
 function sheetKey(name){const n=norm(name);for(const[k,al]of SHEET_ALIAS)if(al.some(a=>n.includes(a)))return k;return null}
-function applyImport(found,mode){found.forEach(({key,items})=>{DB[key]=mode==="add"?DB[key].concat(items):items});touch();render();toast("Yüklendi: "+found.map(f=>LISTS[f.key].t+" "+f.items.length).join(", "))}
+function applyImport(found,mode){found.sort((a,b)=>(b.key==="devices")-(a.key==="devices"));// önce cihazlar, sonra müsaitlik
+ found.forEach(({key,items})=>{if(key==="devices"){upsertDevices(items);return}if(key==="sims")items.forEach(resolveSimRow);DB[key]=mode==="add"?DB[key].concat(items):items});
+ touch();render();toast("Yüklendi: "+found.map(f=>(LISTS[f.key]||DEVMETA).t+" "+f.items.length).join(", "))}
 async function importFile(file){try{const nm=file.name.toLowerCase();
  if(nm.endsWith(".json")){const d=JSON.parse(await file.text());if(!d||!Array.isArray(d.crew))throw new Error("Yedek dosyası tanınmadı");
   confirmDlg("Yedekten yükle","Mevcut tüm veriler ve plan bu yedekle değiştirilecek.","Yükle",()=>{DB=d;const e=emptyDB();for(const k in e)if(DB[k]==null)DB[k]=e[k];DB.settings={...DEF,...DB.settings};migrate(DB);save();tabCounts();render();toast("Yedek yüklendi")});return}
  let sheets;if(nm.endsWith(".csv")||nm.endsWith(".txt"))sheets=[{name:file.name,rows:parseCSV(await file.text())}];else sheets=await readXlsx(await file.arrayBuffer());
- const found=[];for(const sh of sheets){const key=sheetKey(sh.name)||(sheets.length===1?(TAB in LISTS?TAB:TAB==="off"?"blackouts":"crew"):null);if(!key||found.some(f=>f.key===key))continue;const items=rowsToItems(key,sh.rows);if(items.length)found.push({key,items})}
- if(!found.length){dlg("Veri bulunamadı",`Dosyada tanınan sayfa/satır yok. Beklenen sayfa adları: ${Object.values(LISTS).map(l=>"<b>"+l.sheet+"</b>").join(", ")}. Kolay yol: <b>Excel şablonu indir</b> ile şablonu alıp doldurun.`,[{l:"Tamam",c:"p"}]);return}
- dlg("Excel'den yükle",`<div>Bulunan veriler:</div><ul>${found.map(f=>`<li><b>${LISTS[f.key].t}</b>: ${f.items.length} satır (mevcut ${DB[f.key].length})</li>`).join("")}</ul><div class="mu">"Değiştir" seçilirse yalnızca dosyada bulunan listeler değiştirilir.</div>`,
+ const found=[];for(const sh of sheets){const key=sheetKey(sh.name)||(sheets.length===1?(TAB in LISTS?TAB:TAB==="off"?"blackouts":"crew"):null);if(!key||found.some(f=>f.key===key))continue;const items=key==="devices"?devRowsToItems(sh.rows):rowsToItems(key,sh.rows);if(items.length)found.push({key,items})}
+ if(!found.length){dlg("Veri bulunamadı",`Dosyada tanınan sayfa/satır yok. Beklenen sayfa adları: ${[DEVMETA,...Object.values(LISTS)].map(l=>"<b>"+l.sheet+"</b>").join(", ")}. Kolay yol: <b>Excel şablonu indir</b> ile şablonu alıp doldurun.`,[{l:"Tamam",c:"p"}]);return}
+ dlg("Excel'den yükle",`<div>Bulunan veriler:</div><ul>${found.map(f=>`<li><b>${(LISTS[f.key]||DEVMETA).t}</b>: ${f.items.length} satır (mevcut ${DB[f.key].length})${f.key==="devices"?" – koda göre birleştirilir":""}</li>`).join("")}</ul><div class="mu">"Değiştir" seçilirse yalnızca dosyada bulunan listeler değiştirilir.</div>`,
   [{l:"Vazgeç"},{l:"Sona ekle",f:()=>applyImport(found,"add")},{l:"Değiştir",c:"p",f:()=>applyImport(found,"replace")}])}
  catch(err){dlg("Dosya okunamadı",esc(err.message||err),[{l:"Tamam",c:"p"}])}}
 function pasteDlg(key){const L=LISTS[key];dlg(L.t+" – Excel'den yapıştır",`<div class="mu">Excel'de hücreleri seçip kopyalayın (başlık satırıyla birlikte daha güvenli) ve buraya yapıştırın. Başlık yoksa sütun sırası: <b>${L.cols.map(c=>c.l).join(" | ")}</b></div><textarea id="pT" placeholder="Yapıştırın…"></textarea>`,
  [{l:"Vazgeç"},{l:"Sona ekle",f:()=>doPaste(key,"add")},{l:"Listeyi değiştir",c:"p",f:()=>doPaste(key,"replace")}],()=>$("#pT").focus())}
 function doPaste(key,mode){const items=rowsToItems(key,parseCSV($("#pT").value));if(!items.length){toast("Satır bulunamadı");return false}applyImport([{key,items}],mode)}
-function inputSheets(){return Object.entries(LISTS).map(([key,L])=>({name:L.sheet,freeze:1,widths:L.cols.map(c=>c.t==="date"?13:c.t==="code"?8:c.w?Math.round(c.w/7):14),
- rows:[L.cols.map(c=>({v:c.l,b:1,fill:"D9D9D9",bd:1})),...DB[key].map(it=>L.cols.map(c=>{const v=it[c.k];if(c.t==="date")return{v:toDn(v),d:toDn(v)!=null,bd:1};if(c.t==="check")return{v:v?"E":"H",bd:1,c:1};if(c.t==="days")return{v:daysStr(v),bd:1};return{v:v??"",bd:1}}))]}))}
+function inputSheets(){return[devSheet(),...Object.entries(LISTS).map(([key,L])=>({name:L.sheet,freeze:1,widths:L.cols.map(c=>c.t==="date"?13:c.t==="code"?8:c.w?Math.round(c.w/7):14),
+ rows:[L.cols.map(c=>({v:c.l,b:1,fill:"D9D9D9",bd:1})),...DB[key].map(it=>L.cols.map(c=>{const v=it[c.k];if(c.t==="dev")return{v:devById(v)?.c||"",bd:1};if(c.t==="date")return{v:toDn(v),d:toDn(v)!=null,bd:1};if(c.t==="check")return{v:v?"E":"H",bd:1,c:1};if(c.t==="days")return{v:daysStr(v),bd:1};return{v:v??"",bd:1}}))]}))]}
 function exportPlan(){const X=ctx(),R=evaluate(X),FILL={LPC:"FFC000",OPC:"FFFF00"};
  const head=TH.map(([h])=>({v:h,b:1,fill:"BFBFBF",bd:1,c:1,wrap:1}));
  const rows=tableSort(X,R.rows).map(r=>{const o=r.o,f=FILL[r.ev.type],C=(v,x={})=>({v,fill:f,bd:1,c:1,...x}),D=(dn,x={})=>C(dn,{d:dn!=null,...x});
@@ -632,13 +730,20 @@ function exportPlan(){const X=ctx(),R=evaluate(X),FILL={LPC:"FFC000",OPC:"FFFF00
  download(xlsxBlob([t1,{name:"Taslak Plan",widths:Array(CH).fill(9),rows:pr,merges},...inputSheets()]),"simulator-plani-"+toIso(todayDn())+".xlsx")}
 
 /* ============ olaylar ============ */
-document.addEventListener("click",e=>{const el=e.target.closest("button,[data-ses],[data-new],[data-ls],[data-ts],a");if(!el)return;const d=el.dataset;
+document.addEventListener("click",e=>{const el=e.target.closest("button,[data-ses],[data-new],[data-ls],[data-ts],[data-ds],a");if(!el)return;const d=el.dataset;
+ if(d.deved!==undefined){const dv=devById(d.deved);return devDlg(dv?dv.id:null,dv?.k)}
+ if(d.devnew)return devDlg(null,d.devnew);
+ if(d.devdel!==undefined)return devDel(d.devdel);
+ if(d.ds){Object.assign(UI.dev,nextSort(UI.dev,d.ds));render();return}
+ if(d.devclear){UI.dev={s:null,d:1,f:{}};render();return}
+ if(d.devform){const fd=formDevices();if(!fd)return;return confirmDlg("Form uygulamasından al",`SHGM form uygulamasındaki ${fd.length} FSTD / uçak kaydı koda göre buraya aktarılacak (aynı kodlu kayıtlar güncellenir, yeni kodlar eklenir).`,"Aktar",()=>{const[a,u]=upsertDevices(fd);touch();render();toast(a+" eklendi, "+u+" güncellendi")})}
+ if(d.devreset)return confirmDlg("Örnek listeye dön","FSTD / uçak listesi örnek listeye döner: örnekteki kayıtlar eklenir/güncellenir, kullanılmayan diğer kayıtlar silinir.","Dön",()=>{upsertDevices(DEV0);const keep=new Set(DEV0.map(d=>d.c));DB.devices=DB.devices.filter(d=>keep.has(d.c)||devUses(d).some(Boolean));touch();render()});
  if(d.ls){const st=lfOf(d.ls);Object.assign(st,nextSort(st,d.sk));render();return}
  if(d.ts!==undefined){const i=+d.ts;UI.ts=UI.ts.s!==i?{s:i,d:1}:UI.ts.d===1?{s:i,d:-1}:{s:null,d:1};render();return}
  if(d.lclear){UI.lf[d.lclear]={s:null,d:1,f:{}};render();return}
  if(d.tclear){UI.tf={};UI.ts={s:null,d:1};UI.q="";UI.type="";UI.onlyErr=false;render();return}
  if(d.tab)return show(d.tab);
- if(d.add){UI.lf[d.add]={s:null,d:1,f:{}};const L=LISTS[d.add],it={id:uid()};L.cols.forEach(c=>it[c.k]=c.t==="days"?Array(7).fill(true):c.t==="check"?false:"");if(d.add==="sims"&&DB.sims.length){const p=DB.sims.at(-1);Object.assign(it,{sim:p.sim,slot:p.slot,loc:p.loc})}DB[d.add].push(it);touch();render();return}
+ if(d.add){UI.lf[d.add]={s:null,d:1,f:{}};const L=LISTS[d.add],it={id:uid()};L.cols.forEach(c=>it[c.k]=c.t==="days"?Array(7).fill(true):c.t==="check"?false:"");if(d.add==="sims"&&DB.sims.length){const p=DB.sims.at(-1);Object.assign(it,{dev:p.dev,slot:p.slot})}DB[d.add].push(it);touch();render();return}
  if(d.del){DB[d.del].splice(+d.i,1);touch();render();return}
  if(d.clear)return confirmDlg("Tümünü sil",`<b>${LISTS[d.clear].t}</b> listesindeki ${DB[d.clear].length} satır silinecek.`,"Sil",()=>{DB[d.clear]=[];touch();render()},"d");
  if(d.paste)return pasteDlg(d.paste);
@@ -653,6 +758,7 @@ document.addEventListener("click",e=>{const el=e.target.closest("button,[data-se
 });
 document.addEventListener("change",e=>{const el=e.target,d=el.dataset;
  if(d.l){const it=DB[d.l][+d.i],col=LISTS[d.l].cols.find(c=>c.k===d.k);if(!it||!col)return;
+  if(col.t==="dev"){const dv=devById(el.value);it.dev=dv?dv.id:"";if(dv&&!isAC(dv)&&!dv.s?.[it.slot])it.slot=SLOTS.find(k=>dv.s[k])||"";if(isAC(dv))it.slot="";touch();render();return}
   if(col.t==="days"){if(!Array.isArray(it.days))it.days=Array(7).fill(true);it.days[+d.j]=el.checked}else if(col.t==="check")it[d.k]=el.checked;else if(col.t==="code"){it[d.k]=el.value.trim().toUpperCase();el.value=it[d.k]}else it[d.k]=el.value;
   touch();if(d.l==="crew")crewDerived();if(d.l==="visaTypes")render();return}
  if(d.s){const S=DB.settings;S[d.s]=el.type==="checkbox"?el.checked:el.type==="number"?Math.max(0,+el.value||0):el.value;if(d.s==="winM"||d.s==="gapM"||d.s==="lpcM"||d.s==="opcM"||d.s==="maxGap"||d.s==="instrPerDay")S[d.s]=Math.max(1,S[d.s]);touch();render();return}
@@ -662,6 +768,7 @@ document.addEventListener("input",e=>{const el=e.target,d=el.dataset;let sel=nul
  if(d.ui==="q"){UI.q=el.value;sel='[data-ui="q"]'}
  else if(d.lf){lfOf(d.lf).f[d.fk]=el.value;sel=`[data-lf="${d.lf}"][data-fk="${d.fk}"]`}
  else if(d.tf!==undefined){UI.tf[d.tf]=el.value;sel=`[data-tf="${d.tf}"]`}
+ else if(d.dvf){UI.dev.f[d.dvf]=el.value;sel=`[data-dvf="${d.dvf}"]`}
  if(!sel)return;clearTimeout(window._q);window._q=setTimeout(()=>{const sc=$(".sc")?.scrollLeft||0;render();const i=$(sel);if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}const s2=$(".sc");if(s2)s2.scrollLeft=sc},250)});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#ov").hidden)closeDlg()});
 $("#ov").addEventListener("click",e=>{if(e.target.id==="ov")closeDlg()});
