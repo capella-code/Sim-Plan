@@ -51,7 +51,7 @@ ul.rules{margin:4px 0;padding-left:18px}ul.rules li{margin:3px 0}
 @media print{.np,.tabs,.toast{display:none!important}body{background:#fff}.w{max-width:none;padding:0}.cd{border:none;padding:0}.sc{max-height:none;overflow:visible}.ot,.mt{font-size:10px}}
 </style></head><body><div class="w">
 <div class="row"><h1>Yıllık Simülatör Planı</h1><span class="sp"></span>
-<div class="row np"><button class="p" id="bPlan">Planı oluştur</button><button id="bImp">Excel / CSV yükle</button><button id="bTpl">Excel şablonu indir</button><button id="bExp">Planı Excel'e aktar</button><button id="bPrint">Yazdır</button>
+<div class="row np"><button class="p" id="bPlan">Planı oluştur</button><button class="p" id="bPlanR" title="Yalnızca müsaitlik listesindeki Reserved günleri kullanır; tahmini slot açmaz">Sadece Reserved ile planla</button><button id="bImp">Excel / CSV yükle</button><button id="bTpl">Excel şablonu indir</button><button id="bExp">Planı Excel'e aktar</button><button id="bPrint">Yazdır</button>
 <button id="bMore">Diğer ▾</button></div></div>
 <div class="mu">Veriler yalnızca bu cihazda (tarayıcı hafızasında) saklanır. İnternet gerekmez. Yedek almak için Diğer ▸ Yedek al.</div>
 <input type="file" id="fImp" accept=".xlsx,.csv,.txt,.json" hidden>
@@ -694,20 +694,21 @@ const confirmDlg=(title,msg,okL,fn,cls="p")=>dlg(title,`<div>${msg}</div>`,[{l:"
 function defaultPref(){const p={},cnt=new Map();DB.sims.forEach(r=>{const k=r.dev+"|"+r.slot;cnt.set(k,(cnt.get(k)||0)+1)});
  [...cnt].sort((a,b)=>b[1]-a[1]).forEach(([k])=>{const[id,sl]=k.split("|");const dv=devById(id);if(dv&&dv.a&&!isAC(dv)&&!Object.keys(p).length)p[dv.id]=sl});
  if(!Object.keys(p).length){const d=DB.devices.find(d=>d.a&&!isAC(d));if(d)p[d.id]=defSlot(d)}return p}
-function planDlg(){const S=DB.settings,locked=DB.sessions.filter(isKept).length,lockedTent=DB.sessions.filter(se=>se.locked&&!isKept(se)).length,X=ctx();
+// resOnly: yalnızca Reserved günlerle planla (tahmini blok yok); sığmayan kontrol "Planlanmadı" kalır
+function planDlg(resOnly){const S=DB.settings,locked=DB.sessions.filter(isKept).length,lockedTent=DB.sessions.filter(se=>se.locked&&!isKept(se)).length,X=ctx();
  const days=X.laneArr.reduce((a,L)=>a+[...L.res].filter(d=>d>=X.start&&d<=X.end).length,0),bad=DB.crew.length-X.crew.length;
  const pref=S.pref&&typeof S.pref==="object"&&Object.keys(S.pref).length?S.pref:defaultPref();
  const devs=DB.devices.filter(d=>d.a&&!isAC(d)).sort((a,b)=>a.c.localeCompare(b.c)),firms=[...new Set(devs.map(firmOf))].sort();
  const firmHtml=firms.map(f=>`<div style="margin:4px 0"><b>${esc(f)}</b> <span class="mu">${esc([...new Set(devs.filter(d=>firmOf(d)===f).map(d=>d.op))].join(", "))}</span>
   <div style="padding-left:18px;display:flex;flex-direction:column;gap:3px">${devs.filter(d=>firmOf(d)===f).map(d=>`<div class="row"><label class="ck" style="min-width:170px"><input type="checkbox" data-pd="${esc(d.id)}"${String(d.id)in pref?" checked":""}><span>${esc(d.c)} · ${esc(d.loc)}</span></label>
    <select data-ps="${esc(d.id)}">${SLOTS.filter(k=>d.s?.[k]).map(k=>`<option value="${k}"${(pref[d.id]||defSlot(d))===k?" selected":""}>Slot ${k} · ${esc(slotTime(d,k))}</option>`).join("")}</select></div>`).join("")}</div></div>`).join("");
- dlg("Planı oluştur",`<div class="g">
+ dlg(resOnly?"Sadece Reserved ile planla":"Planı oluştur",`<div class="g">
  <label class="f"><span>LPC kaç sektör planlansın?</span><select id="pL">${[1,2,3,4,5].map(n=>`<option${n==S.lpcSec?" selected":""}>${n}</option>`).join("")}</select><span class="mu" id="pLn"></span></label>
  <label class="f"><span>OPC kaç sektör planlansın?</span><select id="pO">${[1,2,3,4,5].map(n=>`<option${n==S.opcSec?" selected":""}>${n}</option>`).join("")}</select><span class="mu" id="pOn"></span></label>
  <label class="f"><span>Plan başlangıcı</span><input type="date" id="pS" value="${esc(S.start)}"></label><label class="f"><span>Plan bitişi</span><input type="date" id="pE" value="${esc(S.end)}"></label></div>
- <h3>Taslak plan hangi simülatör ve slotta kurulsun?</h3>
+ ${resOnly?`<h3>Yalnızca Reserved günler</h3><div class="mu">Taslak plan yalnızca müsaitlik listesindeki <b>Reserved</b> günlerle kurulur (dönemde <b>${days}</b> gün); tahmini slot açılmaz. Sığmayan kontroller uygunluk tablosunda <b>Planlanmadı</b> olarak görünür.</div>${days?"":'<div class="bad" style="margin-top:6px">Dönemde Reserved gün yok.</div>'}`:`<h3>Taslak plan hangi simülatör ve slotta kurulsun?</h3>
  <div class="mu">Önce müsaitlik listesindeki <b>Reserved</b> günler kullanılır (dönemde ${days} gün). Kalan ihtiyaç için seçilen simülatörlerde her ay bir blok açılır: aylara dengeli (ayda yaklaşık ${monthTarget(X)} oturum), kapalı günler hariç, mümkünse ayın ilk ve son 5 günü dışında. Plandaki her gün müsaitlik listesine <b>Tahmini</b> satır olarak eklenir.</div>
- ${firmHtml||'<div class="bad">Aktif simülatör yok (FSTD / Uçak sekmesi).</div>'}
+ ${firmHtml||'<div class="bad">Aktif simülatör yok (FSTD / Uçak sekmesi).</div>'}`}
  <div class="mu" style="margin-top:10px">Kurallar (Ayarlar'dan): ${prioOf(S).map((k,i)=>`${i+1}. ${PRULES[k]}${ruleOn(S,k)?"":" <i>(uygulanmıyor)</i>"}`).join(" · ")}</div>
  <div class="mu" style="margin-top:6px">Ekip: <b>${X.crew.length}</b>${bad?` <span class="bad">(${bad} kişi kod/LPC eksik ya da kod tekrarı yüzünden dışarıda)</span>`:""} · Eğitmen: <b>${X.instr.length}</b><br>
  ${locked?`<b>${locked}</b> kilitli ve slotları Reserved oturum korunacak; `:""}${DB.sessions.length-locked} oturum yeniden dağıtılacak${lockedTent?` (bunların ${lockedTent} tanesi kilitli ama slotu Tahmini olduğu için yeni seçime göre taşınır)`:""}.</div>
@@ -715,11 +716,12 @@ function planDlg(){const S=DB.settings,locked=DB.sessions.filter(isKept).length,
  [{l:"Vazgeç"},{l:"Planla",c:"p",f:()=>{S.lpcSec=+$("#pL").value;S.opcSec=+$("#pO").value;S.start=$("#pS").value;S.end=$("#pE").value;
    if(!S.start||!S.end||S.end<S.start){toast("Plan dönemi geçersiz");return false}
    const np={};$$("#dl [data-pd]").forEach(c=>{if(c.checked)np[c.dataset.pd]=$(`#dl [data-ps="${c.dataset.pd}"]`)?.value||""});
+   if(resOnly){if(!days){toast("Dönemde Reserved gün yok");return false}runPlan(true);return}
    if(!Object.keys(np).length&&!days){toast("En az bir simülatör seçin");return false}S.pref=np;runPlan()}}],
  ()=>{const u=()=>{$("#pLn").textContent=sectorLabels("LPC",+$("#pL").value).join(" → ");$("#pOn").textContent=sectorLabels("OPC",+$("#pO").value).join(" → ")};u();$("#pL").onchange=u;$("#pO").onchange=u})}
 // kilitsiz oturumlar ve onların tahmini satırları silinir, bloklar hesaplanır; süresi dönem içinde bitip sığmayan kontrol olursa o ayın bloğu büyütülüp yeniden denenir
-function runPlan(){const t0=performance.now();DB.sessions=DB.sessions.filter(isKept);syncSlots();const X=ctx(),S=X.S;
- X.prefLanes=Object.entries(S.pref||{}).map(([id,k])=>{const dv=devById(id);return dv&&dv.a&&!isAC(dv)&&dv.s?.[k]?{key:devLane(dv,k),dk:[dv,k]}:null}).filter(Boolean);
+function runPlan(resOnly){const t0=performance.now();DB.sessions=DB.sessions.filter(isKept);syncSlots();const X=ctx(),S=X.S;
+ X.prefLanes=resOnly?[]:Object.entries(S.pref||{}).map(([id,k])=>{const dv=devById(id);return dv&&dv.a&&!isAC(dv)&&dv.s?.[k]?{key:devLane(dv,k),dk:[dv,k]}:null}).filter(Boolean);
  const extra=new Map();let out=null,bestUn=Infinity;const finOn=ruleOn(S,"final");
  for(let it=0;it<12;it++){const tent=monthBlocks(X,X.prefLanes,extra),o=schedule(X,tent);DB.sessions=DB.sessions.filter(isKept).concat(o);
   const R0=evaluate(ctx()),un=R0.rows.filter(r=>!r.o&&r.ev.deadline<=X.end&&!r.ev.expired),fin=finOn?R0.rows.filter(r=>r.o&&r.final&&r.ev.soft>=r.ev.earliest):[];
@@ -918,7 +920,7 @@ document.addEventListener("input",e=>{const el=e.target,d=el.dataset;let sel=nul
  if(!sel)return;clearTimeout(window._q);window._q=setTimeout(()=>{const sc=$(".sc")?.scrollLeft||0;render();const i=$(sel);if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}const s2=$(".sc");if(s2)s2.scrollLeft=sc},250)});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#ov").hidden)closeDlg()});
 $("#ov").addEventListener("click",e=>{if(e.target.id==="ov")closeDlg()});
-$("#bPlan").onclick=planDlg;$("#bImp").onclick=()=>$("#fImp").click();$("#fImp").onchange=e=>{const f=e.target.files[0];e.target.value="";if(f)importFile(f)};
+$("#bPlan").onclick=()=>planDlg(false);$("#bPlanR").onclick=()=>planDlg(true);$("#bImp").onclick=()=>$("#fImp").click();$("#fImp").onchange=e=>{const f=e.target.files[0];e.target.value="";if(f)importFile(f)};
 $("#bTpl").onclick=()=>download(xlsxBlob(inputSheets()),"simulator-plan-veri.xlsx");$("#bExp").onclick=exportPlan;$("#bPrint").onclick=()=>window.print();
 $("#bMore").onclick=()=>dlg("Diğer işlemler",`<div class="row"><button id="mB">Yedek al (JSON)</button><button id="mR">Yedekten yükle</button><button id="mS">Örnek veriyi yükle</button><button id="mC" class="d">Tüm verileri temizle</button></div><div class="mu" style="margin-top:8px">Yedek dosyası tüm girdileri, ayarları ve planı içerir; başka cihaza taşımak için kullanın.</div>`,[{l:"Kapat"}],()=>{
  $("#mB").onclick=()=>{download(new Blob([JSON.stringify(DB,null,1)],{type:"application/json"}),"simulator-plan-yedek-"+toIso(todayDn())+".json");closeDlg()};
