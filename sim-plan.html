@@ -1,0 +1,601 @@
+<!DOCTYPE html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Yıllık Simülatör Planı</title>
+<style>
+:root{--bg:#f4f6f9;--cd:#fff;--tx:#1b1f24;--mu:#5b6570;--bd:#d5dbe2;--ac:#1456c8;--ok:#177a3b;--er:#c0302b;--wa:#b35c00;--hd:#e8edf3;--lpc:#ffc000;--opc:#ffff00;--gr:#bfbfbf}
+@media(prefers-color-scheme:dark){:root{--bg:#14171a;--cd:#1d2126;--tx:#e8ebee;--mu:#9aa5b1;--bd:#333a42;--ac:#6ea2ff;--ok:#5ccf86;--er:#ff7b72;--wa:#f0a050;--hd:#262c33;color-scheme:dark}}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 -apple-system,system-ui,"Segoe UI",Roboto,sans-serif}
+.w{max-width:1500px;margin:0 auto;padding:10px 12px 60px}
+h1{font-size:18px;margin:6px 0}h2{font-size:15px;margin:0 0 8px}h3{font-size:14px;margin:10px 0 6px}
+button,select,input,textarea{font:inherit;color:var(--tx);background:var(--cd);border:1px solid var(--bd);border-radius:7px;padding:6px 8px;max-width:100%}
+button{cursor:pointer;min-height:34px}button.p{background:var(--ac);color:#fff;border-color:var(--ac)}button.d{color:var(--er)}button.s{min-height:26px;padding:2px 8px;font-size:12px}
+button:disabled{opacity:.45}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;margin:10px 0 0;border-bottom:1px solid var(--bd)}
+.tabs button{border-radius:8px 8px 0 0;border-bottom:none;background:transparent}.tabs button.on{background:var(--cd);font-weight:600;border-color:var(--bd);color:var(--ac)}
+.tabs .n{font-size:11px;color:var(--mu);margin-left:4px}
+.cd{background:var(--cd);border:1px solid var(--bd);border-radius:10px;padding:12px;margin:10px 0}
+.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.f{display:flex;flex-direction:column;gap:3px}.f>span{font-size:12px;color:var(--mu)}.f input,.f select{width:100%;box-sizing:border-box}
+.ck{display:flex;gap:8px;align-items:flex-start}.ck input{margin-top:3px}
+.mu{color:var(--mu);font-size:12.5px}.bad{color:var(--er);font-weight:600}.warn{color:var(--wa)}.good{color:var(--ok)}
+.row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.sp{flex:1}
+.sc{overflow:auto;max-height:72vh}
+table{border-collapse:collapse;font-size:12.5px}
+.ed td,.ed th{border-bottom:1px solid var(--bd);padding:3px 4px;text-align:left;white-space:nowrap}.ed th{background:var(--hd);position:sticky;top:0;z-index:1;font-size:12px}
+.ed input,.ed select{padding:3px 5px;border-radius:5px}.ed input.code{width:56px;text-transform:uppercase}.ed input.dup{border-color:var(--er);background:#fde8e7;color:#000}
+.days label{font-size:11px;margin-right:2px;display:inline-flex;align-items:center;gap:1px}.days input{margin:0}
+.ot{border:1px solid #000}.ot td,.ot th{border:1px solid #000;padding:4px 7px;white-space:nowrap;color:#000}
+.ot th{background:var(--gr);font-weight:700;text-align:center;position:sticky;top:0;z-index:1}.ot th[title]{cursor:help}
+.ot tr.LPC td{background:var(--lpc)}.ot tr.OPC td{background:var(--opc)}
+.ot td.c{text-align:center}.ot .r{color:#d00000;font-weight:700}.ot .r2{color:#d00000}.ot .wn{color:#8a4300;font-weight:600}
+.ot a{color:#000;font-weight:700;text-decoration:underline;cursor:pointer}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}.chip{border:1px solid var(--bd);background:var(--cd);border-radius:20px;padding:3px 10px;font-size:12.5px}.chip b{font-size:14px}
+.chip.e{border-color:var(--er);color:var(--er)}.chip.w{border-color:var(--wa);color:var(--wa)}
+.months{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start}
+.mt{border-collapse:collapse;background:#fff;break-inside:avoid}.mt td,.mt th{border:1px solid #000;text-align:center;padding:3px 6px;min-width:46px;color:#000;font-size:15px}
+.mt th.mh{background:var(--gr);font-weight:700;font-size:15px}.mt td.dy{font-size:15px;cursor:pointer;position:relative}.mt td.dy small{display:block;font-size:10px;color:#555;line-height:1}
+.mt td.ln{font-size:10px;color:#333}.mt td.lb{font-size:10px;color:#333;background:#f2f2f2}
+.mt td.LPC{background:var(--lpc)}.mt td.OPC{background:var(--opc)}.mt td.x{background:#eee;color:#777}
+.mt td.cl{cursor:pointer}.mt td.ce{box-shadow:inset 0 4px 0 #d00000}.mt td.cw{box-shadow:inset 0 4px 0 #ff8c00}.mt td.em{color:#999;cursor:pointer}
+.lg{display:inline-block;width:14px;height:14px;border:1px solid #000;vertical-align:-2px;margin-right:3px}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;z-index:50;padding:30px 10px;overflow:auto}
+.dl{background:var(--cd);border-radius:12px;max-width:760px;width:100%;padding:16px;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+.dl h2{font-size:16px}.dl .bt{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+.dl textarea{width:100%;box-sizing:border-box;min-height:180px;font-family:Consolas,monospace;font-size:12px}
+.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#1b1f24;color:#fff;padding:9px 16px;border-radius:8px;z-index:60;font-size:13px;max-width:90vw}
+.banner{border:1px solid var(--wa);background:rgba(255,140,0,.08);border-radius:8px;padding:7px 10px;margin:8px 0;font-size:13px}
+ul.rules{margin:4px 0;padding-left:18px}ul.rules li{margin:3px 0}
+.iss{font-size:12px;margin:2px 0}
+@media print{.np,.tabs,.toast{display:none!important}body{background:#fff}.w{max-width:none;padding:0}.cd{border:none;padding:0}.sc{max-height:none;overflow:visible}.ot,.mt{font-size:10px}}
+</style></head><body><div class="w">
+<div class="row"><h1>Yıllık Simülatör Planı</h1><span class="sp"></span>
+<div class="row np"><button class="p" id="bPlan">Planı oluştur</button><button id="bImp">Excel / CSV yükle</button><button id="bTpl">Excel şablonu indir</button><button id="bExp">Planı Excel'e aktar</button><button id="bPrint">Yazdır</button>
+<button id="bMore">Diğer ▾</button></div></div>
+<div class="mu">Veriler yalnızca bu cihazda (tarayıcı hafızasında) saklanır. İnternet gerekmez. Yedek almak için Diğer ▸ Yedek al.</div>
+<input type="file" id="fImp" accept=".xlsx,.csv,.txt,.json" hidden>
+<div class="tabs np" id="tabs"></div>
+<div id="view"></div>
+</div>
+<div class="ov" id="ov" hidden><div class="dl" id="dl"></div></div>
+<datalist id="codes"></datalist>
+<script>
+"use strict";
+/* ============ yardımcılar ============ */
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+const uid=()=>Math.random().toString(36).slice(2,10);
+const pad=n=>String(n).padStart(2,"0");
+const DAY=864e5;
+const toDn=iso=>{if(!iso||typeof iso!=="string")return null;const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);return m?Date.UTC(+m[1],+m[2]-1,+m[3])/DAY:null};
+const ymd=dn=>{const t=new Date(dn*DAY);return[t.getUTCFullYear(),t.getUTCMonth(),t.getUTCDate()]};
+const fromYmd=(y,m,d)=>Date.UTC(y,m,d)/DAY;
+const toIso=dn=>{const[y,m,d]=ymd(dn);return y+"-"+pad(m+1)+"-"+pad(d)};
+const fmt=dn=>{if(dn==null)return"";const[y,m,d]=ymd(dn);return pad(d)+"."+pad(m+1)+"."+y};
+const fmtS=dn=>{const[,m,d]=ymd(dn);return pad(d)+"."+pad(m+1)};
+// ay ekle/çıkar; ayın son günü taşarsa ayın son gününe çekilir (31.08 − 6 ay = 28/29.02)
+const addM=(dn,n)=>{const[y,m,d]=ymd(dn);const last=new Date(Date.UTC(y,m+n+1,0)).getUTCDate();return fromYmd(y,m+n,Math.min(d,last))};
+const eom=dn=>{const[y,m]=ymd(dn);return fromYmd(y,m+1,0)};
+const wd=dn=>(new Date(dn*DAY).getUTCDay()+6)%7;// Pzt=0
+const todayDn=()=>{const t=new Date();return fromYmd(t.getFullYear(),t.getMonth(),t.getDate())};
+const DAYN=["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"];
+const MON=["Oca","Şub","Mar","Nis","May","Haz","Tem","Ağu","Eyl","Eki","Kas","Ara"];
+const norm=s=>String(s??"").toLocaleLowerCase("tr").replace(/ı/g,"i").replace(/ş/g,"s").replace(/ğ/g,"g").replace(/ü/g,"u").replace(/ö/g,"o").replace(/ç/g,"c").normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]/g,"");
+const clampInt=(v,a,b)=>Math.max(a,Math.min(b,parseInt(v,10)||a));
+const EXAM=new Set(["TRE","SFE"]);
+const ls={g:k=>{try{return localStorage.getItem(k)}catch(e){return null}},s:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
+
+/* ============ veri ============ */
+const LS_KEY="simplan.v1";
+const DEF={start:"",end:"",lpcSec:2,opcSec:2,maxGap:1,winM:3,gapM:4,lpcM:12,opcM:6,instrPerDay:1,avoidFinal:true,rankFirst:true,visaHard:false,allowMix:true,diffInstr:true};
+const LISTS={
+ crew:{t:"Ekip",sheet:"Ekip",cols:[
+  {k:"rank",l:"Rütbe",t:"sel",o:["CPT","F/O"],al:["rutbe","rank","unvan","gorev","pozisyon"]},
+  {k:"name",l:"Ad Soyad",t:"text",al:["adsoyad","namesurname","adisoyadi","name","isim","personel"],w:190},
+  {k:"code",l:"Kod",t:"code",al:["kod","code","codes","kisaltma"]},
+  {k:"lpc",l:"LPC Geçerlilik",t:"date",al:["lpcgecerlilik","lpcexpiry","lisansgecerlilik","lpcvalid","lpc","valid","gecerlilik"]},
+  {k:"opc",l:"OPC Geçerlilik",t:"date",al:["opcgecerlilik","opcexpiry","opcvalid","opc"],tip:"Boş bırakılırsa LPC geçerliliğinden ±6 ay ile hesaplanır (bugünden sonraki ilk tarih, ay sonuna yuvarlanır)."},
+  {k:"last",l:"Son Sim Tarihi",t:"date",al:["sonsimtarihi","sonsimulatortarihi","sonkontroltarihi","sonkontrol","sonsim","lastsim","lastcheck","sonsimulator"],tip:"En son katıldığı kontrolün (LPC/OPC) tarihi; 4 ay kuralı buna göre uygulanır."},
+  {k:"lastLoc",l:"Son Sim Yeri",t:"text",al:["sonsimyeri","themostrecent","lastlocation","sonyer"],w:60},
+  {k:"visa",l:"Vize Bitiş",t:"date",al:["vizebitis","vizegecerlilik","visaexpiry","vize","visa"]},
+  {k:"note",l:"Not",t:"text",al:["not","note","aciklama"],w:130}]},
+ instr:{t:"Eğitmenler",sheet:"Egitmenler",cols:[
+  {k:"code",l:"Kod",t:"code",al:["kod","code"]},
+  {k:"name",l:"Ad Soyad",t:"text",al:["adsoyad","name","adisoyadi","isim"],w:190},
+  {k:"role",l:"Yetki",t:"sel",o:["TRE","SFE","TRI","SFI"],al:["yetki","role","rol","yetkisi","rating"],tip:"Kontrol sektörlerine (LPC/OPC) yalnızca TRE ve SFE atanır; eğitim sektörlerine (LPT/OPT) herkes."},
+  {k:"note",l:"Not",t:"text",al:["not","note","aciklama"],w:130}]},
+ sims:{t:"Simülatörler",sheet:"Simulatorler",cols:[
+  {k:"sim",l:"Simülatör",t:"text",al:["simulator","sim","fstd","cihaz"],w:100},
+  {k:"slot",l:"Slot / Saat",t:"text",al:["slot","saat","seans"],w:100},
+  {k:"loc",l:"Lokasyon",t:"text",al:["lokasyon","location","yer"],w:60},
+  {k:"visa",l:"Vize gerekli",t:"check",al:["vizegerekli","vize","visa","visarequired"]},
+  {k:"from",l:"Başlangıç",t:"date",al:["baslangic","from","start","ilk"]},
+  {k:"to",l:"Bitiş",t:"date",al:["bitis","to","end","son"]},
+  {k:"days",l:"Günler",t:"days",al:["gunler","days","gun"]}]},
+ blackouts:{t:"Kapalı günler",sheet:"KapaliGunler",cols:[
+  {k:"from",l:"Başlangıç",t:"date",al:["baslangic","from","start","tarih","date"]},
+  {k:"to",l:"Bitiş",t:"date",al:["bitis","to","end"]},
+  {k:"note",l:"Açıklama",t:"text",al:["aciklama","note","not","neden"],w:200}]},
+ leaves:{t:"Kişi izinleri",sheet:"Izinler",cols:[
+  {k:"code",l:"Kod",t:"code",al:["kod","code"]},
+  {k:"from",l:"Başlangıç",t:"date",al:["baslangic","from","start"]},
+  {k:"to",l:"Bitiş",t:"date",al:["bitis","to","end"]},
+  {k:"note",l:"Açıklama",t:"text",al:["aciklama","note","not"],w:200}]},
+ nofly:{t:"Birlikte uçmayacaklar",sheet:"BirlikteUcmayacaklar",cols:[
+  {k:"a",l:"Kod 1",t:"code",al:["kod1","code1","kisi1"]},
+  {k:"b",l:"Kod 2",t:"code",al:["kod2","code2","kisi2"]},
+  {k:"note",l:"Açıklama",t:"text",al:["aciklama","note","not","neden"],w:220}]}
+};
+const SHEET_ALIAS=[["crew",["ekip","crew","pilot"]],["instr",["egitmen","instructor","ogretmen","tre","tri"]],["nofly",["birlikte","eslesme","nofly","ucmayacak"]],["sims",["simulator","sim","fstd"]],["blackouts",["kapali","tatil","holiday","blackout"]],["leaves",["izin","leave"]]];
+function emptyDB(){const t=todayDn();return{settings:{...DEF,start:toIso(t),end:toIso(addM(t,12)-1)},crew:[],instr:[],sims:[],blackouts:[],leaves:[],nofly:[],sessions:[],dataVer:0,planVer:-1,planAt:null}}
+let DB;
+function load(){try{DB=JSON.parse(ls.g(LS_KEY)||"null")}catch(e){DB=null}
+ if(!DB||typeof DB!=="object"){DB=sampleDB();save();return}
+ const e=emptyDB();for(const k in e)if(DB[k]==null)DB[k]=e[k];DB.settings={...DEF,...DB.settings}}
+function save(){ls.s(LS_KEY,JSON.stringify(DB))}
+function touch(){DB.dataVer++;save();tabCounts()}
+
+/* ============ örnek veri ============ */
+function sampleDB(){const d=emptyDB();d.settings.start="2026-12-01";d.settings.end="2027-12-31";
+ const C=(rank,name,code,lpc,last,visa,opc="")=>({id:uid(),rank,name,code,lpc,opc,last,lastLoc:"FRA",visa,note:""});
+ d.crew=[C("CPT","BARIŞ BARANOĞLU","BA","2027-02-28","2026-06-25","2030-06-22"),C("F/O","ALİHAN ÇEBİ","AN","2027-02-28","2026-08-08","2026-09-10"),
+  C("F/O","MERT CAN","MC","2027-03-31","2026-09-15","2029-05-01"),C("F/O","YUSUF ZENGİN","YZ","2027-02-28","2026-07-20","2028-11-30"),
+  C("CPT","DENİZ VURAL","DV","2027-04-30","2026-10-10","2029-03-15"),C("F/O","OĞUZ KAYA","OK","2027-04-30","2026-10-05","2028-08-20"),
+  C("CPT","İLKER YAVUZ","IY","2027-08-31","2026-08-31","2029-01-10"),C("F/O","MELİS NAZ","MN","2027-09-30","2026-09-20","2030-02-02"),
+  C("CPT","ONUR BAŞ","OB","2027-09-30","2026-09-15","2029-07-07"),C("F/O","GÖKHAN PEKER","GP","2027-10-31","2026-10-01","2029-09-09"),
+  C("CPT","İZZET ZORLU","IZ","2027-10-31","2026-10-12","2028-12-12"),C("F/O","SELİN DEMİR","SD","2027-11-30","2026-10-20","2029-04-04"),
+  C("CPT","TOLGA KARA","TK","2027-05-31","2026-11-01","2029-06-06"),C("F/O","RÜZGAR CAN","RC","2027-05-31","2026-10-25","2027-04-30"),
+  C("CPT","HAKAN SOY","HS","2027-07-31","2026-07-10","2029-10-10"),C("F/O","EMRE KILIÇ","EK","2027-07-31","2026-07-15","2029-10-10")];
+ d.instr=[{id:uid(),code:"BB",name:"BURAK BULUT",role:"TRI",note:""},{id:uid(),code:"GB",name:"GÖKSEL BAYRAK",role:"TRE",note:""}];
+ const P=[["2026-12-14","2026-12-17"],["2027-01-19","2027-01-22"],["2027-02-16","2027-02-19"],["2027-03-23","2027-03-26"],["2027-04-19","2027-04-22"],["2027-05-17","2027-05-20"],["2027-06-14","2027-06-17"],["2027-07-19","2027-07-22"],["2027-08-16","2027-08-19"],["2027-09-13","2027-09-16"],["2027-10-18","2027-10-21"],["2027-11-15","2027-11-18"],["2027-12-13","2027-12-16"]];
+ d.sims=P.map(([f,t])=>({id:uid(),sim:"DE-1A-049",slot:"15:05-19:05",loc:"FRA",visa:true,from:f,to:t,days:Array(7).fill(true)}));
+ d.sims.push({id:uid(),sim:"EU-NL10",slot:"08:00-12:00",loc:"SHJ",visa:false,from:"2027-06-01",to:"2027-06-04",days:Array(7).fill(true)});
+ d.blackouts=[["2027-01-01","Yılbaşı"],["2027-04-23","23 Nisan"],["2027-05-01","1 Mayıs"],["2027-05-19","19 Mayıs"],["2027-07-15","15 Temmuz"],["2027-08-30","30 Ağustos"],["2027-10-29","29 Ekim"]].map(([f,n])=>({id:uid(),from:f,to:f,note:n}));
+ d.leaves=[{id:uid(),code:"TK",from:"2027-03-01",to:"2027-03-31",note:"Yıllık izin (örnek)"}];
+ d.nofly=[{id:uid(),a:"HS",b:"EK",note:"Örnek kısıt"}];
+ return d}
+
+/* ============ kural motoru ============ */
+const laneKey=s=>(s.sim||"").trim()+((s.slot||"").trim()?" "+s.slot.trim():"");
+const pairKey=(a,b)=>a<b?a+"|"+b:b+"|"+a;
+function expandRange(from,to,cb){const a=toDn(from),b=toDn(to||from);if(a==null||b==null||b<a)return;for(let d=a;d<=Math.min(b,a+1500);d++)cb(d)}
+function ctx(){const S=DB.settings,start=toDn(S.start)??todayDn(),end=toDn(S.end)??addM(start,12)-1;
+ const X={S,start,end,sec:{LPC:clampInt(S.lpcSec,1,6),OPC:clampInt(S.opcSec,1,6)}};
+ X.crewMap=new Map();X.crew=[];X.order=new Map();
+ DB.crew.forEach(c=>{const code=(c.code||"").trim().toUpperCase();if(!code||X.crewMap.has(code)||toDn(c.lpc)==null)return;
+  const o={...c,code,visaDn:toDn(c.visa),lastDn:toDn(c.last)};X.crewMap.set(code,o);X.crew.push(o);X.order.set(code,X.order.size)});
+ X.instrMap=new Map();X.instr=[];DB.instr.forEach(t=>{const code=(t.code||"").trim().toUpperCase();if(!code||X.instrMap.has(code))return;const o={...t,code,role:(t.role||"").toUpperCase()};X.instrMap.set(code,o);X.instr.push(o)});
+ X.black=new Map();DB.blackouts.forEach(b=>expandRange(b.from,b.to,d=>X.black.set(d,b.note||"Kapalı gün")));
+ X.leave=new Map();DB.leaves.forEach(l=>{const c=(l.code||"").toUpperCase();if(!c)return;let m=X.leave.get(c);if(!m)X.leave.set(c,m=new Map());expandRange(l.from,l.to,d=>m.set(d,l.note||"izin"))});
+ X.nofly=new Map();DB.nofly.forEach(n=>{if(n.a&&n.b)X.nofly.set(pairKey(n.a.toUpperCase(),n.b.toUpperCase()),n.note||"")});
+ X.lanes=new Map();DB.sims.forEach(s=>{const k=laneKey(s);if(!s.sim)return;let L=X.lanes.get(k);if(!L)X.lanes.set(k,L={key:k,sim:s.sim.trim(),slot:(s.slot||"").trim(),loc:(s.loc||"").trim(),visa:!!s.visa,avail:new Set()});
+  if(s.visa)L.visa=true;if(s.loc&&!L.loc)L.loc=s.loc.trim();const days=Array.isArray(s.days)?s.days:Array(7).fill(true);
+  expandRange(s.from,s.to,d=>{if(days[wd(d)]!==false&&!X.black.has(d))L.avail.add(d)})});
+ X.laneArr=[...X.lanes.values()];return X}
+const onLeave=(X,code,d)=>X.leave.get(code)?.get(d);
+const noFly=(X,a,b)=>X.nofly.has(pairKey(a,b));
+const sectorLabels=(type,n)=>{if(n<=1)return[type];const r=[type==="LPC"?"LPT":"OPT"];for(let k=1;k<n;k++)r.push(n>2?type+"-"+k:type);return r};
+const isCheckSector=(k,n)=>n===1||k>0;
+// Kişinin başlangıç durumu: LPC geçerliliği, OPC (operatör) geçerliliği, son kontrol tarihi
+function initState(c,X){const S=X.S,lpc=toDn(c.lpc);let op=toDn(c.opc);
+ if(op==null){const a=eom(addM(lpc,-S.opcM));op=a>=X.start?a:eom(addM(lpc,S.opcM))}
+ return{lpc,op,last:toDn(c.last),n:0}}
+// Sıradaki kontrol: hangisinin süresi önce doluyorsa
+function nextEvent(st,X){const S=X.S;let type,deadline,early=false;
+ if(st.op<st.lpc){deadline=st.op;if(addM(st.op,S.gapM)>st.lpc){type="LPC";early=true}else type="OPC"}else{type="LPC";deadline=st.lpc}
+ const auto=addM(deadline,-S.winM),gap=st.last!=null?addM(st.last,S.gapM):null,earliest=gap!=null?Math.max(auto,gap):auto;
+ return{type,deadline,auto,gap,earliest,gapDriven:gap!=null&&gap>auto,early,expired:deadline<X.start,soft:S.avoidFinal?addM(deadline,-1):deadline,idx:st.n}}
+// Kontrol yapıldıktan sonraki durum. Son 3 ay içinde yapılırsa yeni geçerlilik eski bitişten sayılır, değilse kontrol tarihinden.
+function applyCheck(st,ev,d,S){const inWin=d>=ev.auto&&d<=ev.deadline,base=inWin?ev.deadline:d;const n={...st,last:d,n:st.n+1,op:eom(addM(base,S.opcM))};
+ if(ev.type==="LPC"){const lw=d>=addM(st.lpc,-S.winM)&&d<=st.lpc;n.lpc=lw?addM(st.lpc,S.lpcM):addM(d,S.lpcM)}return n}
+
+/* ---- otomatik planlama ---- */
+function schedule(X){const S=X.S,out=[];
+ const lockedS=DB.sessions.filter(s=>s.locked).map(s=>({s,dn:s.dates.map(toDn).filter(v=>v!=null).sort((a,b)=>a-b)})).filter(o=>o.dn.length);
+ const laneBusy=new Map(X.laneArr.map(L=>[L.key,new Set()]));
+ const day=new Map(),P=(c,d)=>{let m=day.get(c);if(!m)day.set(c,m=new Map());let o=m.get(d);if(!o)m.set(d,o={st:0,te:0});return o};
+ const load=new Map(),addLoad=t=>load.set(t,(load.get(t)||0)+1);
+ const lockByPilot=new Map(),lockPtr=new Map();
+ for(const o of lockedS){o.dn.forEach((d,k)=>{laneBusy.get(o.s.lane)?.add(d);o.s.pilots.forEach(c=>{if(c)P(c,d).st=1});const t=o.s.instr?.[k];if(t){P(t,d).te++;addLoad(t)}});
+  o.s.pilots.forEach(c=>{if(!c)return;if(!lockByPilot.has(c))lockByPilot.set(c,[]);lockByPilot.get(c).push({o,check:o.dn.at(-1)})})}
+ lockByPilot.forEach(a=>a.sort((x,y)=>x.check-y.check));
+ const st=new Map(),pend=new Map();X.crew.forEach(c=>st.set(c.code,initState(c,X)));
+ const getPend=c=>{if(!pend.has(c.code)){const ev=nextEvent(st.get(c.code),X);pend.set(c.code,ev.earliest>X.end?null:ev)}return pend.get(c.code)};
+ const apply=(c,d)=>{const ev=nextEvent(st.get(c.code),X);st.set(c.code,applyCheck(st.get(c.code),ev,d,S));pend.delete(c.code)};
+ const nextLock=c=>{const L=lockByPilot.get(c.code);return L?L[lockPtr.get(c.code)||0]||null:null};
+ const reserved=(c,ev)=>{const nl=nextLock(c);return!!nl&&(ev.expired||nl.check<=ev.deadline)};
+ const N=X.end-X.start+1;
+ const pref=X.laneArr.map(L=>{const a=new Int32Array(N+1),b=laneBusy.get(L.key);for(let i=0;i<N;i++){const d=X.start+i;a[i+1]=a[i]+(L.avail.has(d)&&!b.has(d)?1:0)}return a});
+ const cap=(from,to,n)=>{const i0=Math.max(0,from-X.start),i1=Math.min(N,to-X.start+1);if(i1<=i0)return 0;let s=0;for(const a of pref)s+=Math.floor((a[i1]-a[i0])/n);return s};
+ const block=(L,d,n)=>{const r=[d],b=laneBusy.get(L.key);let cur=d;for(let k=1;k<n;k++){let nx=null;for(let g=1;g<=S.maxGap;g++){const x=cur+g;if(x>X.end)break;if(L.avail.has(x)&&!b.has(x)){nx=x;break}}if(nx==null)return null;r.push(nx);cur=nx}return r};
+ const assign=(dates,pil)=>{const n=dates.length;if(!X.instr.length)return dates.map(()=>"");const res=[];
+  for(let k=0;k<n;k++){const d=dates[k],chk=isCheckSector(k,n);let best=null,bs=Infinity;
+   for(const t of X.instr){const o=day.get(t.code)?.get(d);if(o&&(o.st||o.te>=S.instrPerDay))continue;if(onLeave(X,t.code,d))continue;if(chk&&!EXAM.has(t.role))continue;
+    if(pil.some(p=>p.code===t.code||noFly(X,p.code,t.code)))continue;
+    let sc=(load.get(t.code)||0)*.01;if(!chk&&EXAM.has(t.role))sc+=3;if(chk&&S.diffInstr&&n>1&&res[0]===t.code)sc+=5;if(!chk&&k>0&&res[k-1]===t.code)sc-=1;
+    if(sc<bs){bs=sc;best=t}}
+   if(!best)return null;res.push(best.code)}return res};
+ const cands=(L,dates)=>{const c=dates.at(-1),n=dates.length,out=[];
+  for(const p of X.crew){const ev=getPend(p);if(!ev||X.sec[ev.type]!==n)continue;const latest=ev.expired?X.end:ev.deadline;if(c<ev.earliest||c>latest)continue;
+   const nl=nextLock(p);if(nl){if(reserved(p,ev))continue;if(c>addM(nl.check,-S.gapM))continue}
+   if(dates.some(x=>{const o=day.get(p.code)?.get(x);return(o&&(o.st||o.te))||onLeave(X,p.code,x)}))continue;
+   if(S.visaHard&&L.visa&&(p.visaDn==null||p.visaDn<c))continue;
+   out.push({p,ev,c,latest,soft:ev.soft-c,hard:latest-c})}
+  return out.sort((a,b)=>a.soft-b.soft||a.hard-b.hard||X.order.get(a.p.code)-X.order.get(b.p.code))};
+ const penalty=(a,b,ta,tb)=>{if(ta!==tb&&!S.allowMix)return null;return(ta!==tb?1:0)+(a.rank===b.rank?2:0)};
+ const freeIn=(code,from,to)=>{for(let x=from;x<=to;x++)if(!onLeave(X,code,x))return true;return false};
+ // "mecbur kalmak": ideal olmayan eşi (ceza pen) kabul etmeden önce: süre penceresi içinde daha iyi eş çıkabilecek mi, kapasite yetiyor mu?
+ // Pencere: rütbe uyumsuzluğunda (pen>=2, ayar açıksa) geçerlilik bitişi, diğerlerinde son aydan önceki gün.
+ const acceptPen=(a,d,n,pen)=>{const W=pen>=2&&S.rankFirst?a.latest:a.ev.expired?X.end:a.ev.soft;if(W<a.c)return true;let dem=0;
+  for(const q of X.crew){const e=getPend(q);if(e&&X.sec[e.type]===n&&Math.min(e.soft,e.expired?X.end:e.deadline)<=W&&e.earliest<=W)dem++}
+  if((cap(d,W,n)-1)*2<dem)return true;
+  // daha iyi eş adayları (better) ile aynı adaylara ihtiyaç duyan, süresi pencere içinde biten rakipler (riv) karşılaştırılır
+  let better=0,riv=0;
+  for(const q of X.crew){if(q===a.p)continue;const e=getPend(q);if(!e||X.sec[e.type]!==n||reserved(q,e))continue;const ql=e.expired?X.end:e.deadline;
+   if(q.rank===a.p.rank&&(pen>=2||e.type===a.ev.type)&&e.earliest<=W&&ql<=W)riv++;
+   if(noFly(X,q.code,a.p.code))continue;const pq=penalty(a.p,q,a.ev.type,e.type);if(pq==null||pq>=pen)continue;
+   const from=Math.max(d+1,e.earliest-(n-1)*S.maxGap),to=Math.min(W,ql);if(from>to)continue;
+   if(freeIn(q.code,from,to)&&freeIn(a.p.code,from,to)&&cap(from,to,n)>0)better++}
+  return better<=riv};
+ const pick=(L,d,dates,cs)=>{const n=dates.length;
+  for(let i=0;i<cs.length;i++){const a=cs[i],parts=[];
+   for(let j=0;j<cs.length;j++){if(i===j)continue;const b=cs[j];if(noFly(X,a.p.code,b.p.code))continue;const pen=penalty(a.p,b.p,a.ev.type,b.ev.type);if(pen!=null)parts.push({b,pen,j})}
+   parts.sort((x,y)=>x.pen-y.pen||x.j-y.j);const ok=new Map();
+   for(const q of parts){if(q.pen>0){if(!ok.has(q.pen))ok.set(q.pen,acceptPen(a,d,n,q.pen));if(!ok.get(q.pen))continue}const ins=assign(dates,[a.p,q.b.p]);if(ins)return{a,b:q.b,ins,dates,L,pen:q.pen}}
+   if(cap(d,a.latest,n)-1<=0){const ins=assign(dates,[a.p]);if(ins)return{a,b:null,ins,dates,L,pen:9}}}
+  return null};
+ const commit=dec=>{const{a,b,ins,dates,L}=dec;dates.forEach((x,k)=>{laneBusy.get(L.key).add(x);P(a.p.code,x).st=1;if(b)P(b.p.code,x).st=1;if(ins[k]){P(ins[k],x).te++;addLoad(ins[k])}});
+  const pl=[a.p,b?.p].filter(Boolean).sort((x,y)=>(x.rank==="CPT"?0:1)-(y.rank==="CPT"?0:1));
+  out.push({id:uid(),lane:L.key,dates:dates.map(toIso),pilots:[pl[0].code,pl[1]?.code||""],instr:ins,locked:false});
+  apply(a.p,dates.at(-1));if(b)apply(b.p,dates.at(-1))};
+ const lockedQ=[...lockedS].sort((a,b)=>a.dn[0]-b.dn[0]);let li=0;
+ const secs=[...new Set([X.sec.LPC,X.sec.OPC])];
+ for(let d=X.start;d<=X.end;d++){
+  while(li<lockedQ.length&&lockedQ[li].dn[0]<=d){const o=lockedQ[li++];o.s.pilots.forEach(code=>{const c=X.crewMap.get(code);if(!c)return;apply(c,o.dn.at(-1));lockPtr.set(code,(lockPtr.get(code)||0)+1)})}
+  for(const L of X.laneArr){if(!L.avail.has(d)||laneBusy.get(L.key).has(d))continue;let best=null;
+   for(const n of secs){const dates=block(L,d,n);if(!dates)continue;const cs=cands(L,dates);if(!cs.length)continue;const dec=pick(L,d,dates,cs);
+    if(dec&&(!best||dec.a.soft<best.a.soft||(dec.a.soft===best.a.soft&&dec.pen<best.pen)))best=dec}
+   if(best)commit(best)}}
+ return out}
+
+/* ---- değerlendirme (tablo + hatalar) ---- */
+function evaluate(X){const S=X.S;
+ const ses=DB.sessions.map(s=>{const dn=s.dates.map(toDn);return{s,dn,chk:Math.max(...dn),L:X.lanes.get(s.lane),err:[],warn:[],types:{},labels:{}}}).filter(o=>o.dn.length&&o.dn.every(v=>v!=null));
+ const byId=new Map(ses.map(o=>[o.s.id,o]));const laneDay=new Map(),pd=new Map();
+ const push=(m,k,v)=>{let a=m.get(k);if(!a)m.set(k,a=[]);a.push(v)};
+ for(const o of ses){o.dn.forEach((d,k)=>{push(laneDay,o.s.lane+"|"+d,o);o.s.pilots.forEach(c=>{if(c)push(pd,c+"|"+d,{o,r:"st"})});const t=o.s.instr?.[k];if(t)push(pd,t+"|"+d,{o,r:"te"})})}
+ for(const o of ses){const n=o.dn.length,pil=o.s.pilots.filter(Boolean);
+  if(!o.L)o.err.push("Simülatör tanımlı değil: "+o.s.lane);else o.dn.forEach(d=>{if(!o.L.avail.has(d))o.err.push(fmt(d)+(X.black.has(d)?" kapalı gün ("+X.black.get(d)+")":" simülatör müsait değil"))});
+  o.dn.forEach(d=>{if(laneDay.get(o.s.lane+"|"+d).length>1)o.err.push(fmt(d)+" aynı simülatörde başka oturum var")});
+  for(let i=1;i<n;i++)if(o.dn[i]-o.dn[i-1]>S.maxGap||o.dn[i]<=o.dn[i-1])o.warn.push("Sektör tarihleri ardışık değil");
+  if(!pil.length)o.err.push("Öğrenci yok");else if(pil.length<2)o.warn.push("Tek öğrenci – koltuk doldurucu gerekli");
+  if(pil.length===2&&pil[0]===pil[1])o.err.push("Aynı kişi iki kez yazılmış");
+  pil.forEach(c=>{if(!X.crewMap.has(c))o.err.push(c+" ekip listesinde yok")});
+  const kn=pil.map(c=>X.crewMap.get(c)).filter(Boolean);if(kn.length===2&&kn[0].rank===kn[1].rank)o.warn.push("Aynı rütbe (2 "+kn[0].rank+")");
+  const people=[...new Set([...pil,...(o.s.instr||[]).filter(Boolean)])];
+  for(let i=0;i<people.length;i++)for(let j=i+1;j<people.length;j++)if(noFly(X,people[i],people[j]))o.err.push(people[i]+" ve "+people[j]+" birlikte planlanmamalı");
+  o.dn.forEach((d,k)=>{[...pil,o.s.instr?.[k]].filter(Boolean).forEach(c=>{const l=onLeave(X,c,d);if(l)o.err.push(c+" "+fmt(d)+" izinli ("+l+")")})});
+  if(X.instr.length){o.dn.forEach((d,k)=>{const t=o.s.instr?.[k];if(!t){o.err.push(fmt(d)+" eğitmen atanmadı");return}const T=X.instrMap.get(t);
+   if(!T)o.warn.push(t+" eğitmen listesinde yok");else if(isCheckSector(k,n)&&!EXAM.has(T.role))o.err.push(fmt(d)+" kontrol sektörü için TRE/SFE gerekli ("+t+" "+T.role+")");
+   if(pil.includes(t))o.err.push(t+" aynı oturumda hem öğrenci hem eğitmen")})}
+  else o.warn.push("Eğitmen listesi boş");
+  o.dn.forEach(d=>{people.forEach(c=>{const a=pd.get(c+"|"+d)||[],stN=a.filter(x=>x.r==="st").length,teN=a.filter(x=>x.r==="te").length;
+   if(a.length>1&&(stN>1||(stN&&teN)||teN>S.instrPerDay)){const m=c+" "+fmt(d)+" birden fazla oturumda";if(!o.err.includes(m))o.err.push(m)}})})}
+ const rows=[];
+ for(const c of X.crew){const mine=ses.filter(o=>o.s.pilots.includes(c.code)).sort((a,b)=>a.chk-b.chk);let st=initState(c,X),prevPlanned=false;
+  for(const o of mine){const ev=nextEvent(st,X),n=o.dn.length,r={c,ev,o,chk:o.chk,last:st.last,lastPlanned:prevPlanned,err:[],warn:[]};
+   o.types[c.code]=ev.type;o.labels[c.code]=sectorLabels(ev.type,n);
+   if(n!==X.sec[ev.type])o.warn.push(c.code+": "+ev.type+" için "+X.sec[ev.type]+" sektör tanımlı, oturum "+n+" sektör");
+   if(ev.expired)r.err.push("Geçerlilik plan başlangıcından önce dolmuş");
+   if(ev.gap!=null&&o.chk<ev.gap)r.err.push("4 ay kuralı: en erken "+fmt(ev.gap));
+   else if(o.chk<ev.auto)r.warn.push("Son 3 ay dışında: yeni geçerlilik kontrol tarihinden sayılır");
+   if(o.chk>ev.deadline)r.err.push("Geçerlilik bitişinden ("+fmt(ev.deadline)+") sonra");
+   r.final=o.chk>addM(ev.deadline,-1)&&o.chk<=ev.deadline;
+   if(o.L?.visa){if(c.visaDn==null)r.visa="Vize bilgisi yok";else if(c.visaDn<o.chk)r.visa="Vize Geçersiz"}
+   if(ev.early)r.warn.push("OPC ile LPC arası 4 aydan kısa olduğu için LPC, OPC süresi içinde");
+   const ns=applyCheck(st,ev,o.chk,S);r.newValid=ev.type==="LPC"?ns.lpc:ns.op;rows.push(r);st=ns;prevPlanned=true}
+  const ev=nextEvent(st,X);
+  if(ev.earliest<=X.end){const r={c,ev,o:null,last:st.last,lastPlanned:prevPlanned,err:[],warn:[],final:false};
+   if(ev.deadline<=X.end)r.err.push("Planlanmadı");else r.warn.push("Planlanmadı – geçerlilik dönem sonrasında ("+fmt(ev.deadline)+")");
+   if(ev.expired)r.err.push("Geçerlilik plan başlangıcından önce dolmuş");
+   if(c.visaDn!=null&&c.visaDn<ev.earliest)r.visa="Vize Geçersiz";rows.push(r)}}
+ for(const o of ses){if(new Set(Object.values(o.types)).size>1)o.warn.push("Karışık oturum (LPC + OPC)");o.err=[...new Set(o.err)];o.warn=[...new Set(o.warn)]}
+ return{rows,ses,byId}}
+
+/* ============ arayüz ============ */
+const TABS=[["settings","Ayarlar"],["crew","Ekip"],["instr","Eğitmenler"],["sims","Simülatörler"],["off","Kapalı günler & izinler"],["nofly","Birlikte uçmayacaklar"],["table","Uygunluk tablosu"],["plan","Taslak plan"]];
+let TAB=ls.g("simplan.tab")||"table";
+const UI={sort:"tur",type:"",onlyErr:false,q:"",showEmpty:false};
+function tabCounts(){$("#tabs").innerHTML=TABS.map(([k,l])=>{const n=k==="crew"?DB.crew.length:k==="instr"?DB.instr.length:k==="sims"?DB.sims.length:k==="off"?DB.blackouts.length+DB.leaves.length:k==="nofly"?DB.nofly.length:k==="plan"?DB.sessions.length:null;
+ return`<button data-tab="${k}" class="${k===TAB?"on":""}">${l}${n!=null?`<span class="n">${n}</span>`:""}</button>`}).join("");
+ $("#codes").innerHTML=[...DB.crew.map(c=>[c.code,c.name]),...DB.instr.map(t=>[t.code,t.name+" (eğitmen)"])].filter(x=>x[0]).map(([c,n])=>`<option value="${esc(c)}">${esc(n)}</option>`).join("")}
+function show(t){TAB=t;ls.s("simplan.tab",t);tabCounts();render()}
+function render(){const v=$("#view");
+ if(TAB==="settings")v.innerHTML=vSettings();else if(TAB==="crew")v.innerHTML=vList("crew",crewHelp());else if(TAB==="instr")v.innerHTML=vList("instr",'<div class="mu">Kontrol sektörüne (LPC, OPC) yalnızca TRE/SFE atanır. Eğitim sektörüne (LPT, OPT) önce TRI/SFI atanır, yoksa TRE/SFE. Eğitmen izinlerini "Kapalı günler & izinler" sekmesinden girin.</div>');
+ else if(TAB==="sims")v.innerHTML=vList("sims",'<div class="mu">Her satır bir müsaitlik dönemidir; aynı simülatör + slot için birden fazla satır girebilirsiniz. Her simülatör + slot günde 1 oturumdur (ör. aynı gün 2 slot varsa iki ayrı slot yazın). "Vize gerekli" işaretliyse vize bitişi kontrol tarihinden önce olan kişide <b>Vize Geçersiz</b> yazar.</div>');
+ else if(TAB==="off")v.innerHTML=vList("blackouts",'<div class="mu">Bu tarihlerde hiçbir simülatöre plan yapılmaz (tatil vb.).</div>')+vList("leaves",'<div class="mu">Pilot ya da eğitmenin plana alınmayacağı tarihler (kod ile).</div>');
+ else if(TAB==="nofly")v.innerHTML=vList("nofly",'<div class="mu">Bu iki kişi aynı oturuma (öğrenci–öğrenci ya da öğrenci–eğitmen) konmaz.</div>');
+ else if(TAB==="table")v.innerHTML=vTable();else v.innerHTML=vPlan();
+ if(TAB==="crew")crewDerived()}
+
+/* ---- ayarlar ---- */
+function fld(k,l,type,extra=""){const v=DB.settings[k];
+ if(type==="check")return`<label class="ck"><input type="checkbox" data-s="${k}"${v?" checked":""}><span>${l}</span></label>`;
+ if(type==="sec")return`<label class="f"><span>${l}</span><select data-s="${k}">${[1,2,3,4,5].map(n=>`<option${n==v?" selected":""}>${n}</option>`).join("")}</select>${extra}</label>`;
+ return`<label class="f"><span>${l}</span><input type="${type}" data-s="${k}" value="${esc(v)}"${type==="number"?' min="0" max="36"':""}>${extra}</label>`}
+function vSettings(){const S=DB.settings;
+ return`<div class="cd"><h2>Plan dönemi ve sektör sayıları</h2><div class="g">${fld("start","Plan başlangıcı","date")}${fld("end","Plan bitişi","date")}
+ ${fld("lpcSec","LPC kaç sektör?","sec",`<span class="mu">${sectorLabels("LPC",S.lpcSec).join(" → ")}</span>`)}${fld("opcSec","OPC kaç sektör?","sec",`<span class="mu">${sectorLabels("OPC",S.opcSec).join(" → ")}</span>`)}</div></div>
+ <div class="cd"><h2>Kurallar</h2><div class="g">${fld("winM","Son … ay kuralı (ay)","number")}${fld("gapM","İki kontrol arası en az (ay)","number")}${fld("lpcM","LPC geçerlilik süresi (ay)","number")}${fld("opcM","OPC geçerlilik süresi (ay, ay sonuna yuvarlanır)","number")}
+ ${fld("maxGap","Sektörler arası en fazla gün farkı","number",'<span class="mu">1 = art arda günler</span>')}${fld("instrPerDay","Eğitmen günde en fazla oturum","number")}</div>
+ <div class="g" style="margin-top:10px">${fld("avoidFinal","Mümkünse kişiyi son ayında planlama","check")}${fld("rankFirst","1 CPT + 1 F/O eşleşmesi son aydan kaçınmadan önce gelsin (iki CPT / iki F/O yerine gerekirse son aya kayar)","check")}${fld("allowMix","Mecbur kalınca LPC ve OPC aynı oturumda olabilir (sektör sayıları eşitse)","check")}
+ ${fld("diffInstr","Kontrolü, eğitimi verenden farklı eğitmen yapsın (mümkünse)","check")}${fld("visaHard","Vizesi geçersiz kişiyi vize gereken simülatöre hiç planlama","check")}</div></div>
+ <div class="cd"><h2>Planlama nasıl yapılır</h2><ul class="rules">
+ <li><b>Son ${S.winM} ay kuralı:</b> kontrol geçerliliğin son ${S.winM} ayında yapılırsa yeni geçerlilik eski bitiş tarihinden sayılır (LPC +${S.lpcM} ay). Bu yüzden en erken tarih = geçerlilik − ${S.winM} ay.</li>
+ <li><b>${S.gapM} ay kuralı:</b> yılda iki kontrol; art arda iki kontrol ${S.gapM} aydan yakın olamaz. En erken tarih = son kontrol + ${S.gapM} ay (tabloda kırmızı kalın ise bu kural belirleyicidir).</li>
+ <li><b>OPC:</b> LPC'den ${S.opcM} ay önce ya da sonra (bugünden sonraki ilk tarih). LPC'ler turuncu, OPC'ler sarı gösterilir. LPC aynı zamanda OPC yerine geçer.</li>
+ <li>Her oturumda en az 2 öğrenci + 1 eğitmen; mecbur kalınmadıkça 1 CPT + 1 F/O ve aynı kontrol tipi (LPC ile LPC, OPC ile OPC) birlikte.</li>
+ <li>Mümkünse kişi son ayında (geçerlilik − 1 ay sonrası) planlanmaz; süresi en yakın olan önce yerleştirilir.</li>
+ <li>Kontrol tarihi = son sektörün tarihi. Kilitli oturumlar yeniden planlamada korunur; diğerleri silinip yeniden dağıtılır.</li></ul></div>`}
+
+/* ---- liste düzenleyiciler ---- */
+function crewHelp(){const r=DB.crew.reduce((a,c)=>(a[c.rank]=(a[c.rank]||0)+1,a),{});return`<div class="mu">CPT: ${r.CPT||0} · F/O: ${r["F/O"]||0}. Zorunlu: Rütbe, Kod, LPC Geçerlilik. "Sıradaki" sütunu girilen bilgilere göre hesaplanır.</div>`}
+function cellInput(key,i,col,v){const a=`data-l="${key}" data-i="${i}" data-k="${col.k}"`;
+ switch(col.t){case"sel":return`<select ${a}>${["",...col.o].map(o=>`<option${o===v?" selected":""}>${esc(o)}</option>`).join("")}</select>`;
+  case"date":return`<input type="date" ${a} value="${esc(v||"")}">`;
+  case"check":return`<input type="checkbox" ${a}${v?" checked":""}>`;
+  case"days":{const dv=Array.isArray(v)?v:Array(7).fill(true);return`<span class="days">${DAYN.map((n,j)=>`<label title="${n}"><input type="checkbox" ${a} data-j="${j}"${dv[j]!==false?" checked":""}>${n.slice(0,2)}</label>`).join("")}</span>`}
+  case"code":return`<input ${a} class="code" maxlength="6" list="codes" value="${esc(v||"")}">`;
+  default:return`<input ${a} value="${esc(v||"")}" style="width:${col.w||120}px">`}}
+function vList(key,help=""){const L=LISTS[key],arr=DB[key];
+ return`<div class="cd"><div class="row"><h2>${L.t}</h2><span class="mu">${arr.length} satır</span><span class="sp"></span>
+ <button class="s np" data-add="${key}">+ Satır ekle</button><button class="s np" data-paste="${key}">Excel'den yapıştır</button><button class="s d np" data-clear="${key}">Tümünü sil</button></div>${help}
+ <div class="sc" style="margin-top:6px"><table class="ed"><thead><tr><th>#</th>${L.cols.map(c=>`<th${c.tip?` title="${esc(c.tip)}"`:""}>${c.l}${c.tip?" ⓘ":""}</th>`).join("")}${key==="crew"?"<th>Sıradaki</th>":""}<th></th></tr></thead>
+ <tbody>${arr.map((it,i)=>`<tr><td class="mu">${i+1}</td>${L.cols.map(c=>`<td>${cellInput(key,i,c,it[c.k])}</td>`).join("")}${key==="crew"?`<td class="mu" data-nx="${i}"></td>`:""}<td><button class="s d np" data-del="${key}" data-i="${i}" title="Sil">✕</button></td></tr>`).join("")||`<tr><td colspan="${L.cols.length+3}" class="mu">Kayıt yok. Satır ekleyin, Excel'den yapıştırın ya da Excel yükleyin.</td></tr>`}</tbody></table></div></div>`}
+function crewDerived(){const X=ctx(),seen=new Map();DB.crew.forEach((c,i)=>{const k=(c.code||"").toUpperCase();if(k)seen.set(k,(seen.get(k)||0)+1)});
+ DB.crew.forEach((c,i)=>{const td=$(`[data-nx="${i}"]`);const inp=$(`input[data-l="crew"][data-i="${i}"][data-k="code"]`);if(inp)inp.classList.toggle("dup",!c.code||seen.get(c.code.toUpperCase())>1);
+  if(!td)return;if(toDn(c.lpc)==null){td.innerHTML='<span class="bad">LPC geçerlilik yok</span>';return}if(!c.rank){td.innerHTML='<span class="bad">Rütbe yok</span>';return}
+  const ev=nextEvent(initState({...c},X),X);td.innerHTML=`<b>${ev.type}</b> ${fmt(ev.deadline)} · en erken <span class="${ev.gapDriven?"bad":""}">${fmt(ev.earliest)}</span>${ev.expired?' <span class="bad">süresi dolmuş</span>':""}`})}
+
+/* ---- uygunluk tablosu ---- */
+const TH=[["Rank","Rütbe"],["Name - Surname","Ad Soyad"],["Code","Kod"],["Plan","Planlanan kontrol tarihi (son sektör). Tıklayın: oturumu düzenle"],["Error","Kural ihlali / uyarı"],["Sim","Simülatör lokasyonu"],
+ ["Son Kontrol","Önceki kontrol tarihi. Kırmızı: bu plandan gelen tarih"],["Earliest Automatic","Geçerlilik − son 3 ay: bu tarihten sonra yapılırsa yeni geçerlilik eski bitişten sayılır"],["Earliest Plan","En erken planlanabilir tarih = en geç(Geçerlilik − 3 ay, Son kontrol + 4 ay). Kırmızı kalın: 4 ay kuralı belirleyici"],
+ ["Valid","Geçerlilik bitişi (en geç tarih)"],["Type","Kontrol tipi"],["Visa","Vize bitişi"],["Visa Control","Vize kontrolü"],["Final Month","Son ayda mı?"],["New Valid","Kontrolden sonraki yeni geçerlilik"],["Sektörler","Sektör tarihleri"],["Eğitmen","Sektör eğitmenleri"],["Ekip Arkadaşı","Aynı oturumdaki diğer öğrenci"]];
+function stale(){return DB.sessions.length&&DB.planVer!==DB.dataVer?'<div class="banner np">Girdi verileri plan oluşturulduktan sonra değişti. Tablo ve hatalar güncel verilerle yeniden hesaplandı; oturumları yeniden dağıtmak için <b>Planı oluştur</b>.</div>':""}
+function stats(R){const pl=R.rows.filter(r=>r.o),er=R.rows.filter(r=>r.err.length||(r.o&&r.o.err.length)),fm=pl.filter(r=>r.final),vi=R.rows.filter(r=>r.visa),un=R.rows.filter(r=>!r.o&&r.err.length);
+ const sw=R.ses.filter(o=>o.warn.length).length;
+ return`<div class="chips"><span class="chip">Oturum <b>${R.ses.length}</b></span><span class="chip">Planlanan kontrol <b>${pl.length}</b></span><span class="chip ${un.length?"e":""}">Planlanamayan <b>${un.length}</b></span><span class="chip ${er.length?"e":""}">Hatalı satır <b>${er.length}</b></span><span class="chip ${fm.length?"w":""}">Son ayda <b>${fm.length}</b></span><span class="chip ${vi.length?"w":""}">Vize sorunu <b>${vi.length}</b></span><span class="chip ${sw?"w":""}">Uyarılı oturum <b>${sw}</b></span></div>`}
+function vTable(){const X=ctx(),R=evaluate(X);let rows=R.rows;
+ if(UI.type)rows=rows.filter(r=>r.ev.type===UI.type);if(UI.onlyErr)rows=rows.filter(r=>r.err.length||r.final||r.visa||(r.o&&(r.o.err.length)));
+ if(UI.q){const q=norm(UI.q);rows=rows.filter(r=>norm(r.c.name+r.c.code).includes(q))}
+ const ord=r=>X.order.get(r.c.code),pd=r=>r.o?r.chk:r.ev.earliest;
+ rows=[...rows].sort(UI.sort==="kisi"?(a,b)=>ord(a)-ord(b)||a.ev.idx-b.ev.idx:UI.sort==="tarih"?(a,b)=>pd(a)-pd(b)||ord(a)-ord(b):(a,b)=>a.ev.idx-b.ev.idx||(a.ev.type<b.ev.type?-1:a.ev.type>b.ev.type?1:0)||a.ev.deadline-b.ev.deadline||ord(a)-ord(b));
+ const body=rows.map(r=>{const o=r.o,partner=o?o.s.pilots.filter(c=>c&&c!==r.c.code).join(", "):"",errs=[...r.err,...(o?o.err:[])],warns=[...r.warn,...(o?o.warn:[])];
+  return`<tr class="${r.ev.type}"><td class="c">${esc(r.c.rank)}</td><td>${esc(r.c.name)}</td><td class="c">${esc(r.c.code)}</td>
+  <td class="c">${o?`<a data-ses="${o.s.id}">${fmt(r.chk)}</a>${o.s.locked?" 🔒":""}`:`<button class="s np" data-new-for="${esc(r.c.code)}">+ Planla</button>`}</td>
+  <td class="c">${errs.map(e=>`<div class="r iss">${esc(e)}</div>`).join("")}${warns.map(e=>`<div class="wn iss">${esc(e)}</div>`).join("")}</td>
+  <td class="c" title="${esc(o?.L?.key||"")}">${esc(o?.L?.loc||"")}</td><td class="c ${r.lastPlanned?"r2":""}">${fmt(r.last)}</td><td class="c">${fmt(r.ev.auto)}</td>
+  <td class="c ${r.ev.gapDriven?"r":""}">${fmt(r.ev.earliest)}</td><td class="c">${fmt(r.ev.deadline)}</td><td class="c"><b>${r.ev.type}</b></td><td class="c">${fmt(r.c.visaDn)}</td>
+  <td class="c r">${esc(r.visa||"")}</td><td class="c r">${r.final?"son ay":""}</td><td class="c">${r.newValid!=null?fmt(r.newValid):""}</td>
+  <td>${o?o.dn.map((d,k)=>fmtS(d)+" "+(o.labels[r.c.code]?.[k]||"")).join(" · "):""}</td><td class="c">${o?(o.s.instr||[]).map(t=>t||"?").join(" / "):""}</td><td class="c">${esc(partner)}</td></tr>`}).join("");
+ return`${stale()}<div class="cd"><div class="row np"><h2>Uygunluk tablosu</h2><span class="mu">${fmt(X.start)} – ${fmt(X.end)}</span><span class="sp"></span>
+ <input placeholder="Ara (ad / kod)" data-ui="q" value="${esc(UI.q)}" style="width:150px"><select data-ui="type"><option value="">Tümü</option><option${UI.type==="LPC"?" selected":""}>LPC</option><option${UI.type==="OPC"?" selected":""}>OPC</option></select>
+ <select data-ui="sort"><option value="tur"${UI.sort==="tur"?" selected":""}>Sıra: tur</option><option value="kisi"${UI.sort==="kisi"?" selected":""}>Sıra: kişi</option><option value="tarih"${UI.sort==="tarih"?" selected":""}>Sıra: tarih</option></select>
+ <label class="ck"><input type="checkbox" data-ui="onlyErr"${UI.onlyErr?" checked":""}><span>Yalnızca sorunlular</span></label></div>${stats(R)}
+ <div class="sc"><table class="ot"><thead><tr>${TH.map(([h,t])=>`<th title="${esc(t)}">${h}</th>`).join("")}</tr></thead><tbody>${body||`<tr><td colspan="${TH.length}">Gösterilecek satır yok. Ekip verisi girip <b>Planı oluştur</b>'a basın.</td></tr>`}</tbody></table></div></div>`}
+
+/* ---- taslak plan ---- */
+function planCols(X,R){const cols=[];for(const o of R.ses)o.dn.forEach((d,k)=>cols.push({d,lane:o.s.lane,o,k}));
+ if(UI.showEmpty){const used=new Set(cols.map(c=>c.lane+"|"+c.d));for(const L of X.laneArr)for(const d of L.avail)if(d>=X.start&&d<=X.end&&!used.has(L.key+"|"+d))cols.push({d,lane:L.key,o:null})}
+ const li=new Map(X.laneArr.map((L,i)=>[L.key,i]));cols.sort((a,b)=>a.d-b.d||(li.get(a.lane)??99)-(li.get(b.lane)??99));
+ const months=new Map();for(const c of cols){const[y,m]=ymd(c.d),k=y*12+m;if(!months.has(k))months.set(k,[]);months.get(k).push(c)}return months}
+function vPlan(){const X=ctx(),R=evaluate(X),months=planCols(X,R),multi=X.laneArr.length>1||R.ses.some(o=>!o.L);const CH=8;
+ const blocks=[...months].map(([k,cols])=>{const y=Math.floor(k/12),m=k%12,title=MON[m]+"."+String(y).slice(2),tabs=[];
+  for(let i=0;i<cols.length;i+=CH){const cs=cols.slice(i,i+CH);
+   const cell=(c,fn)=>c.o?fn(c):"";
+   const at=c=>c.o?`data-ses="${c.o.s.id}"`:`data-new="${esc(c.lane)}|${toIso(c.d)}"`;
+   const mk=c=>c.o?(c.o.err.length?" ce":c.o.warn.length?" cw":""):"";
+   const tip=c=>c.o?esc([c.o.L?.key||c.o.s.lane,...c.o.err.map(e=>"✖ "+e),...c.o.warn.map(e=>"⚠ "+e)].join("\n")):"Boş simülatör günü – oturum eklemek için tıklayın";
+   const pc=(c,j)=>{if(!c.o)return`<td class="x" ${at(c)}></td>`;const code=c.o.s.pilots[j]||"",t=c.o.types[code]||"",cr=X.crewMap.get(code);
+    return`<td class="cl ${t}" ${at(c)} title="${esc(cr?cr.name+" ("+cr.rank+")":code)}${t?" – "+(c.o.labels[code]?.[c.k]||t):""}">${esc(code)||"<span style='color:#999'>—</span>"}</td>`};
+   tabs.push(`<table class="mt"><tr><th class="mh" colspan="${cs.length}">${title}</th></tr>
+   <tr>${cs.map(c=>`<td class="dy${mk(c)}${c.o?"":" em"}" ${at(c)} title="${tip(c)}">${ymd(c.d)[2]}${c.o?.s.locked?"🔒":""}<small>${DAYN[wd(c.d)]}</small></td>`).join("")}</tr>
+   ${multi?`<tr>${cs.map(c=>`<td class="ln" ${at(c)}>${esc((X.lanes.get(c.lane)?.loc||"")+" "+(X.lanes.get(c.lane)?.sim||c.lane))}</td>`).join("")}</tr>`:""}
+   <tr>${cs.map(c=>`<td class="cl" ${at(c)} title="Eğitmen">${c.o?esc(c.o.s.instr?.[c.k]||"?"):""}</td>`).join("")}</tr>
+   <tr>${cs.map(c=>pc(c,0)).join("")}</tr><tr>${cs.map(c=>pc(c,1)).join("")}</tr>
+   <tr>${cs.map(c=>`<td class="lb" ${at(c)}>${c.o?esc([...new Set(c.o.s.pilots.filter(Boolean).map(p=>c.o.labels[p]?.[c.k]).filter(Boolean))].join("/")):""}</td>`).join("")}</tr></table>`)}
+  return`<div>${tabs.join('<div style="height:6px"></div>')}</div>`}).join("");
+ const load=new Map();R.ses.forEach(o=>(o.s.instr||[]).forEach(t=>t&&load.set(t,(load.get(t)||0)+1)));
+ const probs=R.rows.filter(r=>!r.o&&r.err.length),bad=R.ses.filter(o=>o.err.length||o.warn.length).sort((a,b)=>a.dn[0]-b.dn[0]);
+ return`${stale()}<div class="cd"><div class="row np"><h2>Taslak plan</h2><span class="mu">${fmt(X.start)} – ${fmt(X.end)}${DB.planAt?" · son planlama "+esc(DB.planAt):""}</span><span class="sp"></span>
+ <label class="ck"><input type="checkbox" data-ui="showEmpty"${UI.showEmpty?" checked":""}><span>Boş simülatör günlerini göster</span></label>
+ <button class="s" data-newses="1">+ Oturum ekle</button><button class="s" data-lockall="1">Tümünü kilitle</button><button class="s" data-lockall="0">Kilitleri kaldır</button></div>
+ ${stats(R)}<div class="mu" style="margin:4px 0 10px"><span class="lg" style="background:var(--lpc)"></span>LPC <span class="lg" style="background:var(--opc)"></span>OPC · 1. satır gün, 2. satır eğitmen, sonra öğrenciler ve sektör adı · 🔒 kilitli · <span style="color:#d00000">▀</span> hata <span style="color:#ff8c00">▀</span> uyarı · Bir sütuna tıklayıp oturumu düzenleyin.
+ Eğitmen yükü: ${[...load].sort().map(([t,n])=>esc(t)+" "+n).join(", ")||"—"}</div>
+ <div class="months">${blocks||'<div class="mu">Henüz oturum yok. <b>Planı oluştur</b> ile taslak plan hazırlayın.</div>'}</div></div>
+ ${probs.length||bad.length?`<div class="cd"><h2>Sorunlar</h2>${probs.map(r=>`<div class="iss"><span class="bad">${esc(r.c.code)} ${esc(r.c.name)}</span> – ${r.ev.type} (geçerlilik ${fmt(r.ev.deadline)}, en erken ${fmt(r.ev.earliest)}): ${esc(r.err.join(", "))} <button class="s np" data-new-for="${esc(r.c.code)}">+ Planla</button></div>`).join("")}
+ ${bad.map(o=>`<div class="iss"><a style="cursor:pointer;text-decoration:underline" data-ses="${o.s.id}">${fmt(o.dn[0])} ${esc(o.s.lane)} (${esc(o.s.pilots.filter(Boolean).join(", "))})</a>: ${o.err.map(e=>`<span class="bad">${esc(e)}</span>`).join("; ")}${o.err.length&&o.warn.length?"; ":""}${o.warn.map(e=>`<span class="warn">${esc(e)}</span>`).join("; ")}</div>`).join("")}</div>`:""}`}
+
+/* ---- iletişim kutuları ---- */
+let dlgKey=null;
+function dlg(title,body,buttons,onOpen){$("#dl").innerHTML=`<h2>${title}</h2><div id="dlb">${body}</div><div class="bt">${buttons.map((b,i)=>`<button data-b="${i}" class="${b.c||""}">${b.l}</button>`).join("")}</div>`;
+ $("#ov").hidden=false;$$("#dl [data-b]").forEach(el=>el.onclick=()=>{const b=buttons[+el.dataset.b];if(b.f&&b.f()===false)return;closeDlg()});if(onOpen)onOpen()}
+function closeDlg(){$("#ov").hidden=true;$("#dl").innerHTML=""}
+function toast(m,ms=3500){const t=document.createElement("div");t.className="toast";t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),ms)}
+const confirmDlg=(title,msg,okL,fn,cls="p")=>dlg(title,`<div>${msg}</div>`,[{l:"Vazgeç"},{l:okL,c:cls,f:fn}]);
+
+/* ---- planlama ---- */
+function planDlg(){const S=DB.settings,locked=DB.sessions.filter(s=>s.locked).length,X=ctx();
+ const days=X.laneArr.reduce((a,L)=>a+[...L.avail].filter(d=>d>=X.start&&d<=X.end).length,0),bad=DB.crew.length-X.crew.length;
+ dlg("Planı oluştur",`<div class="g">
+ <label class="f"><span>LPC kaç sektör planlansın?</span><select id="pL">${[1,2,3,4,5].map(n=>`<option${n==S.lpcSec?" selected":""}>${n}</option>`).join("")}</select><span class="mu" id="pLn"></span></label>
+ <label class="f"><span>OPC kaç sektör planlansın?</span><select id="pO">${[1,2,3,4,5].map(n=>`<option${n==S.opcSec?" selected":""}>${n}</option>`).join("")}</select><span class="mu" id="pOn"></span></label>
+ <label class="f"><span>Plan başlangıcı</span><input type="date" id="pS" value="${esc(S.start)}"></label><label class="f"><span>Plan bitişi</span><input type="date" id="pE" value="${esc(S.end)}"></label></div>
+ <div class="mu" style="margin-top:10px">Ekip: <b>${X.crew.length}</b>${bad?` <span class="bad">(${bad} kişi kod/LPC eksik ya da kod tekrarı yüzünden dışarıda)</span>`:""} · Eğitmen: <b>${X.instr.length}</b> · Dönemde müsait simülatör günü: <b>${days}</b><br>
+ ${locked?`<b>${locked}</b> kilitli oturum korunacak; `:""}${DB.sessions.length-locked} kilitsiz oturum silinip yeniden dağıtılacak.</div>
+ ${!X.laneArr.length?'<div class="bad" style="margin-top:8px">Simülatör müsaitliği girilmemiş; Simülatörler sekmesinden ekleyin.</div>':""}`,
+ [{l:"Vazgeç"},{l:"Planla",c:"p",f:()=>{S.lpcSec=+$("#pL").value;S.opcSec=+$("#pO").value;S.start=$("#pS").value;S.end=$("#pE").value;
+   if(!S.start||!S.end||S.end<S.start){toast("Plan dönemi geçersiz");return false}runPlan()}}],
+ ()=>{const u=()=>{$("#pLn").textContent=sectorLabels("LPC",+$("#pL").value).join(" → ");$("#pOn").textContent=sectorLabels("OPC",+$("#pO").value).join(" → ")};u();$("#pL").onchange=u;$("#pO").onchange=u})}
+function runPlan(){const t0=performance.now(),X=ctx();const out=schedule(X);DB.sessions=DB.sessions.filter(s=>s.locked).concat(out);
+ DB.planVer=DB.dataVer;const n=new Date();DB.planAt=fmt(todayDn())+" "+pad(n.getHours())+":"+pad(n.getMinutes());save();
+ const R=evaluate(ctx()),un=R.rows.filter(r=>!r.o&&r.err.length).length;show("plan");toast(`${out.length} oturum planlandı${un?`, ${un} kontrol planlanamadı`:""} (${Math.round(performance.now()-t0)} ms)`)}
+
+/* ---- oturum düzenleme ---- */
+function sessionDlg(id,preset={}){const X=ctx();const orig=id?DB.sessions.find(s=>s.id===id):null;if(id&&!orig)return;
+ const n0=preset.type==="OPC"?X.sec.OPC:X.sec.LPC;
+ const s=orig?JSON.parse(JSON.stringify(orig)):{id:uid(),lane:preset.lane||X.laneArr[0]?.key||"",dates:[],pilots:[preset.pilot||"",""],instr:[],locked:true};
+ if(!orig){let d=toDn(preset.date)??X.start;for(let k=0;k<n0;k++)s.dates.push(toIso(d+k))}
+ const R=evaluate(X),o=orig?R.byId.get(id):null;
+ const crewOpt=v=>`<option value="">— boş (koltuk doldurucu) —</option>`+[...X.crew].sort((a,b)=>(a.rank>b.rank?1:a.rank<b.rank?-1:0)||a.code.localeCompare(b.code)).map(c=>`<option value="${esc(c.code)}"${c.code===v?" selected":""}>${esc(c.code)} – ${esc(c.name)} (${esc(c.rank)})</option>`).join("")+(v&&!X.crewMap.has(v)?`<option selected>${esc(v)}</option>`:"");
+ const insOpt=(v,chk)=>`<option value="">—</option>`+X.instr.map(t=>`<option value="${esc(t.code)}"${t.code===v?" selected":""}${chk&&!EXAM.has(t.role)?' style="color:#999"':""}>${esc(t.code)} (${esc(t.role)})</option>`).join("");
+ const laneOpt=[...X.laneArr.map(L=>L.key),...(s.lane&&!X.lanes.has(s.lane)?[s.lane]:[])].map(k=>`<option${k===s.lane?" selected":""}>${esc(k)}</option>`).join("");
+ const draw=()=>{const n=s.dates.length;$("#sx").innerHTML=`<table class="ed"><tr><th>Sektör</th><th>Tarih</th><th>Eğitmen</th></tr>${s.dates.map((d,k)=>`<tr><td>${k+1}. ${isCheckSector(k,n)?"kontrol":"eğitim"}</td><td><input type="date" data-sd="${k}" value="${esc(d)}"></td><td><select data-si="${k}">${insOpt(s.instr[k]||"",isCheckSector(k,n))}</select></td></tr>`).join("")}</table>`};
+ dlg(orig?"Oturumu düzenle":"Yeni oturum",`<div class="g"><label class="f"><span>Simülatör / slot</span><select id="sL">${laneOpt}</select></label>
+ <label class="f"><span>Sektör sayısı</span><select id="sN">${[1,2,3,4,5].map(k=>`<option${k===s.dates.length?" selected":""}>${k}</option>`).join("")}</select></label>
+ <label class="f"><span>Öğrenci 1</span><select id="sP0">${crewOpt(s.pilots[0])}</select></label><label class="f"><span>Öğrenci 2</span><select id="sP1">${crewOpt(s.pilots[1])}</select></label></div>
+ <div id="sx" style="margin-top:10px"></div><div class="mu">İlk sektör tarihini değiştirince diğerleri aynı miktarda kayar. Kontrol tarihi = son sektör.</div>
+ <label class="ck" style="margin-top:8px"><input type="checkbox" id="sK" checked><span>Kilitli (yeniden planlamada korunur)</span></label>
+ ${o&&(o.err.length||o.warn.length)?`<div style="margin-top:8px">${o.err.map(e=>`<div class="bad iss">✖ ${esc(e)}</div>`).join("")}${o.warn.map(e=>`<div class="warn iss">⚠ ${esc(e)}</div>`).join("")}</div>`:""}`,
+ [...(orig?[{l:"Sil",c:"d",f:()=>{DB.sessions=DB.sessions.filter(x=>x.id!==id);save();render();tabCounts();toast("Oturum silindi")}}]:[]),{l:"Vazgeç"},
+  {l:"Kaydet",c:"p",f:()=>{s.lane=$("#sL").value;s.pilots=[$("#sP0").value,$("#sP1").value];s.locked=$("#sK").checked;s.dates=s.dates.filter(Boolean);
+   if(!s.dates.length){toast("En az bir sektör tarihi girin");return false}const ord=s.dates.map((d,k)=>[d,s.instr[k]||""]).sort((a,b)=>a[0]<b[0]?-1:1);s.dates=ord.map(x=>x[0]);s.instr=ord.map(x=>x[1]);
+   if(orig)Object.assign(orig,s);else DB.sessions.push(s);save();tabCounts();render();const R2=evaluate(ctx()),o2=R2.byId.get(s.id);toast(o2&&o2.err.length?"Kaydedildi – "+o2.err.length+" hata var":"Kaydedildi")}}],
+ ()=>{draw();$("#sN").onchange=()=>{const n=+$("#sN").value;while(s.dates.length<n){const l=toDn(s.dates.at(-1))??X.start;s.dates.push(toIso(l+1))}s.dates.length=n;s.instr.length=Math.min(s.instr.length,n);draw()};
+  $("#sx").onchange=e=>{const el=e.target;if(el.dataset.sd!=null){const k=+el.dataset.sd,old=toDn(s.dates[k]),nw=toDn(el.value);if(k===0&&old!=null&&nw!=null){const dl=nw-old;s.dates=s.dates.map(d=>toIso(toDn(d)+dl));draw()}else s.dates[k]=el.value}
+   if(el.dataset.si!=null)s.instr[+el.dataset.si]=el.value}})}
+
+/* ============ Excel (xlsx okuma/yazma, kütüphanesiz) ============ */
+const CRC=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
+const crc32=u=>{let c=0xFFFFFFFF;for(let i=0;i<u.length;i++)c=CRC[(c^u[i])&255]^(c>>>8);return(c^0xFFFFFFFF)>>>0};
+function zip(files){const enc=new TextEncoder(),parts=[],cd=[];let off=0;
+ for(const[name,txt]of files){const nb=enc.encode(name),data=enc.encode(txt),crc=crc32(data);
+  const h=new DataView(new ArrayBuffer(30));h.setUint32(0,0x04034b50,true);h.setUint16(4,20,true);h.setUint16(6,0x0800,true);h.setUint16(12,0x21,true);h.setUint32(14,crc,true);h.setUint32(18,data.length,true);h.setUint32(22,data.length,true);h.setUint16(26,nb.length,true);
+  parts.push(h.buffer,nb,data);const c=new DataView(new ArrayBuffer(46));c.setUint32(0,0x02014b50,true);c.setUint16(4,20,true);c.setUint16(6,20,true);c.setUint16(8,0x0800,true);c.setUint16(14,0x21,true);c.setUint32(16,crc,true);c.setUint32(20,data.length,true);c.setUint32(24,data.length,true);c.setUint16(28,nb.length,true);c.setUint32(42,off,true);
+  cd.push(c.buffer,nb);off+=30+nb.length+data.length}
+ const cdSize=cd.reduce((a,b)=>a+(b.byteLength??b.length),0),e=new DataView(new ArrayBuffer(22));e.setUint32(0,0x06054b50,true);e.setUint16(8,files.length,true);e.setUint16(10,files.length,true);e.setUint32(12,cdSize,true);e.setUint32(16,off,true);
+ return new Blob([...parts,...cd,e.buffer],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"})}
+const xe=s=>String(s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c]);
+const colL=i=>{let s="";i++;while(i){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26)}return s};
+// sheets: [{name, rows:[[cell]], widths:[], merges:["A1:D1"], freeze:1}] ; cell: null|string|number|{v,d:true (gün numarası),b,red,fill,c (orta),wrap,bd,sz}
+function xlsxBlob(sheets){const fonts=['<font><sz val="11"/><name val="Calibri"/></font>'],fills=['<fill><patternFill patternType="none"/></fill>','<fill><patternFill patternType="gray125"/></fill>'],xfs=['<xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>'],fm=new Map(),fl=new Map(),xm=new Map();
+ const fontId=(b,red,sz)=>{const k=[b,red,sz].join();if(!fm.has(k)){fm.set(k,fonts.length);fonts.push(`<font>${b?"<b/>":""}<sz val="${sz||11}"/>${red?'<color rgb="FFFF0000"/>':""}<name val="Calibri"/></font>`)}return fm.get(k)};
+ const fillId=c=>{if(!c)return 0;if(!fl.has(c)){fl.set(c,fills.length);fills.push(`<fill><patternFill patternType="solid"><fgColor rgb="FF${c}"/><bgColor indexed="64"/></patternFill></fill>`)}return fl.get(c)};
+ const xf=c=>{const f=fontId(c.b,c.red,c.sz),fi=fillId(c.fill),bd=c.bd?1:0,nf=c.d?164:0,k=[f,fi,bd,nf,c.c,c.wrap].join();
+  if(!xm.has(k)){xm.set(k,xfs.length);xfs.push(`<xf numFmtId="${nf}" fontId="${f}" fillId="${fi}" borderId="${bd}"${nf?' applyNumberFormat="1"':""}${f?' applyFont="1"':""}${fi?' applyFill="1"':""}${bd?' applyBorder="1"':""}${c.c||c.wrap?` applyAlignment="1"><alignment${c.c?' horizontal="center"':""} vertical="center"${c.wrap?' wrapText="1"':""}/></xf>`:"/>"}`)}return xm.get(k)};
+ const sx=sheets.map(sh=>{const rows=sh.rows.map((r,ri)=>`<row r="${ri+1}">${r.map((c,ci)=>{if(c==null||c==="")return"";const o=typeof c==="object"?c:{v:c},ref=colL(ci)+(ri+1),s=xf(o),st=s?` s="${s}"`:"";
+   if(o.v==null||o.v==="")return s?`<c r="${ref}"${st}/>`:"";if(o.d)return`<c r="${ref}"${st}><v>${o.v+25569}</v></c>`;if(typeof o.v==="number")return`<c r="${ref}"${st}><v>${o.v}</v></c>`;
+   return`<c r="${ref}"${st} t="inlineStr"><is><t xml:space="preserve">${xe(o.v)}</t></is></c>`}).join("")}</row>`).join("");
+  return`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">${sh.freeze?`<sheetViews><sheetView workbookViewId="0"><pane ySplit="${sh.freeze}" topLeftCell="A${sh.freeze+1}" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>`:""}${sh.widths?`<cols>${sh.widths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join("")}</cols>`:""}<sheetData>${rows}</sheetData>${sh.merges?.length?`<mergeCells count="${sh.merges.length}">${sh.merges.map(m=>`<mergeCell ref="${m}"/>`).join("")}</mergeCells>`:""}<pageMargins left="0.5" right="0.5" top="0.6" bottom="0.6" header="0.3" footer="0.3"/></worksheet>`});
+ const styles=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="dd\\.mm\\.yyyy"/></numFmts><fonts count="${fonts.length}">${fonts.join("")}</fonts><fills count="${fills.length}">${fills.join("")}</fills><borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color auto="1"/></left><right style="thin"><color auto="1"/></right><top style="thin"><color auto="1"/></top><bottom style="thin"><color auto="1"/></bottom><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="${xfs.length}">${xfs.join("")}</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
+ const nm=sheets.map(s=>s.name.replace(/[\[\]:*?\/\\]/g," ").slice(0,31));
+ return zip([["[Content_Types].xml",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>${sx.map((_,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join("")}</Types>`],
+  ["_rels/.rels",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>`],
+  ["xl/workbook.xml",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${nm.map((n,i)=>`<sheet name="${xe(n)}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join("")}</sheets></workbook>`],
+  ["xl/_rels/workbook.xml.rels",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${sx.map((_,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join("")}<Relationship Id="rId${sx.length+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`],
+  ["xl/styles.xml",styles],...sx.map((x,i)=>["xl/worksheets/sheet"+(i+1)+".xml",x])])}
+function download(blob,name){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500)}
+async function unzip(buf){const dv=new DataView(buf);let e=buf.byteLength-22;while(e>=0&&dv.getUint32(e,true)!==0x06054b50)e--;if(e<0)throw new Error("Dosya xlsx değil");
+ const n=dv.getUint16(e+10,true);let p=dv.getUint32(e+16,true);const files={},dec=new TextDecoder();
+ for(let i=0;i<n;i++){if(dv.getUint32(p,true)!==0x02014b50)break;const method=dv.getUint16(p+10,true),cs=dv.getUint32(p+20,true),nl=dv.getUint16(p+28,true),xl=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true),lo=dv.getUint32(p+42,true);
+  const name=dec.decode(new Uint8Array(buf,p+46,nl));const ln=dv.getUint16(lo+26,true),lx=dv.getUint16(lo+28,true);files[name]={method,data:new Uint8Array(buf,lo+30+ln+lx,cs)};p+=46+nl+xl+cl}
+ return{has:n=>!!files[n],async text(name){const f=files[name];if(!f)return null;let u=f.data;
+  if(f.method===8){if(typeof DecompressionStream==="undefined")throw new Error("Bu tarayıcı xlsx açamıyor; CSV olarak kaydedip yükleyin");u=new Uint8Array(await new Response(new Blob([u]).stream().pipeThrough(new DecompressionStream("deflate-raw"))).arrayBuffer())}
+  return dec.decode(u)}}}
+async function readXlsx(buf){const z=await unzip(buf),P=s=>new DOMParser().parseFromString(s,"application/xml"),T=(d,t)=>[...d.getElementsByTagNameNS("*",t)];
+ const wb=P(await z.text("xl/workbook.xml")),rels=P(await z.text("xl/_rels/workbook.xml.rels")||"<x/>"),rm={};T(rels,"Relationship").forEach(r=>rm[r.getAttribute("Id")]=r.getAttribute("Target"));
+ const sst=await z.text("xl/sharedStrings.xml"),ss=sst?T(P(sst),"si").map(si=>T(si,"t").filter(t=>t.parentNode.localName!=="rPh").map(t=>t.textContent).join("")):[];
+ const out=[];for(const sh of T(wb,"sheet")){const rid=sh.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships","id")||sh.getAttribute("r:id");let tg=rm[rid];if(!tg)continue;
+  const path=tg.startsWith("/")?tg.slice(1):"xl/"+tg.replace(/^\.\//,"");const x=await z.text(path);if(!x)continue;const doc=P(x),grid=[];
+  T(doc,"row").forEach((row,ri)=>{const rn=(+row.getAttribute("r")||ri+1)-1;let ci=0;T(row,"c").forEach(c=>{const ref=c.getAttribute("r");if(ref){const m=/^([A-Z]+)/.exec(ref);ci=m[1].split("").reduce((a,ch)=>a*26+ch.charCodeAt(0)-64,0)-1}
+   const t=c.getAttribute("t"),v=T(c,"v")[0]?.textContent;let val;if(t==="s")val=ss[+v]??"";else if(t==="inlineStr")val=T(c,"t").map(x=>x.textContent).join("");else if(t==="b")val=v==="1";else if(t==="str"||t==="e"||t==="d")val=v??"";else val=v!=null&&v!==""?Number(v):"";
+   (grid[rn]||(grid[rn]=[]))[ci]=val;ci++})});out.push({name:sh.getAttribute("name"),rows:[...grid].map(r=>r||[])})}return out}
+function parseCSV(text){text=text.replace(/^﻿/,"");const first=text.split(/\r?\n/)[0]||"",dl=["\t",";",","].map(d=>[d,first.split(d).length]).sort((a,b)=>b[1]-a[1])[0][0];
+ const rows=[];let row=[],cur="",q=false;for(let i=0;i<text.length;i++){const ch=text[i];if(q){if(ch==='"'){if(text[i+1]==='"'){cur+='"';i++}else q=false}else cur+=ch}
+  else if(ch==='"')q=true;else if(ch===dl){row.push(cur);cur=""}else if(ch==="\n"||ch==="\r"){if(ch==="\r"&&text[i+1]==="\n")i++;row.push(cur);rows.push(row);row=[];cur=""}else cur+=ch}
+ if(cur||row.length){row.push(cur);rows.push(row)}return rows}
+function cellDate(v){if(v==null||v==="")return"";if(typeof v==="number"&&v>20000&&v<80000)return toIso(Math.round(v)-25569);const s=String(v).trim();let m;
+ if((m=/^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(s)))return m[1]+"-"+pad(m[2])+"-"+pad(m[3]);
+ if((m=/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{2,4})$/.exec(s))){const y=m[3].length===2?2000+ +m[3]:+m[3];return y+"-"+pad(m[2])+"-"+pad(m[1])}
+ if(/^\d{5}(\.\d+)?$/.test(s))return cellDate(+s);return""}
+const cellBool=v=>v===true||/^(e|evet|y|yes|1|true|x|var|✓|✔)$/i.test(String(v??"").trim());
+function parseDays(v){const s=norm(v);if(!s||/hepsi|tum|all|her/.test(s))return Array(7).fill(true);if(/haftaici|weekday/.test(s))return[1,1,1,1,1,0,0].map(Boolean);if(/haftasonu|weekend/.test(s))return[0,0,0,0,0,1,1].map(Boolean);
+ const M={pzt:0,pts:0,pazartesi:0,mon:0,sal:1,tue:1,car:2,wed:2,per:3,thu:3,cum:4,fri:4,cmt:5,cts:5,sat:5,paz:6,sun:6},id=t=>{t=norm(t);if(/^[1-7]$/.test(t))return+t-1;if(t==="pazar")return 6;if(t==="cumartesi")return 5;return M[t.slice(0,3)]??M[t]};
+ const r=Array(7).fill(false);String(v).split(/[,;\s]+/).filter(Boolean).forEach(tok=>{const[a,b]=tok.split("-");const i=id(a),j=b!=null?id(b):i;if(i==null||j==null)return;for(let k=i;;k=(k+1)%7){r[k]=true;if(k===j)break}});
+ return r.some(Boolean)?r:Array(7).fill(true)}
+const daysStr=d=>{const a=Array.isArray(d)?d.map(x=>x!==false):Array(7).fill(true);if(a.every(Boolean))return"Hepsi";if(a.join()===[1,1,1,1,1,0,0].map(Boolean).join())return"Hafta içi";return DAYN.filter((_,i)=>a[i]).join(",")};
+function normRank(v){const s=norm(v);if(/^(cpt|capt|captain|kaptan|kpt|cp)$/.test(s))return"CPT";if(/^(fo|f0|sfo|firstofficer|ikincipilot|2pilot|copilot|yardimcipilot)$/.test(s))return"F/O";return String(v??"").trim().toUpperCase()}
+function rowsToItems(key,rows){const L=LISTS[key],H=rows.slice(0,6);let hi=-1,map=null;
+ for(let r=0;r<H.length;r++){const hs=(H[r]||[]).map(norm),m={},used=new Set();
+  hs.forEach((h,ci)=>{if(!h)return;const col=L.cols.find(c=>!used.has(c.k)&&c.al.includes(h));if(col){m[ci]=col;used.add(col.k)}});
+  hs.forEach((h,ci)=>{if(!h||m[ci])return;const col=L.cols.find(c=>!used.has(c.k)&&c.al.some(a=>a.length>=3&&h.includes(a)));if(col){m[ci]=col;used.add(col.k)}});
+  if(Object.keys(m).length>=2){hi=r;map=m;break}}
+ if(!map){map={};L.cols.forEach((c,i)=>map[i]=c)}
+ const out=[];for(const r of rows.slice(hi+1)){if(!r||!r.some(v=>v!==""&&v!=null))continue;const it={id:uid()};
+  L.cols.forEach(c=>{it[c.k]=c.t==="days"?Array(7).fill(true):c.t==="check"?false:""});
+  for(const ci in map){const c=map[ci],v=r[ci];if(v==null||v==="")continue;
+   it[c.k]=c.t==="date"?cellDate(v):c.t==="check"?cellBool(v):c.t==="days"?parseDays(v):c.t==="code"?String(v).trim().toUpperCase():c.k==="rank"?normRank(v):c.k==="role"?String(v).trim().toUpperCase():String(v).trim()}
+  if(key==="blackouts"&&!it.to)it.to=it.from;if(key==="leaves"&&!it.to)it.to=it.from;out.push(it)}return out}
+function sheetKey(name){const n=norm(name);for(const[k,al]of SHEET_ALIAS)if(al.some(a=>n.includes(a)))return k;return null}
+function applyImport(found,mode){found.forEach(({key,items})=>{DB[key]=mode==="add"?DB[key].concat(items):items});touch();render();toast("Yüklendi: "+found.map(f=>LISTS[f.key].t+" "+f.items.length).join(", "))}
+async function importFile(file){try{const nm=file.name.toLowerCase();
+ if(nm.endsWith(".json")){const d=JSON.parse(await file.text());if(!d||!Array.isArray(d.crew))throw new Error("Yedek dosyası tanınmadı");
+  confirmDlg("Yedekten yükle","Mevcut tüm veriler ve plan bu yedekle değiştirilecek.","Yükle",()=>{DB=d;const e=emptyDB();for(const k in e)if(DB[k]==null)DB[k]=e[k];DB.settings={...DEF,...DB.settings};save();tabCounts();render();toast("Yedek yüklendi")});return}
+ let sheets;if(nm.endsWith(".csv")||nm.endsWith(".txt"))sheets=[{name:file.name,rows:parseCSV(await file.text())}];else sheets=await readXlsx(await file.arrayBuffer());
+ const found=[];for(const sh of sheets){const key=sheetKey(sh.name)||(sheets.length===1?(TAB in LISTS?TAB:TAB==="off"?"blackouts":"crew"):null);if(!key||found.some(f=>f.key===key))continue;const items=rowsToItems(key,sh.rows);if(items.length)found.push({key,items})}
+ if(!found.length){dlg("Veri bulunamadı",`Dosyada tanınan sayfa/satır yok. Beklenen sayfa adları: ${Object.values(LISTS).map(l=>"<b>"+l.sheet+"</b>").join(", ")}. Kolay yol: <b>Excel şablonu indir</b> ile şablonu alıp doldurun.`,[{l:"Tamam",c:"p"}]);return}
+ dlg("Excel'den yükle",`<div>Bulunan veriler:</div><ul>${found.map(f=>`<li><b>${LISTS[f.key].t}</b>: ${f.items.length} satır (mevcut ${DB[f.key].length})</li>`).join("")}</ul><div class="mu">"Değiştir" seçilirse yalnızca dosyada bulunan listeler değiştirilir.</div>`,
+  [{l:"Vazgeç"},{l:"Sona ekle",f:()=>applyImport(found,"add")},{l:"Değiştir",c:"p",f:()=>applyImport(found,"replace")}])}
+ catch(err){dlg("Dosya okunamadı",esc(err.message||err),[{l:"Tamam",c:"p"}])}}
+function pasteDlg(key){const L=LISTS[key];dlg(L.t+" – Excel'den yapıştır",`<div class="mu">Excel'de hücreleri seçip kopyalayın (başlık satırıyla birlikte daha güvenli) ve buraya yapıştırın. Başlık yoksa sütun sırası: <b>${L.cols.map(c=>c.l).join(" | ")}</b></div><textarea id="pT" placeholder="Yapıştırın…"></textarea>`,
+ [{l:"Vazgeç"},{l:"Sona ekle",f:()=>doPaste(key,"add")},{l:"Listeyi değiştir",c:"p",f:()=>doPaste(key,"replace")}],()=>$("#pT").focus())}
+function doPaste(key,mode){const items=rowsToItems(key,parseCSV($("#pT").value));if(!items.length){toast("Satır bulunamadı");return false}applyImport([{key,items}],mode)}
+function inputSheets(){return Object.entries(LISTS).map(([key,L])=>({name:L.sheet,freeze:1,widths:L.cols.map(c=>c.t==="date"?13:c.t==="code"?8:c.w?Math.round(c.w/7):14),
+ rows:[L.cols.map(c=>({v:c.l,b:1,fill:"D9D9D9",bd:1})),...DB[key].map(it=>L.cols.map(c=>{const v=it[c.k];if(c.t==="date")return{v:toDn(v),d:toDn(v)!=null,bd:1};if(c.t==="check")return{v:v?"E":"H",bd:1,c:1};if(c.t==="days")return{v:daysStr(v),bd:1};return{v:v??"",bd:1}}))]}))}
+function exportPlan(){const X=ctx(),R=evaluate(X),FILL={LPC:"FFC000",OPC:"FFFF00"};
+ const head=TH.map(([h])=>({v:h,b:1,fill:"BFBFBF",bd:1,c:1,wrap:1}));
+ const rows=[...R.rows].sort((a,b)=>a.ev.idx-b.ev.idx||(a.ev.type<b.ev.type?-1:a.ev.type>b.ev.type?1:0)||a.ev.deadline-b.ev.deadline||X.order.get(a.c.code)-X.order.get(b.c.code)).map(r=>{const o=r.o,f=FILL[r.ev.type],C=(v,x={})=>({v,fill:f,bd:1,c:1,...x}),D=(dn,x={})=>C(dn,{d:dn!=null,...x});
+  const errs=[...r.err,...(o?o.err:[])],warns=[...r.warn,...(o?o.warn:[])];
+  return[C(r.c.rank),C(r.c.name,{c:0}),C(r.c.code),o?D(r.chk,{b:1}):C(""),C([...errs,...warns].join("; "),{red:errs.length,b:errs.length,wrap:1,c:0}),C(o?.L?.loc||""),D(r.last,{red:r.lastPlanned}),D(r.ev.auto),D(r.ev.earliest,{red:r.ev.gapDriven,b:r.ev.gapDriven}),D(r.ev.deadline),C(r.ev.type,{b:1}),D(r.c.visaDn),C(r.visa||"",{red:1,b:1}),C(r.final?"final month":"",{red:1,b:1}),D(r.newValid??null),
+   C(o?o.dn.map((d,k)=>fmtS(d)+" "+(o.labels[r.c.code]?.[k]||"")).join(" · "):"",{c:0}),C(o?(o.s.instr||[]).map(t=>t||"?").join(" / "):""),C(o?o.s.pilots.filter(c=>c&&c!==r.c.code).join(", "):"")]});
+ const t1={name:"Uygunluk Tablosu",freeze:1,widths:[7,24,7,12,34,7,12,12,12,12,7,12,14,12,12,28,12,10],rows:[head,...rows]};
+ const months=planCols(X,R),pr=[],merges=[],CH=8,multi=X.laneArr.length>1;
+ for(const[k,cols]of months){const y=Math.floor(k/12),m=k%12;for(let i=0;i<cols.length;i+=CH){const cs=cols.slice(i,i+CH),r0=pr.length;
+  pr.push([{v:MON[m]+"."+String(y).slice(2),b:1,fill:"BFBFBF",bd:1,c:1},...cs.slice(1).map(()=>({v:"",fill:"BFBFBF",bd:1}))]);if(cs.length>1)merges.push(`A${r0+1}:${colL(cs.length-1)}${r0+1}`);
+  pr.push(cs.map(c=>({v:ymd(c.d)[2],bd:1,c:1})));if(multi)pr.push(cs.map(c=>({v:X.lanes.get(c.lane)?.loc||c.lane,bd:1,c:1,sz:8})));
+  pr.push(cs.map(c=>({v:c.o?c.o.s.instr?.[c.k]||"":"",bd:1,c:1})));
+  for(const j of[0,1])pr.push(cs.map(c=>{const code=c.o?.s.pilots[j]||"";return{v:code,bd:1,c:1,fill:FILL[c.o?.types[code]]}}));
+  pr.push(cs.map(c=>({v:c.o?[...new Set(c.o.s.pilots.filter(Boolean).map(p=>c.o.labels[p]?.[c.k]).filter(Boolean))].join("/"):"",bd:1,c:1,sz:8})));pr.push([])}}
+ download(xlsxBlob([t1,{name:"Taslak Plan",widths:Array(CH).fill(9),rows:pr,merges},...inputSheets()]),"simulator-plani-"+toIso(todayDn())+".xlsx")}
+
+/* ============ olaylar ============ */
+document.addEventListener("click",e=>{const el=e.target.closest("button,[data-ses],[data-new],a");if(!el)return;const d=el.dataset;
+ if(d.tab)return show(d.tab);
+ if(d.add){const L=LISTS[d.add],it={id:uid()};L.cols.forEach(c=>it[c.k]=c.t==="days"?Array(7).fill(true):c.t==="check"?false:"");if(d.add==="sims"&&DB.sims.length){const p=DB.sims.at(-1);Object.assign(it,{sim:p.sim,slot:p.slot,loc:p.loc,visa:p.visa})}DB[d.add].push(it);touch();render();return}
+ if(d.del){DB[d.del].splice(+d.i,1);touch();render();return}
+ if(d.clear)return confirmDlg("Tümünü sil",`<b>${LISTS[d.clear].t}</b> listesindeki ${DB[d.clear].length} satır silinecek.`,"Sil",()=>{DB[d.clear]=[];touch();render()},"d");
+ if(d.paste)return pasteDlg(d.paste);
+ if(d.ses)return sessionDlg(d.ses);
+ if(d.new){const[l,dt]=d.new.split("|");return sessionDlg(null,{lane:l,date:dt})}
+ if(d.newFor!==undefined){const X=ctx(),c=X.crewMap.get(d.newFor),R=evaluate(X),r=R.rows.find(r=>r.c.code===d.newFor&&!r.o);const dt=r?Math.max(r.ev.earliest,X.start):X.start;
+  let lane=X.laneArr[0]?.key,date=dt;for(const L of X.laneArr){const f=[...L.avail].filter(x=>x>=dt).sort((a,b)=>a-b)[0];if(f!=null&&(date===dt||f<date)){date=f;lane=L.key}}
+  return sessionDlg(null,{pilot:c?.code,type:r?.ev.type,lane,date:toIso(date)})}
+ if(d.newses)return sessionDlg(null,{});
+ if(d.lockall!==undefined){DB.sessions.forEach(s=>s.locked=d.lockall==="1");save();render();toast(d.lockall==="1"?"Tüm oturumlar kilitlendi":"Kilitler kaldırıldı");return}
+});
+document.addEventListener("change",e=>{const el=e.target,d=el.dataset;
+ if(d.l){const it=DB[d.l][+d.i],col=LISTS[d.l].cols.find(c=>c.k===d.k);if(!it||!col)return;
+  if(col.t==="days"){if(!Array.isArray(it.days))it.days=Array(7).fill(true);it.days[+d.j]=el.checked}else if(col.t==="check")it[d.k]=el.checked;else if(col.t==="code"){it[d.k]=el.value.trim().toUpperCase();el.value=it[d.k]}else it[d.k]=el.value;
+  touch();if(d.l==="crew")crewDerived();return}
+ if(d.s){const S=DB.settings;S[d.s]=el.type==="checkbox"?el.checked:el.type==="number"?Math.max(0,+el.value||0):el.value;if(d.s==="winM"||d.s==="gapM"||d.s==="lpcM"||d.s==="opcM"||d.s==="maxGap"||d.s==="instrPerDay")S[d.s]=Math.max(1,S[d.s]);touch();render();return}
+ if(d.ui){UI[d.ui]=el.type==="checkbox"?el.checked:el.value;render()}});
+document.addEventListener("input",e=>{if(e.target.dataset.ui==="q"){UI.q=e.target.value;clearTimeout(window._q);window._q=setTimeout(()=>{render();const i=$('[data-ui="q"]');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}},250)}});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#ov").hidden)closeDlg()});
+$("#ov").addEventListener("click",e=>{if(e.target.id==="ov")closeDlg()});
+$("#bPlan").onclick=planDlg;$("#bImp").onclick=()=>$("#fImp").click();$("#fImp").onchange=e=>{const f=e.target.files[0];e.target.value="";if(f)importFile(f)};
+$("#bTpl").onclick=()=>download(xlsxBlob(inputSheets()),"simulator-plan-veri.xlsx");$("#bExp").onclick=exportPlan;$("#bPrint").onclick=()=>window.print();
+$("#bMore").onclick=()=>dlg("Diğer işlemler",`<div class="row"><button id="mB">Yedek al (JSON)</button><button id="mR">Yedekten yükle</button><button id="mS">Örnek veriyi yükle</button><button id="mC" class="d">Tüm verileri temizle</button></div><div class="mu" style="margin-top:8px">Yedek dosyası tüm girdileri, ayarları ve planı içerir; başka cihaza taşımak için kullanın.</div>`,[{l:"Kapat"}],()=>{
+ $("#mB").onclick=()=>{download(new Blob([JSON.stringify(DB,null,1)],{type:"application/json"}),"simulator-plan-yedek-"+toIso(todayDn())+".json");closeDlg()};
+ $("#mR").onclick=()=>{closeDlg();$("#fImp").click()};
+ $("#mS").onclick=()=>confirmDlg("Örnek veri","Mevcut veriler örnek veriyle değiştirilecek.","Yükle",()=>{DB=sampleDB();save();tabCounts();render()});
+ $("#mC").onclick=()=>confirmDlg("Tüm verileri temizle","Ekip, eğitmen, simülatör, kısıt ve plan verilerinin tamamı silinecek.","Temizle",()=>{DB=emptyDB();save();tabCounts();render()},"d")});
+load();tabCounts();render();
+</script></body></html>
