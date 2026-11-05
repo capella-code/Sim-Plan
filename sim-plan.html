@@ -38,7 +38,7 @@ tr.fr th{padding:2px 3px;background:var(--hd)}tr.fr input{width:100%;min-width:4
 .mt th.mh{background:var(--gr);font-weight:700;font-size:15px}.mt td.dy{font-size:15px;cursor:pointer;position:relative}.mt td.dy small{display:block;font-size:10px;color:#555;line-height:1}
 .mt td.ln{font-size:10px;color:#333}.mt td.tm{font-size:11px;color:#000;white-space:nowrap}.mt td.lb{font-size:10px;color:#333;background:#f2f2f2}
 .mt td.LPC{background:var(--lpc)}.mt td.OPC{background:var(--opc)}.mt td.x{background:#eee;color:#777}
-.mt td.cl{cursor:pointer}.mt td.ce{box-shadow:inset 0 4px 0 #d00000}.mt td.cw{box-shadow:inset 0 4px 0 #ff8c00}.mt td.em{color:#999;cursor:pointer}
+.mt td.cl{cursor:pointer}.mt td.rs{background:#c6efce;color:#006100;font-weight:700}.mt td.ce{box-shadow:inset 0 4px 0 #d00000}.mt td.cw{box-shadow:inset 0 4px 0 #ff8c00}.mt td.em{color:#999;cursor:pointer}
 .lg{display:inline-block;width:14px;height:14px;border:1px solid #000;vertical-align:-2px;margin-right:3px}
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;z-index:50;padding:30px 10px;overflow:auto}
 .dl{background:var(--cd);border-radius:12px;max-width:760px;width:100%;padding:16px;box-shadow:0 10px 40px rgba(0,0,0,.35)}
@@ -163,17 +163,19 @@ const nextDevId=list=>Math.max(-1,...list.map(d=>+d.id).filter(n=>!isNaN(n)))+1;
 const parseSlot=v=>{const m=/(\d{1,2})[:.](\d{2})\s*[-–]\s*(\d{1,2})[:.](\d{2})/.exec(String(v||""));return m?[pad(m[1])+":"+m[2],pad(m[3])+":"+m[4]]:null};
 const makeLane=(dv,k)=>{const key=devLane(dv,k),t=slotTime(dv,k);return{key,sim:dv.c,slot:k,time:t,label:key+(t?" ("+t+")":isAC(dv)?" (uçak)":""),loc:(dv.loc||"").toUpperCase(),kind:dv.k,active:!!dv.a,avail:new Set(),res:new Set()}};
 const rowLane=r=>{const dv=devById(r.dev);return dv?devLane(dv,isAC(dv)?"":r.slot):null};
-const slotSession=r=>{const k=rowLane(r);return k?DB.sessions.find(se=>se.lane===k&&se.dates.includes(r.date))||null:null};
+// bir oturumun sektörleri aynı simülatörün farklı slotlarında olabilir: se.lanes[k] (yoksa se.lane)
+const laneAt=(se,k)=>se.lanes?.[k]||se.lane;
+const slotSession=r=>{const k=rowLane(r);return k?DB.sessions.find(se=>se.dates.some((dt,i)=>dt===r.date&&laneAt(se,i)===k))||null:null};
 const firmOf=d=>((d.op||"").trim().split(/\s+/)[0]||d.mf||d.c||"").toUpperCase();
 const defSlot=d=>SLOTS.find(k=>d.s?.[k]&&d.s[k][0]>="08:00"&&d.s[k][0]<="16:00")||SLOTS.find(k=>d.s?.[k])||"";
 const normStatus=v=>/tahmin|tentative|opsiyon|planned/.test(norm(v))?"Tahmini":"Reserved";
 // plandaki her oturum günü için müsaitlik satırı (yoksa "Tahmini" açılır); hiçbir oturumun kullanmadığı tahmini satır silinir, Reserved satırlar hep kalır
 // yeniden planlamada korunan oturum: kilitli VE bütün günleri Reserved satırda (Tahmini slottaki oturum her planlamada yeniden yerleştirilir)
-const isKept=se=>!!se.locked&&se.dates.length>0&&se.dates.every(dt=>DB.sims.some(r=>r.status==="Reserved"&&r.date===dt&&rowLane(r)===se.lane));
+const isKept=se=>!!se.locked&&se.dates.length>0&&se.dates.every((dt,i)=>DB.sims.some(r=>r.status==="Reserved"&&r.date===dt&&rowLane(r)===laneAt(se,i)));
 function syncSlots(){if(!DB||!Array.isArray(DB.sims)||!Array.isArray(DB.devices))return false;const keyOf=new Map();
  DB.devices.forEach(dv=>{if(isAC(dv))keyOf.set(devLane(dv,""),[dv,""]);else SLOTS.forEach(k=>{if(dv.s?.[k])keyOf.set(devLane(dv,k),[dv,k])})});
  const have=new Set();DB.sims.forEach(r=>{const k=rowLane(r);if(k)have.add(k+"|"+r.date)});const used=new Set();let ch=false;
- DB.sessions.forEach(se=>{const m=keyOf.get(se.lane);se.dates.forEach(dt=>{const k=se.lane+"|"+dt;used.add(k);if(!have.has(k)&&m&&dt){DB.sims.push({id:uid(),date:dt,dev:m[0].id,slot:m[1],status:"Tahmini",note:""});have.add(k);ch=true}})});
+ DB.sessions.forEach(se=>{se.dates.forEach((dt,i)=>{const ln=laneAt(se,i),m=keyOf.get(ln),k=ln+"|"+dt;used.add(k);if(!have.has(k)&&m&&dt){DB.sims.push({id:uid(),date:dt,dev:m[0].id,slot:m[1],status:"Tahmini",note:""});have.add(k);ch=true}})});
  const n0=DB.sims.length;DB.sims=DB.sims.filter(r=>{if(r.status!=="Tahmini")return true;const k=rowLane(r);return k&&used.has(k+"|"+r.date)});if(DB.sims.length!==n0)ch=true;
  if(ch)DB.sims.sort((a,b)=>(a.date||"\uffff").localeCompare(b.date||"\uffff")||(devById(a.dev)?.c||"").localeCompare(devById(b.dev)?.c||"")||(a.slot||"").localeCompare(b.slot||""));
  return ch}
@@ -202,7 +204,7 @@ if(!Array.isArray(d.visas)||(!d.visas.length&&(d.crew||[]).some(c=>c.visa)))d.vi
   else if(/^[A-F]$/i.test((s.slot||"").trim()))k=s.slot.trim().toUpperCase();
   if(!k&&!isAC(dv))k=SLOTS.find(x=>dv.s[x])||"";
   lm.set(oldLaneKey(s),devLane(dv,k));s.dev=dv.id;s.slot=isAC(dv)?"":k;delete s.sim;delete s.loc});
- if(lm.size)(d.sessions||[]).forEach(x=>{if(lm.has(x.lane))x.lane=lm.get(x.lane)});
+ if(lm.size)(d.sessions||[]).forEach(x=>{if(lm.has(x.lane))x.lane=lm.get(x.lane);if(x.lanes)x.lanes=x.lanes.map(l=>lm.get(l)||l)});
  if((d.sims||[]).some(r=>r.date==null&&r.from!=null)){const bl=new Set();(d.blackouts||[]).forEach(b=>expandRange(b.from,b.to,x=>bl.add(x)));const out=[];
   d.sims.forEach(r=>{if(r.date!=null||r.from==null){out.push(r);return}const days=Array.isArray(r.days)?r.days:Array(7).fill(true);
    expandRange(r.from,r.to,x=>{if(days[wd(x)]!==false&&!bl.has(x))out.push({id:uid(),date:toIso(x),dev:r.dev,slot:r.slot,status:"Tahmini",note:""})})});d.sims=out}
@@ -268,7 +270,10 @@ const isCheckSector=(k,n)=>n===1||k>0;
 // Kişinin başlangıç durumu: LPC geçerliliği, OPC (operatör) geçerliliği, son kontrol tarihi
 // OPC geçerliliği LPC'den türetilir: LPC − 6 ay (plan başlangıcından sonraysa), değilse LPC + 6 ay; ay sonuna yuvarlanır
 function initState(c,X){const S=X.S,lpc=toDn(c.lpc),a=eom(addM(lpc,-S.opcM));
- return{lpc,op:a>=X.start?a:eom(addM(lpc,S.opcM)),last:toDn(c.last),n:0}}
+ const st={lpc,op:a>=X.start?a:eom(addM(lpc,S.opcM)),last:toDn(c.last),n:0};
+ // son sim tarihi sıradaki OPC'nin son ... ay penceresine düşüyorsa o OPC yapılmış sayılır (OPC geçerliliği girilmediği için uygulama bunu başka türlü bilemez)
+ if(st.last!=null){const ev=nextEvent(st,X);if(ev.type==="OPC"&&st.last>=ev.auto&&st.last<=ev.deadline)return applyCheck(st,ev,st.last,S)}
+ return st}
 // Sıradaki kontrol: hangisinin süresi önce doluyorsa
 function nextEvent(st,X){const S=X.S;let type,deadline,early=false;
  if(st.op<st.lpc){deadline=st.op;if(addM(st.op,S.gapM)>st.lpc){type="LPC";early=true}else type="OPC"}else{type="LPC";deadline=st.lpc}
@@ -307,7 +312,7 @@ function schedule(X,tent=new Map()){const S=X.S,out=[];
  const day=new Map(),P=(c,d)=>{let m=day.get(c);if(!m)day.set(c,m=new Map());let o=m.get(d);if(!o)m.set(d,o={st:0,te:0});return o};
  const load=new Map(),addLoad=t=>load.set(t,(load.get(t)||0)+1);
  const lockByPilot=new Map(),lockPtr=new Map();
- for(const o of lockedS){o.dn.forEach((d,k)=>{laneBusy.get(o.s.lane)?.add(d);o.s.pilots.forEach(c=>{if(c)P(c,d).st=1});const t=o.s.instr?.[k];if(t){P(t,d).te++;addLoad(t)}});
+ for(const o of lockedS){o.dn.forEach((d,k)=>{laneBusy.get(laneAt(o.s,k))?.add(d);o.s.pilots.forEach(c=>{if(c)P(c,d).st=1});const t=o.s.instr?.[k];if(t){P(t,d).te++;addLoad(t)}});
   o.s.pilots.forEach(c=>{if(!c)return;if(!lockByPilot.has(c))lockByPilot.set(c,[]);lockByPilot.get(c).push({o,check:o.dn.at(-1)})})}
  lockByPilot.forEach(a=>a.sort((x,y)=>x.check-y.check));
  const st=new Map(),pend=new Map();X.crew.forEach(c=>st.set(c.code,initState(c,X)));
@@ -318,7 +323,21 @@ function schedule(X,tent=new Map()){const S=X.S,out=[];
  const N=X.end-X.start+1;
  const pref=lanes.map(L=>{const a=new Int32Array(N+1),b=laneBusy.get(L.key);for(let i=0;i<N;i++){const d=X.start+i;a[i+1]=a[i]+(use(L,d)&&!b.has(d)?1:0)}return a});
  const cap=(from,to,n)=>{const i0=Math.max(0,from-X.start),i1=Math.min(N,to-X.start+1);if(i1<=i0)return 0;let s=0;for(const a of pref)s+=Math.floor((a[i1]-a[i0])/n);return s};
- const block=(L,d,n)=>{const r=[d],b=laneBusy.get(L.key);let cur=d;for(let k=1;k<n;k++){let nx=null;for(let g=1;g<=S.maxGap;g++){const x=cur+g;if(x>X.end)break;if(use(L,x)&&!b.has(x)){nx=x;break}}if(nx==null)return null;r.push(nx);cur=nx}return r};
+ // boş Reserved günlerin kapasitesi (hep önce bunlar kullanılır)
+ const prefR=lanes.map(L=>{const a=new Int32Array(N+1);for(let i=0;i<N;i++){const d=X.start+i;a[i+1]=a[i]+(L.res.has(d)?1:0)}return{L,a}});
+ // aynı simülatörün slotları birlikte sayılır (sektörler farklı slotlarda olabilir)
+ const sims=new Map();lanes.forEach(L=>{if(!sims.has(L.sim))sims.set(L.sim,[]);sims.get(L.sim).push(L)});
+ const capR=(from,to,n)=>{const i0=Math.max(0,from-X.start),i1=Math.min(N,to-X.start+1);if(i1<=i0)return 0;let s=0;
+  for(const ls of sims.values()){const free=d=>ls.filter(L=>L.res.has(d)&&!laneBusy.get(L.key).has(d)).length;let run=0,c=0;for(let i=i0;i<i1;i++){const d=X.start+i;if(free(d)){if(++run===n){c++;run=0}}else run=0}s+=c}return s};
+ // tahmini güne ancak kişinin son ayına kadar boş Reserved günler herkese yetmiyorsa konur
+ const allowTent=(a,d,n)=>{const W=a.soft<0?a.latest:a.ev.soft;let dem=0;for(const q of X.crew){const e=getPend(q);if(e&&X.sec[e.type]===n&&Math.min(e.soft,e.expired?X.end:e.deadline)<=W&&e.earliest<W)dem++}return capR(d+1,W,n)*2<dem};
+ // blok: ilk sektör L hattında; sonraki sektörler aynı simülatörün herhangi bir slotunda olabilir (önce Reserved, sonra aynı slot)
+ const block=(L,d,n)=>{const r=[d],ls=[L];let cur=d,last=L;for(let k=1;k<n;k++){let nx=null,nl=null;
+   for(let g=1;g<=S.maxGap&&nx==null;g++){const x=cur+g;if(x>X.end)break;
+    const opts=(sims.get(L.sim)||[L]).filter(M=>use(M,x)&&!laneBusy.get(M.key).has(x)).sort((a,b)=>((b.res.has(x)?2:0)+(b===last?1:0))-((a.res.has(x)?2:0)+(a===last?1:0)));
+    if(opts.length){nx=x;nl=opts[0]}}
+   if(nx==null)return null;r.push(nx);ls.push(nl);cur=nx;last=nl}
+  r.lanes=ls;return r};
  const assign=(L,dates,pil)=>{const n=dates.length;if(!X.instr.length)return dates.map(()=>"");const res=[];
   for(let k=0;k<n;k++){const d=dates[k],chk=isCheckSector(k,n);let best=null,bs=Infinity;
    for(const t of X.instr){const o=day.get(t.code)?.get(d);if(o&&(o.st||o.te>=S.instrPerDay))continue;if(onLeave(X,t.code,d))continue;if(chk&&!EXAM.has(t.role))continue;
@@ -342,27 +361,28 @@ function schedule(X,tent=new Map()){const S=X.S,out=[];
  // "mecbur kalmak": ideal olmayan eşi (ceza pen) kabul etmeden önce: süre penceresi içinde daha iyi eş çıkabilecek mi, kapasite yetiyor mu?
  // Pencere: rütbe uyumsuzluğunda (pen>=2, ayar açıksa) geçerlilik bitişi, diğerlerinde son aydan önceki gün.
  // ihlal edilen kural "son ay" kuralından önemliyse daha iyi eş için geçerlilik bitişine kadar beklenir, değilse son aydan önceye kadar
- const acceptPen=(a,d,n,pen)=>{const vM=!!(pen&(WT.mix||0)),vR=!!(pen&(WT.rank||0)),W=(vR&&above("rank"))||(vM&&above("mix"))?a.latest:a.ev.expired?X.end:a.ev.soft;if(W<a.c)return true;let dem=0;
+ // rb: karar verilen blok Reserved ise daha iyi eş ancak ileride boş Reserved günde aranır (tahmini bloğa kaçılmaz)
+ const acceptPen=(a,d,n,pen,rb)=>{const C=rb?capR:cap,vM=!!(pen&(WT.mix||0)),vR=!!(pen&(WT.rank||0)),W=(vR&&above("rank"))||(vM&&above("mix"))?a.latest:a.ev.expired?X.end:a.ev.soft;if(W<a.c)return true;let dem=0;
   for(const q of X.crew){const e=getPend(q);if(e&&X.sec[e.type]===n&&Math.min(e.soft,e.expired?X.end:e.deadline)<=W&&e.earliest<=W)dem++}
-  if((cap(d,W,n)-1)*2<dem)return true;
+  if((C(d,W,n)-1)*2<dem)return true;
   // daha iyi eş adayları (better) ile aynı adaylara ihtiyaç duyan, süresi pencere içinde biten rakipler (riv) karşılaştırılır
   let better=0,riv=0;
   for(const q of X.crew){if(q===a.p)continue;const e=getPend(q);if(!e||X.sec[e.type]!==n||reserved(q,e))continue;const ql=e.expired?X.end:e.deadline;
    if((!WT.rank||q.rank===a.p.rank)&&(vR||e.type===a.ev.type)&&e.earliest<=W&&ql<=W)riv++;
    if(noFly(X,q.code,a.p.code))continue;const pq=penalty(a.p,q,a.ev.type,e.type);if(pq==null||pq>=pen)continue;
    const from=Math.max(d+1,e.earliest+1-(n-1)*S.maxGap),to=Math.min(W,ql);if(from>to)continue;
-   if(freeIn(q.code,from,to)&&freeIn(a.p.code,from,to)&&cap(from,to,n)>0)better++}
+   if(freeIn(q.code,from,to)&&freeIn(a.p.code,from,to)&&C(from,to,n)>0)better++}
   return better<=riv};
- const pick=(L,d,dates,cs)=>{const n=dates.length;
-  for(let i=0;i<cs.length;i++){const a=cs[i],parts=[];
+ const pick=(L,d,dates,cs)=>{const n=dates.length,tb=dates.some((x,i)=>!dates.lanes[i].res.has(x));
+  for(let i=0;i<cs.length;i++){const a=cs[i],parts=[];if(tb&&!allowTent(a,d,n))continue;
    for(let j=0;j<cs.length;j++){if(i===j)continue;const b=cs[j];if(noFly(X,a.p.code,b.p.code))continue;const pen=penalty(a.p,b.p,a.ev.type,b.ev.type);if(pen!=null)parts.push({b,pen,j})}
    parts.sort((x,y)=>x.pen-y.pen||x.j-y.j);const ok=new Map();
-   for(const q of parts){if(q.pen>0){if(!ok.has(q.pen))ok.set(q.pen,acceptPen(a,d,n,q.pen));if(!ok.get(q.pen))continue}const ins=assign(L,dates,[a.p,q.b.p]);if(ins)return{a,b:q.b,ins,dates,L,pen:q.pen}}
+   for(const q of parts){if(q.pen>0){if(!ok.has(q.pen))ok.set(q.pen,acceptPen(a,d,n,q.pen,!tb));if(!ok.get(q.pen))continue}const ins=assign(L,dates,[a.p,q.b.p]);if(ins)return{a,b:q.b,ins,dates,L,pen:q.pen}}
    if(cap(d,a.latest,n)-1<=0){const ins=assign(L,dates,[a.p]);if(ins)return{a,b:null,ins,dates,L,pen:9}}}
   return null};
- const commit=dec=>{const{a,b,ins,dates,L}=dec;dates.forEach((x,k)=>{laneBusy.get(L.key).add(x);P(a.p.code,x).st=1;if(b)P(b.p.code,x).st=1;if(ins[k]){P(ins[k],x).te++;addLoad(ins[k])}});
+ const commit=dec=>{const{a,b,ins,dates,L}=dec;dates.forEach((x,k)=>{laneBusy.get(dates.lanes[k].key).add(x);P(a.p.code,x).st=1;if(b)P(b.p.code,x).st=1;if(ins[k]){P(ins[k],x).te++;addLoad(ins[k])}});
   const pl=[a.p,b?.p].filter(Boolean).sort((x,y)=>(x.rank==="CPT"?0:1)-(y.rank==="CPT"?0:1));
-  out.push({id:uid(),lane:L.key,dates:dates.map(toIso),pilots:[pl[0].code,pl[1]?.code||""],instr:ins,locked:false});
+  const lk=dates.lanes.map(M=>M.key);out.push({id:uid(),lane:lk[0],...(lk.some(k=>k!==lk[0])?{lanes:lk}:{}),dates:dates.map(toIso),pilots:[pl[0].code,pl[1]?.code||""],instr:ins,locked:false});
   apply(a.p,dates.at(-1));if(b)apply(b.p,dates.at(-1))};
  const lockedQ=[...lockedS].sort((a,b)=>a.dn[0]-b.dn[0]);let li=0;
  const secs=[...new Set([X.sec.LPC,X.sec.OPC])];
@@ -380,10 +400,10 @@ function evaluate(X){const S=X.S;
  const ses=DB.sessions.map(s=>{const dn=s.dates.map(toDn);return{s,dn,chk:Math.max(...dn),L:X.lanes.get(s.lane),err:[],warn:[],types:{},labels:{}}}).filter(o=>o.dn.length&&o.dn.every(v=>v!=null));
  const byId=new Map(ses.map(o=>[o.s.id,o]));const laneDay=new Map(),pd=new Map();
  const push=(m,k,v)=>{let a=m.get(k);if(!a)m.set(k,a=[]);a.push(v)};
- for(const o of ses){o.dn.forEach((d,k)=>{push(laneDay,o.s.lane+"|"+d,o);o.s.pilots.forEach(c=>{if(c)push(pd,c+"|"+d,{o,r:"st"})});const t=o.s.instr?.[k];if(t)push(pd,t+"|"+d,{o,r:"te"})})}
+ for(const o of ses){o.dn.forEach((d,k)=>{push(laneDay,laneAt(o.s,k)+"|"+d,o);o.s.pilots.forEach(c=>{if(c)push(pd,c+"|"+d,{o,r:"st"})});const t=o.s.instr?.[k];if(t)push(pd,t+"|"+d,{o,r:"te"})})}
  for(const o of ses){const n=o.dn.length,pil=o.s.pilots.filter(Boolean);
-  if(!o.L)o.err.push("Simülatör tanımlı değil: "+o.s.lane);else if(!o.L.active)o.err.push(o.L.key+" pasif (FSTD / Uçak)");else o.dn.forEach(d=>{if(!o.L.avail.has(d))o.err.push(fmt(d)+(X.black.has(d)?" kapalı gün ("+X.black.get(d)+")":" müsaitlik satırı yok"))});
-  o.dn.forEach(d=>{if(laneDay.get(o.s.lane+"|"+d).length>1)o.err.push(fmt(d)+" aynı simülatörde başka oturum var")});
+  o.dn.forEach((d,k)=>{const Lk=X.lanes.get(laneAt(o.s,k));if(!Lk){o.err.push("Simülatör tanımlı değil: "+laneAt(o.s,k));return}if(!Lk.active){o.err.push(Lk.key+" pasif (FSTD / Uçak)");return}if(Lk.sim!==o.L?.sim)o.warn.push("Sektörler farklı simülatörlerde");if(!Lk.avail.has(d))o.err.push(fmt(d)+(X.black.has(d)?" kapalı gün ("+X.black.get(d)+")":" müsaitlik satırı yok"))});
+  o.dn.forEach((d,k)=>{if(laneDay.get(laneAt(o.s,k)+"|"+d).length>1)o.err.push(fmt(d)+" aynı simülatör/slotta başka oturum var")});
   for(let i=1;i<n;i++)if(o.dn[i]-o.dn[i-1]>S.maxGap||o.dn[i]<=o.dn[i-1])o.warn.push("Sektör tarihleri ardışık değil");
   if(!pil.length)o.err.push("Öğrenci yok");else if(pil.length<2)o.warn.push("Tek öğrenci – koltuk doldurucu gerekli");
   if(pil.length===2&&pil[0]===pil[1])o.err.push("Aynı kişi iki kez yazılmış");
@@ -462,9 +482,11 @@ function vSettings(){const S=DB.settings;
  <li><b>${S.gapM} ay kuralı:</b> yılda iki kontrol; art arda iki kontrol ${S.gapM} aydan yakın olamaz. En erken tarih = son kontrol + ${S.gapM} ay (tabloda kırmızı kalın ise bu kural belirleyicidir).</li>
  <li><b>OPC:</b> LPC'den ${S.opcM} ay önce ya da sonra (bugünden sonraki ilk tarih). LPC'ler turuncu, OPC'ler sarı gösterilir. LPC aynı zamanda OPC yerine geçer.</li>
  <li>Her oturumda en az 2 öğrenci + 1 eğitmen. Süresi en yakın olan önce yerleştirilir.</li>
+ <li><b>Reserved günler her zaman önce:</b> müsaitlik listesinde boş Reserved gün varsa planlayıcı tahmini güne geçmeden onu doldurur; bu, öncelikli kurallardan (son ay dahil) de önce gelir. Tahmini bloklar ancak Reserved günler yetmediğinde kullanılır. Bir oturumun sektörleri aynı simülatörün farklı slotlarında olabilir.</li>
+ <li>Son sim tarihi sıradaki OPC'nin son ${S.winM} ay penceresine düşüyorsa o OPC yapılmış sayılır.</li>
  <li>Öncelikli kurallar (şu anki sıra): ${prioOf(S).map((k,i)=>`<b>${i+1}.</b> ${PRULES[k]}${ruleOn(S,k)?"":" <i>(uygulanmıyor)</i>"}`).join(" · ")}. Son ay = geçerliliğin bittiği takvim ayı (Excel'de "Final!"). LPC ile OPC ancak sektör sayıları eşitse aynı oturumda olabilir.</li>
  <li>Excel'deki gibi plan tarihi <b>Earliest Auto'dan sonra</b> (eşit olamaz) ve <b>Valid'e kadar</b> olmalı; değilse ya da planlanmamışsa "Hata".</li>
- <li>Kontrol tarihi = son sektörün tarihi. Kilitli oturumlar yeniden planlamada korunur; diğerleri silinip yeniden dağıtılır.</li></ul></div>`}
+ <li>Kontrol tarihi = son sektörün tarihi. Kilitli ve slotları Reserved olan oturumlar yeniden planlamada korunur; diğerleri (Tahmini slottaki kilitliler dahil) silinip yeniden dağıtılır.</li></ul></div>`}
 
 /* ---- liste düzenleyiciler ---- */
 function personRole(code){const c=(code||"").toUpperCase(),p=DB.crew.find(x=>(x.code||"").toUpperCase()===c),t=DB.instr.find(x=>(x.code||"").toUpperCase()===c);
@@ -546,9 +568,9 @@ function devDlg(id,kind){const orig=id!=null?devById(id):null;const x=orig?clone
   const sl={};$$("#dl [data-sl]").forEach(i=>{const k=i.dataset.sl;(sl[k]=sl[k]||["",""])[+i.dataset.j]=i.value});x.s={};if(!ac)SLOTS.forEach(k=>{if(sl[k]&&(sl[k][0]||sl[k][1]))x.s[k]=sl[k]});
   const b=devErr(x);if(b.length){$("#der").innerHTML=b.map(m=>`<li>${esc(m)}</li>`).join("");return false}
   if(!ac)SLOTS.forEach(k=>{if(x.s[k]&&!(x.s[k][0]&&x.s[k][1]))delete x.s[k]});
-  if(orig&&orig.c!==x.c)DB.sessions.forEach(se=>{if(se.lane===orig.c)se.lane=x.c;else if(se.lane.startsWith(orig.c+" "))se.lane=x.c+se.lane.slice(orig.c.length)});// kod değişince oturumlar izler
+  if(orig&&orig.c!==x.c){const rn=l=>l===orig.c?x.c:l.startsWith(orig.c+" ")?x.c+l.slice(orig.c.length):l;DB.sessions.forEach(se=>{se.lane=rn(se.lane);if(se.lanes)se.lanes=se.lanes.map(rn)})}// kod değişince oturumlar izler
   if(orig)Object.assign(orig,x);else DB.devices.push(x);touch();render();toast("Kaydedildi: "+x.c)}}])}
-function devUses(d){const n1=DB.sims.filter(r=>String(r.dev)===String(d.id)).length,n2=DB.sessions.filter(se=>se.lane===d.c||se.lane.startsWith(d.c+" ")).length;return[n1,n2]}
+function devUses(d){const n1=DB.sims.filter(r=>String(r.dev)===String(d.id)).length,n2=DB.sessions.filter(se=>[se.lane,...(se.lanes||[])].some(l=>l===d.c||l.startsWith(d.c+" "))).length;return[n1,n2]}
 function devDel(id){const d=devById(id);if(!d)return;const[n1,n2]=devUses(d);
  if(n1||n2)dlg("Silinemez",`<b>${esc(d.c)}</b> ${n1?n1+" müsaitlik satırında":""}${n1&&n2?" ve ":""}${n2?n2+" oturumda":""} kullanılıyor; silinemez. Pasif yaparsanız planlamada kullanılmaz, mevcut oturumlarda uyarı görünür.`,[{l:"Vazgeç"},...(d.a?[{l:"Pasif yap",c:"p",f:()=>{d.a=0;touch();render()}}]:[])]);
  else confirmDlg("Sil",`<b>${esc(d.c)}</b> kalıcı olarak silinsin mi?`,"Sil",()=>{DB.devices=DB.devices.filter(x=>x!==d);touch();render()},"d")}
@@ -610,7 +632,7 @@ function vTable(){const X=ctx(),R=evaluate(X);let rows=R.rows;
  <tr class="fr np">${TH.map((_,i)=>`<th><input data-tf="${i}" value="${esc(UI.tf[i]||"")}" placeholder="Filtre"></th>`).join("")}</tr></thead><tbody>${body||`<tr><td colspan="${TH.length}">${R.rows.length?"Filtreye uyan satır yok.":"Gösterilecek satır yok. Ekip verisi girip <b>Planı oluştur</b>'a basın."}</td></tr>`}</tbody></table></div></div>`}
 
 /* ---- taslak plan ---- */
-function planCols(X,R){const cols=[];for(const o of R.ses)o.dn.forEach((d,k)=>cols.push({d,lane:o.s.lane,o,k}));
+function planCols(X,R){const cols=[];for(const o of R.ses)o.dn.forEach((d,k)=>cols.push({d,lane:laneAt(o.s,k),o,k}));
  if(UI.showEmpty){const used=new Set(cols.map(c=>c.lane+"|"+c.d));for(const L of X.laneArr)for(const d of L.avail)if(d>=X.start&&d<=X.end&&!used.has(L.key+"|"+d))cols.push({d,lane:L.key,o:null})}
  const li=new Map(X.laneArr.map((L,i)=>[L.key,i]));cols.sort((a,b)=>a.d-b.d||(li.get(a.lane)??99)-(li.get(b.lane)??99));
  const months=new Map();for(const c of cols){const[y,m]=ymd(c.d),k=y*12+m;if(!months.has(k))months.set(k,[]);months.get(k).push(c)}return months}
@@ -624,7 +646,7 @@ function vPlan(){const X=ctx(),R=evaluate(X),months=planCols(X,R),multi=X.laneAr
    const pc=(c,j)=>{if(!c.o)return`<td class="x" ${at(c)}></td>`;const code=c.o.s.pilots[j]||"",t=c.o.types[code]||"",cr=X.crewMap.get(code);
     return`<td class="cl ${t}" ${at(c)} title="${esc(cr?cr.name+" ("+cr.rank+")":code)}${t?" – "+(c.o.labels[code]?.[c.k]||t):""}">${esc(code)||"<span style='color:#999'>—</span>"}</td>`};
    tabs.push(`<table class="mt"><tr><th class="mh" colspan="${cs.length}">${title}</th></tr>
-   <tr>${cs.map(c=>`<td class="dy${mk(c)}${c.o?"":" em"}" ${at(c)} title="${fmt(c.d)} ${DAYN[wd(c.d)]}&#10;${tip(c)}">${ymd(c.d)[2]}${c.o?.s.locked?"🔒":""}</td>`).join("")}</tr>
+   <tr>${cs.map(c=>`<td class="dy${mk(c)}${c.o?"":" em"}${X.slotRow.get(c.lane+"|"+c.d)?.status==="Reserved"?" rs":""}" ${at(c)} title="${fmt(c.d)} ${DAYN[wd(c.d)]}${X.slotRow.get(c.lane+"|"+c.d)?.status==="Reserved"?" · Reserved":""}&#10;${tip(c)}">${ymd(c.d)[2]}${c.o?.s.locked?"🔒":""}</td>`).join("")}</tr>
    ${multi?`<tr>${cs.map(c=>`<td class="ln" ${at(c)}>${esc((X.lanes.get(c.lane)?.loc||"")+" "+(X.lanes.get(c.lane)?.sim||c.lane))}</td>`).join("")}</tr>`:""}
    <tr>${cs.map(c=>`<td class="tm" ${at(c)} title="Slot ${esc(X.lanes.get(c.lane)?.slot||"")} – yerel saat">${esc(X.lanes.get(c.lane)?.time||"")}</td>`).join("")}</tr>
    <tr>${cs.map(c=>`<td class="cl" ${at(c)} title="Eğitmen">${c.o?esc(c.o.s.instr?.[c.k]||"?"):""}</td>`).join("")}</tr>
@@ -635,7 +657,7 @@ function vPlan(){const X=ctx(),R=evaluate(X),months=planCols(X,R),multi=X.laneAr
  return`${stale()}<div class="cd"><div class="row np"><h2>Taslak plan</h2><span class="mu">${fmt(X.start)} – ${fmt(X.end)}${DB.planAt?" · son planlama "+esc(DB.planAt):""}</span><span class="sp"></span>
  <label class="ck"><input type="checkbox" data-ui="showEmpty"${UI.showEmpty?" checked":""}><span>Boş simülatör günlerini göster</span></label>
  <button class="s" data-newses="1">+ Oturum ekle</button><button class="s" data-lockall="1">Tümünü kilitle</button><button class="s" data-lockall="0">Kilitleri kaldır</button></div>
- ${stats(R)}<div class="mu" style="margin:4px 0 10px"><span class="lg" style="background:var(--lpc)"></span>LPC <span class="lg" style="background:var(--opc)"></span>OPC · Satırlar: gün, simülatör (birden fazlaysa), slot saati (yerel), eğitmen, öğrenciler · sektör adı ve tarih üzerine gelince görünür · 🔒 kilitli · <span style="color:#d00000">▀</span> hata <span style="color:#ff8c00">▀</span> uyarı · Bir sütuna tıklayıp oturumu düzenleyin.
+ ${stats(R)}<div class="mu" style="margin:4px 0 10px"><span class="lg" style="background:var(--lpc)"></span>LPC <span class="lg" style="background:var(--opc)"></span>OPC <span class="lg" style="background:#c6efce"></span>Reserved slot (gün yeşil) · Satırlar: gün, simülatör (birden fazlaysa), slot saati (yerel), eğitmen, öğrenciler · sektör adı ve tarih üzerine gelince görünür · 🔒 kilitli · <span style="color:#d00000">▀</span> hata <span style="color:#ff8c00">▀</span> uyarı · Bir sütuna tıklayıp oturumu düzenleyin.
  Eğitmen yükü: ${[...load].sort().map(([t,n])=>esc(t)+" "+n).join(", ")||"—"}</div>
  <div class="months">${blocks||'<div class="mu">Henüz oturum yok. <b>Planı oluştur</b> ile taslak plan hazırlayın.</div>'}</div></div>
  ${probs.length||bad.length?`<div class="cd"><h2>Sorunlar</h2>${probs.map(r=>`<div class="iss"><span class="bad">${esc(r.c.code)} ${esc(r.c.name)}</span> – ${r.ev.type} (geçerlilik ${fmt(r.ev.deadline)}, en erken ${fmt(r.ev.earliest)}): ${esc(r.err.join(", "))} <button class="s np" data-new-for="${esc(r.c.code)}">+ Planla</button></div>`).join("")}
@@ -699,7 +721,11 @@ function sessionDlg(id,preset={}){const X=ctx();const orig=id?DB.sessions.find(s
  const insOpt=(v,chk)=>`<option value="">—</option>`+X.instr.map(t=>`<option value="${esc(t.code)}"${t.code===v?" selected":""}${chk&&!EXAM.has(t.role)?' style="color:#999"':""}>${esc(t.code)} (${esc(t.role)})</option>`).join("");
  const lanesAll=DB.devices.filter(d=>d.a||s.lane===d.c||s.lane.startsWith(d.c+" ")).sort((a,b)=>(isAC(a)-isAC(b))||a.c.localeCompare(b.c)).flatMap(d=>(isAC(d)?[""]:SLOTS.filter(k=>d.s?.[k])).map(k=>{const L=makeLane(d,k);return[L.key,L.label+(L.loc?" · "+L.loc:"")]}));
  const laneOpt=[...lanesAll,...(s.lane&&!lanesAll.some(x=>x[0]===s.lane)?[[s.lane,s.lane+" (tanımsız)"]]:[])].map(([k,l])=>`<option value="${esc(k)}"${k===s.lane?" selected":""}>${esc(l)}</option>`).join("");
- const draw=()=>{const n=s.dates.length;$("#sx").innerHTML=`<table class="ed"><tr><th>Sektör</th><th>Tarih</th><th>Eğitmen</th></tr>${s.dates.map((d,k)=>`<tr><td>${k+1}. ${isCheckSector(k,n)?"kontrol":"eğitim"}</td><td><input type="date" data-sd="${k}" value="${esc(d)}"></td><td><select data-si="${k}">${insOpt(s.instr[k]||"",isCheckSector(k,n))}</select></td></tr>`).join("")}</table>`};
+ // sektör slotları: seçilen simülatörün slotları; s.lanes[k] yoksa üstteki seçim
+ const devOfLane=l=>DB.devices.find(d=>l===d.c||l.startsWith(d.c+" "));
+ const draw=()=>{const n=s.dates.length,dv=devOfLane($("#sL")?.value||s.lane),ks=dv&&!isAC(dv)?SLOTS.filter(k=>dv.s?.[k]):[];
+  $("#sx").innerHTML=`<table class="ed"><tr><th>Sektör</th><th>Tarih</th><th>Slot</th><th>Eğitmen</th></tr>${s.dates.map((d,k)=>{const cur=(laneAt(s,k)||"").slice((dv?.c||"").length+1);
+   return`<tr><td>${k+1}. ${isCheckSector(k,n)?"kontrol":"eğitim"}</td><td><input type="date" data-sd="${k}" value="${esc(d)}"></td><td>${ks.length?`<select data-sk="${k}">${ks.map(x=>`<option value="${x}"${x===cur?" selected":""}>${x} · ${esc(slotTime(dv,x))}</option>`).join("")}</select>`:'<span class="mu">—</span>'}</td><td><select data-si="${k}">${insOpt(s.instr[k]||"",isCheckSector(k,n))}</select></td></tr>`}).join("")}</table>`};
  dlg(orig?"Oturumu düzenle":"Yeni oturum",`<div class="g"><label class="f"><span>Simülatör / slot</span><select id="sL">${laneOpt}</select></label>
  <label class="f"><span>Sektör sayısı</span><select id="sN">${[1,2,3,4,5].map(k=>`<option${k===s.dates.length?" selected":""}>${k}</option>`).join("")}</select></label>
  <label class="f"><span>Öğrenci 1</span><select id="sP0">${crewOpt(s.pilots[0])}</select></label><label class="f"><span>Öğrenci 2</span><select id="sP1">${crewOpt(s.pilots[1])}</select></label></div>
@@ -707,12 +733,16 @@ function sessionDlg(id,preset={}){const X=ctx();const orig=id?DB.sessions.find(s
  <label class="ck" style="margin-top:8px"><input type="checkbox" id="sK" checked><span>Kilitli (slotları Reserved ise yeniden planlamada korunur; Tahmini slottaki oturum yeni plana göre taşınır)</span></label>
  ${o&&(o.err.length||o.warn.length)?`<div style="margin-top:8px">${o.err.map(e=>`<div class="bad iss">✖ ${esc(e)}</div>`).join("")}${o.warn.map(e=>`<div class="warn iss">⚠ ${esc(e)}</div>`).join("")}</div>`:""}`,
  [...(orig?[{l:"Sil",c:"d",f:()=>{DB.sessions=DB.sessions.filter(x=>x.id!==id);save();render();tabCounts();toast("Oturum silindi")}}]:[]),{l:"Vazgeç"},
-  {l:"Kaydet",c:"p",f:()=>{s.lane=$("#sL").value;s.pilots=[$("#sP0").value,$("#sP1").value];s.locked=$("#sK").checked;s.dates=s.dates.filter(Boolean);
-   if(!s.dates.length){toast("En az bir sektör tarihi girin");return false}const ord=s.dates.map((d,k)=>[d,s.instr[k]||""]).sort((a,b)=>a[0]<b[0]?-1:1);s.dates=ord.map(x=>x[0]);s.instr=ord.map(x=>x[1]);
+  {l:"Kaydet",c:"p",f:()=>{const dv=devOfLane($("#sL").value),lk=s.dates.map((_,k)=>{const sel=$(`#sx [data-sk="${k}"]`);return dv&&sel?devLane(dv,sel.value):$("#sL").value});
+   s.pilots=[$("#sP0").value,$("#sP1").value];s.locked=$("#sK").checked;
+   const ord=s.dates.map((d,k)=>[d,s.instr[k]||"",lk[k]]).filter(x=>x[0]).sort((a,b)=>a[0]<b[0]?-1:1);if(!ord.length){toast("En az bir sektör tarihi girin");return false}
+   s.dates=ord.map(x=>x[0]);s.instr=ord.map(x=>x[1]);const L2=ord.map(x=>x[2]);s.lane=L2[0];if(L2.some(k=>k!==L2[0]))s.lanes=L2;else delete s.lanes;
    if(orig)Object.assign(orig,s);else DB.sessions.push(s);save();tabCounts();render();const R2=evaluate(ctx()),o2=R2.byId.get(s.id);toast(o2&&o2.err.length?"Kaydedildi – "+o2.err.length+" hata var":"Kaydedildi")}}],
- ()=>{draw();$("#sN").onchange=()=>{const n=+$("#sN").value;while(s.dates.length<n){const l=toDn(s.dates.at(-1))??X.start;s.dates.push(toIso(l+1))}s.dates.length=n;s.instr.length=Math.min(s.instr.length,n);draw()};
+ ()=>{draw();$("#sN").onchange=()=>{const n=+$("#sN").value;while(s.dates.length<n){const l=toDn(s.dates.at(-1))??X.start;if(s.lanes)s.lanes.push(s.lanes.at(-1));s.dates.push(toIso(l+1))}s.dates.length=n;if(s.lanes)s.lanes.length=n;s.instr.length=Math.min(s.instr.length,n);draw()};
+  $("#sL").onchange=()=>{delete s.lanes;s.lane=$("#sL").value;draw()};
   $("#sx").onchange=e=>{const el=e.target;if(el.dataset.sd!=null){const k=+el.dataset.sd,old=toDn(s.dates[k]),nw=toDn(el.value);if(k===0&&old!=null&&nw!=null){const dl=nw-old;s.dates=s.dates.map(d=>toIso(toDn(d)+dl));draw()}else s.dates[k]=el.value}
-   if(el.dataset.si!=null)s.instr[+el.dataset.si]=el.value}})}
+   if(el.dataset.si!=null)s.instr[+el.dataset.si]=el.value;
+   if(el.dataset.sk!=null){const dv=devOfLane($("#sL").value);if(dv){const L2=s.dates.map((_,k)=>laneAt(s,k));L2[+el.dataset.sk]=devLane(dv,el.value);s.lanes=L2}}}})}
 
 /* ============ Excel (xlsx okuma/yazma, kütüphanesiz) ============ */
 const CRC=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
@@ -818,7 +848,7 @@ function exportPlan(){const X=ctx(),R=evaluate(X),FILL={LPC:"FFC000",OPC:"FFFF00
  const months=planCols(X,R),pr=[],merges=[],CH=8,multi=X.laneArr.length>1;
  for(const[k,cols]of months){const y=Math.floor(k/12),m=k%12;for(let i=0;i<cols.length;i+=CH){const cs=cols.slice(i,i+CH),r0=pr.length;
   pr.push([{v:MON[m]+"."+String(y).slice(2),b:1,fill:"BFBFBF",bd:1,c:1},...cs.slice(1).map(()=>({v:"",fill:"BFBFBF",bd:1}))]);if(cs.length>1)merges.push(`A${r0+1}:${colL(cs.length-1)}${r0+1}`);
-  pr.push(cs.map(c=>({v:ymd(c.d)[2],bd:1,c:1})));if(multi)pr.push(cs.map(c=>({v:X.lanes.get(c.lane)?.loc||c.lane,bd:1,c:1,sz:8})));pr.push(cs.map(c=>({v:X.lanes.get(c.lane)?.time||"",bd:1,c:1,sz:9})));
+  pr.push(cs.map(c=>({v:ymd(c.d)[2],bd:1,c:1,...(X.slotRow.get(c.lane+"|"+c.d)?.status==="Reserved"?{fill:"C6EFCE",b:1}:{})})));if(multi)pr.push(cs.map(c=>({v:X.lanes.get(c.lane)?.loc||c.lane,bd:1,c:1,sz:8})));pr.push(cs.map(c=>({v:X.lanes.get(c.lane)?.time||"",bd:1,c:1,sz:9})));
   pr.push(cs.map(c=>({v:c.o?c.o.s.instr?.[c.k]||"":"",bd:1,c:1})));
   for(const j of[0,1])pr.push(cs.map(c=>{const code=c.o?.s.pilots[j]||"";return{v:code,bd:1,c:1,fill:FILL[c.o?.types[code]]}}));
   pr.push([])}}
