@@ -83,12 +83,12 @@ const DAYN=["Pzt","Sal","Çar","Per","Cum","Cmt","Paz"];
 const MON=["Oca","Şub","Mar","Nis","May","Haz","Tem","Ağu","Eyl","Eki","Kas","Ara"];
 const norm=s=>String(s??"").toLocaleLowerCase("tr").replace(/ı/g,"i").replace(/ş/g,"s").replace(/ğ/g,"g").replace(/ü/g,"u").replace(/ö/g,"o").replace(/ç/g,"c").normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]/g,"");
 const clampInt=(v,a,b)=>Math.max(a,Math.min(b,parseInt(v,10)||a));
-const EXAM=new Set(["TRE","SFE"]);
+const EXAM=new Set(["TRE","SFE"]),LINE=new Set(["TRE","TRI"]);// LINE: hat pilotu eğitmenler (ayarda "yalnızca kendi LPC/OPC'si varsa")
 const ls={g:k=>{try{return localStorage.getItem(k)}catch(e){return null}},s:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
 
 /* ============ veri ============ */
 const LS_KEY="simplan.v1";
-const DEF={start:"",end:"",lpcSec:2,opcSec:2,maxGap:1,winM:3,gapM:4,lpcM:12,opcM:6,instrPerDay:1,avoidFinal:true,avoidMix:true,pairRank:true,prio:["rank","final","mix"],visaHard:false,diffInstr:true,sameInstr:true,hotelIn:"1",hotelOut:"0"};
+const DEF={start:"",end:"",lpcSec:2,opcSec:2,maxGap:1,winM:3,gapM:4,lpcM:12,opcM:6,instrPerDay:1,avoidFinal:true,avoidMix:true,pairRank:true,prio:["rank","final","mix"],visaHard:false,diffInstr:true,sameInstr:true,sfOnly:false,hotelIn:"1",hotelOut:"0"};
 // öncelikli kurallar (prio: 0 = en önemli); kurallar çakışınca üstteki korunur
 const PRULES={final:"Mümkünse kişiyi son ayında planlama",mix:"Mecbur kalmadıkça LPC ve OPC aynı oturumda planlama",rank:"Mecbur kalmadıkça 1 CPT + 1 F/O eşleşmesi (iki CPT / iki F/O yok)"};
 const RULEKEY={final:"avoidFinal",mix:"avoidMix",rank:"pairRank"};
@@ -348,7 +348,7 @@ function schedule(X,tent=new Map()){const S=X.S,out=[];
   r.lanes=ls;return r};
  const assign=(L,dates,pil,fx)=>{const n=dates.length;if(!X.instr.length)return dates.map((_,k)=>fx?.[k]||"");const res=[];
   for(let k=0;k<n;k++){if(fx?.[k]){res.push(fx[k]);continue}const d=dates[k],chk=isCheckSector(k,n);let best=null,bs=Infinity;
-   for(const t of X.instr){const o=day.get(t.code)?.get(d);if(o&&(o.st||o.te>=S.instrPerDay))continue;if(onLeave(X,t.code,d))continue;if(chk&&!EXAM.has(t.role))continue;
+   for(const t of X.instr){if(S.sfOnly&&LINE.has(t.role))continue;const o=day.get(t.code)?.get(d);if(o&&(o.st||o.te>=S.instrPerDay))continue;if(onLeave(X,t.code,d))continue;if(chk&&!EXAM.has(t.role))continue;
     if(pil.some(p=>p.code===t.code||noFly(X,p.code,t.code)))continue;if(instrClash(dates.map((_,j)=>j<k?res[j]:fx?.[j]||""),k,n,t.code))continue;
     const vx=visaExpired(visaOf(X,t.code,L.loc),d);if(vx&&S.visaHard)continue;
     let sc=(load.get(t.code)||0)*.01+(vx?20:0);if(!chk&&EXAM.has(t.role))sc+=3;if(!chk&&k>0&&res[k-1]===t.code)sc-=1;
@@ -423,16 +423,16 @@ function schedule(X,tent=new Map()){const S=X.S,out=[];
     if(dec&&(!best||dec.a.soft<best.a.soft||(dec.a.soft===best.a.soft&&dec.pen<best.pen)))best=dec}
    if(best)commit(best)}}
  // eğitmenler ay + lokasyon (yolculuk) bazında yeniden atanır: o ay o lokasyona zaten giden kişi (başka oturumda eğitmen ya da kendi LPC/OPC'sinde öğrenci) tercih edilir
- if(S.sameInstr!==false&&X.instr.length){
+ if((S.sameInstr!==false||S.sfOnly)&&X.instr.length){
   const locOf=(se,k)=>(lmap.get(laneAt(se,k))||X.lanes.get(laneAt(se,k)))?.loc||"",gk=(se,k,d)=>mKey(d)+"|"+locOf(se,k);
-  const trip=new Map(),add=(g,c)=>{if(!trip.has(g))trip.set(g,new Set());trip.get(g).add(c)},stu=new Set(),te=new Map(),inc=(m,k)=>m.set(k,(m.get(k)||0)+1),ld=new Map();
+  const trip=new Map(),add=(g,c)=>{if(!trip.has(g))trip.set(g,new Set());trip.get(g).add(c)},stu=new Set(),own=new Set(),te=new Map(),inc=(m,k)=>m.set(k,(m.get(k)||0)+1),ld=new Map();
   lockedS.forEach(o=>o.dn.forEach((d,k)=>{const t=o.s.instr?.[k];if(t&&!freeI.get(o.s)?.has(k)){inc(te,t+"|"+d);add(gk(o.s,k,d),t)}}));
-  [...lockedS.map(o=>[o.s,o.dn]),...out.map(se=>[se,se.dates.map(toDn)])].forEach(([se,dn])=>dn.forEach((d,k)=>se.pilots.forEach(c=>{if(!c)return;stu.add(c+"|"+d);if(X.instrMap.has(c))add(gk(se,k,d),c)})));
+  [...lockedS.map(o=>[o.s,o.dn]),...out.map(se=>[se,se.dates.map(toDn)])].forEach(([se,dn])=>dn.forEach((d,k)=>se.pilots.forEach(c=>{if(!c)return;stu.add(c+"|"+d);own.add(c+"|"+gk(se,k,d));if(X.instrMap.has(c))add(gk(se,k,d),c)})));
   [...out,...freeI.keys()].sort((a,b)=>a.dates[0].localeCompare(b.dates[0])).forEach(se=>{const fk=freeI.get(se),dn=se.dates.map(toDn),n=dn.length,res=[];
    for(let k=0;k<n;k++){if(fk&&!fk.has(k)){res.push(se.instr?.[k]||"");continue}const d=dn[k],chk=isCheckSector(k,n),g=gk(se,k,d),loc=locOf(se,k);let best=null,bs=Infinity;
-    for(const t of X.instr){if(stu.has(t.code+"|"+d)||(te.get(t.code+"|"+d)||0)>=S.instrPerDay||onLeave(X,t.code,d))continue;if(chk&&!EXAM.has(t.role))continue;
+    for(const t of X.instr){if(S.sfOnly&&LINE.has(t.role)&&!own.has(t.code+"|"+g))continue;if(stu.has(t.code+"|"+d)||(te.get(t.code+"|"+d)||0)>=S.instrPerDay||onLeave(X,t.code,d))continue;if(chk&&!EXAM.has(t.role))continue;
      if(se.pilots.some(c=>c&&(c===t.code||noFly(X,c,t.code))))continue;if(instrClash(dn.map((_,j)=>j<k?res[j]:fk&&!fk.has(j)?se.instr?.[j]||"":""),k,n,t.code))continue;const vx=visaExpired(visaOf(X,t.code,loc),d);if(vx&&S.visaHard)continue;
-     let sc=(trip.get(g)?.has(t.code)?0:10)+(vx?20:0)+(ld.get(t.code)||0)*.01;if(!chk&&EXAM.has(t.role))sc+=3;if(!chk&&k>0&&res[k-1]===t.code)sc-=1;
+     let sc=(S.sameInstr===false||trip.get(g)?.has(t.code)?0:10)+(vx?20:0)+(ld.get(t.code)||0)*.01;if(!chk&&EXAM.has(t.role))sc+=3;if(!chk&&k>0&&res[k-1]===t.code)sc-=1;
      if(sc<bs){bs=sc;best=t}}
     const c=best?best.code:(se.instr?.[k]||"");res.push(c);if(c){inc(te,c+"|"+d);add(g,c);inc(ld,c)}}
    se.instr=res})}
@@ -443,6 +443,7 @@ function evaluate(X){const S=X.S;
  const ses=DB.sessions.map(s=>{const dn=s.dates.map(toDn);return{s,dn,chk:Math.max(...dn),L:X.lanes.get(s.lane),err:[],warn:[],types:{},labels:{}}}).filter(o=>o.dn.length&&o.dn.every(v=>v!=null));
  const byId=new Map(ses.map(o=>[o.s.id,o]));const laneDay=new Map(),pd=new Map();
  const push=(m,k,v)=>{let a=m.get(k);if(!a)m.set(k,a=[]);a.push(v)};
+ const ownE=new Set();for(const o of ses)o.dn.forEach((d,k)=>o.s.pilots.forEach(c=>{if(c)ownE.add(c+"|"+mKey(d)+"|"+(X.lanes.get(laneAt(o.s,k))?.loc||""))}));
  for(const o of ses){o.dn.forEach((d,k)=>{push(laneDay,laneAt(o.s,k)+"|"+d,o);o.s.pilots.forEach(c=>{if(c)push(pd,c+"|"+d,{o,r:"st"})});const t=o.s.instr?.[k];if(t)push(pd,t+"|"+d,{o,r:"te"})})}
  for(const o of ses){const n=o.dn.length,pil=o.s.pilots.filter(Boolean);
   o.dn.forEach((d,k)=>{const Lk=X.lanes.get(laneAt(o.s,k));if(!Lk){o.err.push("Simülatör tanımlı değil: "+laneAt(o.s,k));return}if(!Lk.active){o.err.push(Lk.key+" pasif (FSTD / Uçak)");return}if(Lk.sim!==o.L?.sim)o.warn.push("Sektörler farklı simülatörlerde");if(!Lk.avail.has(d))o.err.push(fmt(d)+(X.black.has(d)?" kapalı gün ("+X.black.get(d)+")":" müsaitlik satırı yok"))});
@@ -455,7 +456,7 @@ function evaluate(X){const S=X.S;
   const people=[...new Set([...pil,...(o.s.instr||[]).filter(Boolean)])];
   for(let i=0;i<people.length;i++)for(let j=i+1;j<people.length;j++)if(noFly(X,people[i],people[j]))o.err.push(people[i]+" ve "+people[j]+" birlikte planlanmamalı");
   o.dn.forEach((d,k)=>{[...pil,o.s.instr?.[k]].filter(Boolean).forEach(c=>{const l=onLeave(X,c,d);if(l)o.err.push(c+" "+fmt(d)+" izinli ("+l+")")})});
-  if(X.instr.length){o.dn.forEach((d,k)=>{const t=o.s.instr?.[k];if(!t){o.err.push(fmt(d)+" eğitmen atanmadı");return}const T=X.instrMap.get(t);
+  if(X.instr.length){o.dn.forEach((d,k)=>{const t=o.s.instr?.[k];if(!t){o.err.push(fmt(d)+" eğitmen atanmadı");return}const T=X.instrMap.get(t);if(S.sfOnly&&T&&LINE.has(T.role)&&!ownE.has(t+"|"+mKey(d)+"|"+(X.lanes.get(laneAt(o.s,k))?.loc||"")))o.warn.push(t+" ("+T.role+") o ay o lokasyonda kendi LPC/OPC'si olmadan eğitmen");
    if(!T)o.warn.push(t+" eğitmen listesinde yok");else if(isCheckSector(k,n)&&!EXAM.has(T.role))o.err.push(fmt(d)+" kontrol sektörü için TRE/SFE gerekli ("+t+" "+T.role+")");
    if(pil.includes(t))o.err.push(t+" aynı oturumda hem öğrenci hem eğitmen");if(isCheckSector(k,n)&&instrClash(o.s.instr||[],k,n,t))o.err.push(fmt(d)+" kontrolü, eğitimi veren eğitmen yapıyor ("+t+")")})}
   else o.warn.push("Eğitmen listesi boş");
@@ -501,7 +502,7 @@ function tabCounts(){$("#tabs").innerHTML=TABS.map(([k,l])=>{const n=k==="hotel"
 function show(t){TAB=t;ls.s("simplan.tab",t);tabCounts();render()}
 function render(){const v=$("#view");
  if(TAB==="settings")v.innerHTML=vSettings();else if(TAB==="visas")v.innerHTML=vList("visaTypes",'<div class="mu">Hangi simülatör lokasyonunda hangi vizenin gerektiğini belirler. Yeni tür (ör. UK – lokasyon LHR) eklediğinizde aşağıdaki listeye sütunu eklenir. <b>*</b> = başka türde yazmayan tüm lokasyonlar. Bir lokasyon hiçbir türde yoksa vize aranmaz.</div>')+vList("visas",`<div class="mu">Excel'deki <b>Visa</b> sayfası. <b>Yeşil Pasaport</b> işaretli kişide "yeşil pasaportla gerekmez" türlere (${esc(DB.visaTypes.filter(t=>t.green).map(t=>t.name).join(", ")||"—")}) bakılmaz, tabloda <b>Yesil</b> yazar; diğer türler yine kontrol edilir. Kaydı olmayan kişide <b>#N/A</b>, tarih boşsa planlandığında <b>Expired</b> yazar. Ekip ve eğitmen listesine eklenen herkes buraya otomatik gelir. Eğitmenin vizesi de oturumdaki simülatör lokasyonuna göre kontrol edilir.</div>`);
- else if(TAB==="crew")v.innerHTML=vList("crew",crewHelp());else if(TAB==="instr")v.innerHTML=vList("instr",'<div class="mu">Kontrol sektörüne (LPC, OPC) yalnızca TRE/SFE atanır. Eğitim sektörüne (LPT, OPT) önce TRI/SFI atanır, yoksa TRE/SFE. Bir pilotun eğitimini veren eğitmen aynı oturumda kontrolünü yapamaz. Eğitmen izinlerini "Kapalı günler &amp; izinler" sekmesinden girin.</div>');
+ else if(TAB==="crew")v.innerHTML=vList("crew",crewHelp());else if(TAB==="instr")v.innerHTML=vList("instr",'<div class="mu">Kontrol sektörüne (LPC, OPC) yalnızca TRE/SFE atanır. Eğitim sektörüne (LPT, OPT) önce TRI/SFI atanır, yoksa TRE/SFE. Bir pilotun eğitimini veren eğitmen aynı oturumda kontrolünü yapamaz. Ayarlar\'da "SFI/SFE kullanılsın" seçiliyse TRI/TRE yalnızca o ay o lokasyonda kendi LPC/OPC\'si varsa görev alır. Eğitmen izinlerini "Kapalı günler &amp; izinler" sekmesinden girin.</div>');
  else if(TAB==="sims")v.innerHTML=vDevices()+vList("sims",'<div class="mu">Her satır tek bir slot günüdür (tarih + simülatör + slot; saat ayrı sütunda). <b>Planı oluştur</b> taslak planı kurar ve plandaki her oturum günü için buraya <b>Tahmini</b> satır açar. Rezervasyon yapınca Durum\'u <b>Reserved</b> yapın: Reserved günler yeni planda önce kullanılır ve hiç silinmez (oturum kilitlenmez). Plandan bağımsız alınan slotları <b>+ Satır ekle</b>, <b>Excel\'den yapıştır</b> ya da <b>Excel / CSV yükle</b> ile Reserved olarak ekleyebilirsiniz.</div>');
  else if(TAB==="off")v.innerHTML=vList("blackouts",'<div class="mu">Bu tarihlerde hiçbir simülatöre plan yapılmaz (tatil vb.).</div>')+vList("leaves",'<div class="mu">Pilot ya da eğitmenin plana alınmayacağı tarihler (kod ile).</div>');
  else if(TAB==="nofly")v.innerHTML=vList("nofly",'<div class="mu">Bu iki kişi aynı oturuma (öğrenci–öğrenci ya da öğrenci–eğitmen) konmaz.</div>');
@@ -520,7 +521,7 @@ function vSettings(){const S=DB.settings;
  <div class="cd"><h2>Kurallar</h2><div class="g">${fld("winM","Son … ay kuralı (ay)","number")}${fld("gapM","İki kontrol arası en az (ay)","number")}${fld("lpcM","LPC geçerlilik süresi (ay)","number")}${fld("opcM","OPC geçerlilik süresi (ay, ay sonuna yuvarlanır)","number")}
  ${fld("maxGap","Sektörler arası en fazla gün farkı","number",'<span class="mu">1 = art arda günler</span>')}${fld("instrPerDay","Eğitmen günde en fazla oturum","number")}</div>
  <h3>Öncelikli kurallar</h3><div id="prioS">${prioBox(S)}</div>
- <div class="g" style="margin-top:10px"> ${fld("sameInstr","Aynı ay ve lokasyonda mümkün olduğunca aynı eğitmenler (bilet masrafı); o ay kendi LPC/OPC'si için gelen eğitmen diğer oturumlarda da görev alır","check")}${fld("visaHard","Vizesi geçersiz pilot ya da eğitmeni vize gereken simülatöre hiç planlama","check")}</div></div>
+ <div class="g" style="margin-top:10px"> ${fld("sameInstr","Aynı ay ve lokasyonda mümkün olduğunca aynı eğitmenler (bilet masrafı); o ay kendi LPC/OPC'si için gelen eğitmen diğer oturumlarda da görev alır","check")}${fld("sfOnly","Eğitmen olarak SFI/SFE kullanılsın; TRI/TRE yalnızca o ay o lokasyonda kendi LPC/OPC'si varsa (zaten oradaysa) görev alsın","check")}${fld("visaHard","Vizesi geçersiz pilot ya da eğitmeni vize gereken simülatöre hiç planlama","check")}</div></div>
  <div class="cd"><h2>Otel</h2><div class="g">${selFld("hotelIn","Otel girişi",[["0","Simülatör günü (aynı gün)"],["1","Simülatörden 1 gün önce"]])}${selFld("hotelOut","Otel çıkışı",[["0","Son simülatör günü (aynı gün)"],["1","Son simülatörden 1 gün sonra"]])}</div>
  <div class="mu" style="margin-top:6px">Otel taslağı bu seçimlere göre taslak plandan kurulur. Aynı kişinin aynı lokasyondaki art arda simülatör günleri (ve birbirine değen / çakışan konaklamaları) tek konaklama sayılır.</div></div>
  <div class="cd"><h2>Planlama nasıl yapılır</h2><ul class="rules">
