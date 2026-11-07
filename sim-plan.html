@@ -116,8 +116,8 @@ const LISTS={
   ...(DB?.visaTypes||[]).filter(t=>t.name&&t.id).map(t=>({k:"v_"+t.id,l:t.name,t:"date",al:[norm(t.name)],tip:(t.locs||"")+(t.green?" · yeşil pasaportla gerekmez":"")}))]}},
  instr:{t:"Eğitmenler",sheet:"Egitmenler",cols:[
   {k:"rank",l:"Rütbe",t:"sel",o:["CPT","F/O"],al:["rutbe","rank","unvan","gorev","pozisyon"],tip:"Eğitmenin rütbesi (pilot değilse boş bırakın)."},
-  {k:"code",l:"Kod",t:"code",al:["kod","code"]},
   {k:"name",l:"Ad Soyad",t:"text",al:["adsoyad","name","adisoyadi","isim"],w:190},
+  {k:"code",l:"Kod",t:"code",al:["kod","code"]},
   {k:"role",l:"Yetki",t:"sel",o:["TRE","SFE","TRI","SFI"],al:["yetki","role","rol","yetkisi","rating"],tip:"Kontrol sektörlerine (LPC/OPC) yalnızca TRE ve SFE atanır; eğitim sektörlerine (LPT/OPT) herkes."},
   {k:"note",l:"Not",t:"text",al:["not","note","aciklama"],w:130}]},
  sims:{t:"Simülatör müsaitliği",sheet:"Simulatorler",cols:[
