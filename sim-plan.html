@@ -691,8 +691,10 @@ function hotelStays(X,R){const S=DB.settings,bi=+S.hotelIn||0,ao=+S.hotelOut||0,
    else{flush();cur={code:p.code,loc:p.loc,in:a,out:b,days:[d],roles:new Set(x.roles)}}}
   flush()}
  out.forEach(h=>{h.nights=h.out-h.in;const c=X.crewMap.get(h.code),t=X.instrMap.get(h.code);h.name=c?.name||t?.name||"";
-  const rk=t?.rank||c?.rank||"";h.role=h.roles.has("te")?[rk,"Eğitmen"+(t?.role?" ("+t.role+")":"")].filter(Boolean).join(" · "):rk||"Öğrenci";h.isT=h.roles.has("te")});
+  h.role=t?.rank||c?.rank||"";h.isT=h.roles.has("te")});
  return out.sort((a,b)=>a.in-b.in||a.loc.localeCompare(b.loc)||(b.isT-a.isT)||a.code.localeCompare(b.code))}
+// giriş ayına göre satır rengi (12 ay, açık tonlar)
+const HMON=["DDEBF7","FCE4D6","E2EFDA","FFF2CC","E4D7F5","D2F1EE","FAD7E3","E7E6E6","EEF5C8","FFDDB3","E6D3C3","F5C9C9"],hMon=h=>HMON[ymd(h.in)[1]];
 // sütun: [başlık, metin, sıralama değeri, ortala]
 const HCOL=[["Rütbe",h=>h.role,null,1],["Ad Soyad",h=>h.name],["Kod",h=>h.code,null,1],["Lokasyon",h=>h.loc||"—",null,1],["Giriş",h=>fmt(h.in),h=>h.in,1],["Çıkış",h=>fmt(h.out),h=>h.out,1],["Gece",h=>h.nights,h=>h.nights,1],["Simülatör günleri",h=>h.days.map(d=>fmt(d).slice(0,5)).join(", "),h=>h.days[0]]];
 function vHotel(){const X=ctx(),R=evaluate(X),S=DB.settings,all=hotelStays(X,R);UI.hs=UI.hs||{s:null,d:1,f:{}};const hs=UI.hs;
@@ -700,15 +702,15 @@ function vHotel(){const X=ctx(),R=evaluate(X),S=DB.settings,all=hotelStays(X,R);
  if(hs.s!=null){const c=HCOL[hs.s],g=c[2]||c[1];rows=rows.map((h,i)=>[h,g(h),i]).sort((a,b)=>cmpV(a[1],b[1],hs.d)||a[2]-b[2]).map(x=>x[0])}
  const locs=[...new Set(all.map(h=>h.loc))].sort(),sum=new Map();rows.forEach(h=>sum.set(h.loc,(sum.get(h.loc)||0)+h.nights));
  const nights=rows.reduce((t,h)=>t+h.nights,0),inT=S.hotelIn==="1"?"simülatörden 1 gün önce":"simülatör günü",outT=S.hotelOut==="1"?"son simülatörden 1 gün sonra":"son simülatör günü";
- const body=rows.map(h=>`<tr${h.isT?' style="font-weight:600"':""}>${HCOL.map(c=>`<td class="${c[3]?"c":""}">${esc(String(c[1](h)))}</td>`).join("")}</tr>`).join("");
+ const body=rows.map(h=>`<tr style="background:#${hMon(h)}">${HCOL.map(c=>`<td class="${c[3]?"c":""}">${esc(String(c[1](h)))}</td>`).join("")}</tr>`).join("");
  return`${stale()}<div class="cd"><div class="row np"><h2>Otel taslağı</h2><span class="mu">Giriş: ${inT} · Çıkış: ${outT} (Ayarlar'dan değişir)</span><span class="sp"></span>
  <select data-ui="hloc"><option value="">Tüm lokasyonlar</option>${locs.map(l=>`<option value="${esc(l)}"${UI.hloc===l?" selected":""}>${esc(l||"—")}</option>`).join("")}</select><button data-hexp="1"${all.length?"":" disabled"}>Otel taslağını Excel'e aktar</button></div>
  <div class="chips"><span class="chip">Konaklama <b>${rows.length}</b></span><span class="chip">Toplam gece <b>${nights}</b></span>${[...sum].map(([l,n])=>`<span class="chip">${esc(l||"—")} <b>${n}</b> gece</span>`).join("")}</div>
- <div class="mu" style="margin:0 0 6px">Taslak plandaki her oturumdan kurulur: öğrenciler oturumun bütün günleri, eğitmen yalnızca görev aldığı gün için. Aynı kişinin aynı lokasyondaki konaklamaları birbirine değiyor ya da çakışıyorsa birleştirilir. Eğitmenler kalın. Plan değişince bu sekme kendiliğinden güncellenir.</div>
+ <div class="mu" style="margin:0 0 6px">Taslak plandaki her oturumdan kurulur: öğrenciler oturumun bütün günleri, eğitmen yalnızca görev aldığı gün için. Aynı kişinin aynı lokasyondaki konaklamaları birbirine değiyor ya da çakışıyorsa birleştirilir. Satır rengi giriş ayını gösterir. Plan değişince bu sekme kendiliğinden güncellenir.</div>
  <div class="sc"><table class="ot"><thead><tr>${HCOL.map((c,i)=>`<th class="so" data-hs="${i}">${c[0]}${arrow(hs.s===i,hs.d)}</th>`).join("")}</tr>
  <tr class="fr np">${HCOL.map((_,i)=>`<th><input data-hf="${i}" value="${esc(hs.f[i]||"")}" placeholder="Filtre"></th>`).join("")}</tr></thead><tbody>${body||`<tr><td colspan="${HCOL.length}">${all.length?"Filtreye uyan satır yok.":"Taslak plan boş. Önce <b>Planı oluştur</b>'a basın."}</td></tr>`}</tbody></table></div></div>`}
 function exportHotel(){const X=ctx(),R=evaluate(X),H=hotelStays(X,R),hd=HCOL.map(c=>({v:c[0],b:true,bd:true,fill:"D9D9D9",c:true}));
- const rows=[hd,...H.map(h=>[{v:h.role,bd:true,c:true,b:h.isT},{v:h.name,bd:true,b:h.isT},{v:h.code,bd:true,c:true,b:h.isT},{v:h.loc,bd:true,c:true},{v:h.in,d:true,bd:true,c:true},{v:h.out,d:true,bd:true,c:true},{v:h.nights,bd:true,c:true},{v:HCOL[7][1](h),bd:true}])];
+ const rows=[hd,...H.map(h=>{const f=hMon(h);return[{v:h.role,bd:true,c:true},{v:h.name,bd:true},{v:h.code,bd:true,c:true},{v:h.loc,bd:true,c:true},{v:h.in,d:true,bd:true,c:true},{v:h.out,d:true,bd:true,c:true},{v:h.nights,bd:true,c:true},{v:HCOL[7][1](h),bd:true}].map(x=>({...x,fill:f}))})];
  download(xlsxBlob([{name:"Otel Taslagi",freeze:1,widths:[16,24,7,10,12,12,7,40],rows}]),"otel-taslagi-"+toIso(todayDn())+".xlsx")}
 
 /* ---- taslak plan ---- */
