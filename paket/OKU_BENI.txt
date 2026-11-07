@@ -1,0 +1,24 @@
+SIM PLAN - Yillik Simulator Plani
+
+Calistirma
+  "Sim Plan.cmd" dosyasina cift tiklayin. Uygulama Microsoft Edge'de kendi penceresinde acilir.
+  Internet gerekmez.
+
+Ilk acilis
+  Uygulama ornek verilerle acilabilir. Kendi verileriniz icin: Diger > Yedekten yukle,
+  en son aldiginiz JSON yedegini secin (eski paketlerden birinde Diger > Yedek al ile alabilirsiniz).
+  "Yedekler" klasorundeki dosya 05.11.2026 23.32 tarihli eski bir yedektir.
+
+Veriler
+  Veriler bu bilgisayarin tarayicisinda saklanir; dosya kapaninca kaybolmaz.
+  Duzenli olarak Diger > Yedek al (JSON) ile yedek alip "Yedekler" klasorune koyun.
+  Farkli tarayicilarda (Edge / Chrome) veriler ayri tutulur. Hep "Sim Plan.cmd" ile acin.
+
+Guncelleme
+  GitHub: capella-code/sim-plan deposundaki sim-plan.html dosyasini bu klasore
+  "sim plan.html" adiyla kopyalayin (eskisinin uzerine). Veriler kaybolmaz.
+
+Dosyalar
+  Sim Plan.cmd     : baslatici
+  sim plan.html    : uygulama
+  Yedekler\        : JSON veri yedekleri
