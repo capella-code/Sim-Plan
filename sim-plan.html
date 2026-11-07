@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Yıllık Simülatör Planı</title>
+<!DOCTYPE html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Sim Plan</title>
 <style>
 :root{--bg:#f4f6f9;--cd:#fff;--tx:#1b1f24;--mu:#5b6570;--bd:#d5dbe2;--ac:#1456c8;--ok:#177a3b;--er:#c0302b;--wa:#d6338a;--hd:#e8edf3;--lpc:#ffc000;--opc:#ffff00;--gr:#bfbfbf}
 @media(prefers-color-scheme:dark){:root{--bg:#14171a;--cd:#1d2126;--tx:#e8ebee;--mu:#9aa5b1;--bd:#333a42;--ac:#6ea2ff;--ok:#5ccf86;--er:#ff7b72;--wa:#ff7ac0;--hd:#262c33;color-scheme:dark}}
@@ -1206,7 +1206,6 @@ const LANG=ls.g("simplan.lang")==="en"?"en":"tr";
 const KEEP=new Set(["BUTTON","INPUT","SELECT","TEXTAREA","DIV","TABLE","UL","OL","LABEL","SVG","IMG","TD","TH","TR"]);
 const hasTr=t=>/[a-zçğıöşü]/i.test(t),TRW=/[çğıöşüÇĞİÖŞÜ]|\b(ve|ya|için|yok|gün|ay|ile|olarak|sektör|oturum|kişi|satır|planla|ekle|sil|gece)\b/i;
 function trApply(){
- if(document.title!=="Annual Simulator Plan")document.title="Annual Simulator Plan";
  const tw=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT),groups=new Map();let n;
  while((n=tw.nextNode())){const pe=n.parentElement;if(!pe||/^(SCRIPT|STYLE|TEXTAREA)$/.test(pe.tagName)||!hasTr(n.data))continue;if(!groups.has(pe))groups.set(pe,[]);groups.get(pe).push(n)}
  const tip=(el,o)=>{if(!o||el.tagName==="OPTION")return;const b=el.getAttribute("title");if(!b){const v="TR: "+o;el.setAttribute("title",v);el.dataset.trK=v}};
