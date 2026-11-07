@@ -680,8 +680,9 @@ function planCols(X,R){const cols=[];for(const o of R.ses)o.dn.forEach((d,k)=>co
 // vize sorunu: Expired ya da Vize sekmesinde kaydı yok (#N/A). Pilotlar uygunluk tablosundaki sonuca göre, eğitmenler her sektörün tarih ve lokasyonuna göre
 const visaSet=R=>new Map(R.rows.filter(r=>r.o&&r.visa).map(r=>[r.o.s.id+"|"+r.c.code,(r.visa==="#N/A"?"VİZE KAYDI YOK":"VİZESİ GEÇMİŞ")+(r.v?.t?" ("+r.v.t.name+")":"")]));
 const instrVisa=(X,o,k)=>{const t=o.s.instr?.[k],L=X.lanes.get(laneAt(o.s,k));if(!t||!L)return"";const v=visaOf(X,t,L.loc);if(v.none)return"";if(v.raw==null)return"VİZE KAYDI YOK";return visaExpired(v,o.dn[k])?"VİZESİ GEÇMİŞ ("+v.t.name+")":""};
+const winMap=R=>new Map(R.rows.filter(r=>r.o).map(r=>[r.o.s.id+"|"+r.c.code,"En erken "+fmt(r.ev.earliest)+" · en geç "+fmt(r.ev.deadline)+(r.ev.expired?" (süresi dolmuş)":"")]));// simülatöre gidebileceği aralık (uygunluk tablosuyla aynı)
 const finalSet=R=>new Set(R.rows.filter(r=>r.o&&r.final).map(r=>r.o.s.id+"|"+r.c.code));// son ayına kalan (Final!) pilot
-function vPlan(){const X=ctx(),R=evaluate(X),months=planCols(X,R),multi=X.laneArr.length>1||R.ses.some(o=>!o.L);const CH=8,FM=finalSet(R),VX=visaSet(R);
+function vPlan(){const X=ctx(),R=evaluate(X),months=planCols(X,R),multi=X.laneArr.length>1||R.ses.some(o=>!o.L);const CH=8,FM=finalSet(R),VX=visaSet(R),WN=winMap(R);
  const blocks=[...months].map(([k,cols])=>{const y=Math.floor(k/12),m=k%12,title=MON[m]+"."+String(y).slice(2),tabs=[];
   for(let i=0;i<cols.length;i+=CH){const cs=cols.slice(i,i+CH);
    const cell=(c,fn)=>c.o?fn(c):"";
@@ -689,7 +690,7 @@ function vPlan(){const X=ctx(),R=evaluate(X),months=planCols(X,R),multi=X.laneAr
    const mk=c=>c.o?(c.o.err.length?" ce":c.o.warn.length?" cw":""):"";
    const tip=c=>c.o?esc([c.o.L?.label||c.o.s.lane,...c.o.err.map(e=>"✖ "+e),...c.o.warn.map(e=>"⚠ "+e)].join("\n")):"Boş simülatör günü – oturum eklemek için tıklayın";
    const pc=(c,j)=>{if(!c.o)return`<td class="x" ${at(c)}></td>`;const code=c.o.s.pilots[j]||"",t=c.o.types[code]||"",cr=X.crewMap.get(code);
-    const fm=FM.has(c.o.s.id+"|"+code),vx=VX.get(c.o.s.id+"|"+code);return`<td class="cl ${t}${cr?.rank==="CPT"?" cp":""}${fm?" fm":""}${vx?" vx":""}" ${at(c)} data-dt="p|${c.o.s.id}|${j}"${code?` draggable="true" data-dg="p|${c.o.s.id}|${j}"`:""} title="${esc(cr?cr.name+" ("+cr.rank+")":code)}${t?" – "+(c.o.labels[code]?.[c.k]||t):""}${fm?" – SON AYINDA (Final!)":""}${vx?" – "+esc(vx):""}${c.o.s.lk&&pLk(c.o.s,j)?" – kilitli":""}">${esc(code)||"<span style='color:#999'>—</span>"}${c.o.s.lk&&pLk(c.o.s,j)&&code?"<small>🔒</small>":""}</td>`};
+    const fm=FM.has(c.o.s.id+"|"+code),vx=VX.get(c.o.s.id+"|"+code);return`<td class="cl ${t}${cr?.rank==="CPT"?" cp":""}${fm?" fm":""}${vx?" vx":""}" ${at(c)} data-dt="p|${c.o.s.id}|${j}"${code?` draggable="true" data-dg="p|${c.o.s.id}|${j}"`:""} title="${esc(cr?cr.name+" ("+cr.rank+")":code)}${t?" – "+(c.o.labels[code]?.[c.k]||t):""}${fm?" – SON AYINDA (Final!)":""}${vx?" – "+esc(vx):""}${c.o.s.lk&&pLk(c.o.s,j)?" – kilitli":""}${WN.has(c.o.s.id+"|"+code)?"&#10;"+esc(WN.get(c.o.s.id+"|"+code)):""}">${esc(code)||"<span style='color:#999'>—</span>"}${c.o.s.lk&&pLk(c.o.s,j)&&code?"<small>🔒</small>":""}</td>`};
    tabs.push(`<table class="mt"><tr><th class="mh" colspan="${cs.length}">${title}</th></tr>
    <tr>${cs.map(c=>`<td class="dy${mk(c)}${c.o?"":" em"}${X.slotRow.get(c.lane+"|"+c.d)?.status==="Reserved"?" rs":""}" ${at(c)} title="${fmt(c.d)} ${DAYN[wd(c.d)]}${X.slotRow.get(c.lane+"|"+c.d)?.status==="Reserved"?" · Reserved":""}&#10;${tip(c)}">${ymd(c.d)[2]}${c.o?.s.locked&&!c.o.s.lk?"🔒":""}</td>`).join("")}</tr>
    ${multi?`<tr>${cs.map(c=>`<td class="ln" ${at(c)}>${esc((X.lanes.get(c.lane)?.loc||"")+" "+(X.lanes.get(c.lane)?.sim||c.lane))}</td>`).join("")}</tr>`:""}
