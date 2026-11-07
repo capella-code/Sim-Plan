@@ -169,7 +169,7 @@ const laneAt=(se,k)=>se.lanes?.[k]||se.lane;
 const slotSession=r=>{const k=rowLane(r);return k?DB.sessions.find(se=>se.dates.some((dt,i)=>dt===r.date&&laneAt(se,i)===k))||null:null};
 const firmOf=d=>((d.op||"").trim().split(/\s+/)[0]||d.mf||d.c||"").toUpperCase();
 const defSlot=d=>SLOTS.find(k=>d.s?.[k]&&d.s[k][0]>="08:00"&&d.s[k][0]<="16:00")||SLOTS.find(k=>d.s?.[k])||"";
-const normStatus=v=>/tahmin|tentative|opsiyon|planned/.test(norm(v))?"Tahmini":"Reserved";
+const normStatus=v=>/tahmin|tentative|opsiyon|planned|estimat/.test(norm(v))?"Tahmini":"Reserved";
 // plandaki her oturum günü için müsaitlik satırı (yoksa "Tahmini" açılır); hiçbir oturumun kullanmadığı tahmini satır silinir, Reserved satırlar hep kalır
 // yeniden planlamada korunan oturum: kilitli VE bütün günleri Reserved satırda (Tahmini slottaki oturum her planlamada yeniden yerleştirilir)
 // kişi bazında kilit: se.lk={p:[öğrenci1,öğrenci2],i:[sektör eğitmenleri]}; lk yoksa se.locked herkes için geçerli. se.locked = en az biri kilitli
@@ -626,7 +626,7 @@ function devDel(id){const d=devById(id);if(!d)return;const[n1,n2]=devUses(d);
 function upsertDevices(list){let a=0,u=0;list.forEach(src=>{const c=(src.c||"").toUpperCase();if(!c)return;const ex=DB.devices.find(d=>(d.c||"").toUpperCase()===c);
   if(ex){Object.assign(ex,cloneDev({...src,id:ex.id}));u++}else{const id=DB.devices.some(d=>String(d.id)===String(src.id))||src.id==null?nextDevId(DB.devices):src.id;DB.devices.push(cloneDev({...src,id}));a++}});return[a,u]}
 function devRowsToItems(rows){const H=(rows[0]||[]).map(norm),col=(...al)=>H.findIndex(h=>al.includes(h));
- const ix={k:col("tur","type","kind"),c:col("kodtescil","kod","tescil","fstd","code","fstdkodu"),ac:col("tip","actype","hava aracitipi","havaracitipi","type2"),op:col("operator"),mf:col("uretici","manufacturer"),loc:col("lokasyon","location","us"),tz:col("saatdilimi","timezone","tz"),a:col("durum","aktif","status")};
+ const ix={k:col("tur","type","kind"),c:col("kodtescil","kod","tescil","fstd","code","fstdkodu","coderegistration","registration"),ac:col("tip","actype","hava aracitipi","havaracitipi","type2"),op:col("operator"),mf:col("uretici","manufacturer"),loc:col("lokasyon","location","us"),tz:col("saatdilimi","timezone","tz"),a:col("durum","aktif","status")};
  if(ix.c<0)return[];const sl=SLOTS.map(k=>H.indexOf(norm(k)));
  return rows.slice(1).filter(r=>r&&String(r[ix.c]??"").trim()).map(r=>{const g=i=>i<0?"":String(r[i]??"").trim();const k=/ucak|ac|aircraft/.test(norm(g(ix.k)))?"AC":"FFS";
   const d={k,c:g(ix.c).toUpperCase().replace(/\s/g,""),ac:g(ix.ac).toUpperCase(),op:g(ix.op),mf:g(ix.mf),loc:g(ix.loc).toUpperCase(),tz:g(ix.tz),a:ix.a<0||!/pasif|passive|hayir|^h$|^0$|false/.test(norm(g(ix.a)))?1:0,s:{}};
@@ -637,7 +637,7 @@ function importSlots(items,mode){const rows=[];items.forEach(it=>{resolveSimRow(
  const valid=rows.filter(r=>r.date&&devById(r.dev));if(mode!=="add")DB.sims=DB.sims.filter(r=>r.status==="Tahmini");
  const idx=new Map(DB.sims.map(r=>[rowLane(r)+"|"+r.date,r]));
  valid.forEach(r=>{const k=rowLane(r)+"|"+r.date,ex=idx.get(k);if(ex){if(r.status==="Reserved")ex.status="Reserved";if(r.note)ex.note=r.note}else{DB.sims.push(r);idx.set(k,r)}});return valid.length}
-function devSheet(){return{name:"FSTD",freeze:1,widths:[7,13,7,11,9,9,17,12,12,12,12,12,12,8],rows:[["Tür","Kod / Tescil","Tip","Operatör","Üretici","Lokasyon","Saat dilimi",...SLOTS,"Durum"].map(v=>({v,b:1,fill:"D9D9D9",bd:1})),
+function devSheet(){return{name:"FSTD",freeze:1,widths:[7,13,7,11,9,9,17,12,12,12,12,12,12,8],rows:[(LANG==="en"?["Kind","Code / Registration","AC type","Operator","Manufacturer","Location","Time zone"]:["Tür","Kod / Tescil","Tip","Operatör","Üretici","Lokasyon","Saat dilimi"]).concat(SLOTS,[LANG==="en"?"Status":"Durum"]).map(v=>({v,b:1,fill:"D9D9D9",bd:1})),
  ...DB.devices.map(d=>[isAC(d)?"Uçak":"FFS",d.c,d.ac,d.op,d.mf,d.loc,d.tz,...SLOTS.map(k=>slotTime(d,k)),d.a?"Aktif":"Pasif"].map(v=>({v:v??"",bd:1})))]}}
 // müsaitlik satırındaki cihaz kodu / slot metnini (Excel, yapıştırma) cihaz + slota çevirir; bilinmeyen kod yeni FFS kaydı olur
 function resolveSimRow(it){if(it._dev==null&&it._slot==null&&it._time==null)return it;if(it._slot==null&&it._time!=null)it._slot=String(it._time);const code=String(it._dev??"").trim().toUpperCase().replace(/\s/g,"");let dv=code?DB.devices.find(d=>(d.c||"").toUpperCase()===code):devById(it.dev);
@@ -852,7 +852,11 @@ function zip(files){const enc=new TextEncoder(),parts=[],cd=[];let off=0;
 const xe=s=>String(s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c]);
 const colL=i=>{let s="";i++;while(i){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26)}return s};
 // sheets: [{name, rows:[[cell]], widths:[], merges:["A1:D1"], freeze:1}] ; cell: null|string|number|{v,d:true (gün numarası),b,red,fill,c (orta),wrap,bd,sz}
-function xlsxBlob(sheets){const fonts=['<font><sz val="11"/><name val="Calibri"/></font>'],fills=['<fill><patternFill patternType="none"/></fill>','<fill><patternFill patternType="gray125"/></fill>'],xfs=['<xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>'],fm=new Map(),fl=new Map(),xm=new Map();
+const EN_SHEET={Ekip:"Crew",VizeTurleri:"VisaTypes",Visa:"Visa",Egitmenler:"Instructors",Simulatorler:"Simulators",KapaliGunler:"Blackouts",Izinler:"Leave",BirlikteUcmayacaklar:"NoFly",FSTD:"FSTD","Otel Taslagi":"Hotel Draft","Taslak Plan":"Draft Plan"};
+// EN seçiliyse Excel çıktısı da İngilizce: kişi adı, kod ve tarih gibi veriler değişmez; tekrar yüklenebilir
+function enSheets(sheets){if(typeof LANG==="undefined"||LANG!=="en")return sheets;const tv=v=>typeof v==="string"&&/[a-zçğıöşü]/i.test(v)?en(v,true)??v:v;
+ return sheets.map(sh=>({...sh,name:EN_SHEET[sh.name]||sh.name,rows:sh.rows.map(r=>r.map(c=>c==null?c:typeof c==="object"?{...c,v:tv(c.v)}:tv(c)))}))}
+function xlsxBlob(sheets){sheets=enSheets(sheets);const fonts=['<font><sz val="11"/><name val="Calibri"/></font>'],fills=['<fill><patternFill patternType="none"/></fill>','<fill><patternFill patternType="gray125"/></fill>'],xfs=['<xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>'],fm=new Map(),fl=new Map(),xm=new Map();
  const fontId=(b,red,sz)=>{const k=[b,red,sz].join();if(!fm.has(k)){fm.set(k,fonts.length);fonts.push(`<font>${b?"<b/>":""}<sz val="${sz||11}"/>${red?'<color rgb="FFFF0000"/>':""}<name val="Calibri"/></font>`)}return fm.get(k)};
  const fillId=c=>{if(!c)return 0;if(!fl.has(c)){fl.set(c,fills.length);fills.push(`<fill><patternFill patternType="solid"><fgColor rgb="FF${c}"/><bgColor indexed="64"/></patternFill></fill>`)}return fl.get(c)};
  const xf=c=>{const f=fontId(c.b,c.red,c.sz),fi=fillId(c.fill),bd=c.rbd&&c.vbd?4:c.vbd?3:c.rbd?2:c.bd?1:0,nf=c.d?164:0,k=[f,fi,bd,nf,c.c,c.wrap].join();
@@ -871,7 +875,7 @@ function xlsxBlob(sheets){const fonts=['<font><sz val="11"/><name val="Calibri"/
 // claude.ai'de yayımlı sayfada dosya indirme yalnızca "downloads" yeteneğiyle olur; normal tarayıcıda bağlantı ile indirilir
 const DLCAP=window.claude&&typeof window.claude.use==="function"?window.claude.use("downloads").catch(()=>null):Promise.resolve(null);
 function linkDownload(blob,name){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500)}
-async function download(blob,name){if(!window.claude)return linkDownload(blob,name);const dl=await DLCAP;if(!dl)return linkDownload(blob,name);
+async function download(blob,name){if(typeof LANG!=="undefined"&&LANG==="en")name=name.replace(/^simulator-plani-/,"simulator-plan-").replace(/^otel-taslagi-/,"hotel-draft-").replace(/^simulator-plan-veri/,"simulator-plan-data").replace(/^simulator-plan-yedek-/,"simulator-plan-backup-");if(!window.claude)return linkDownload(blob,name);const dl=await DLCAP;if(!dl)return linkDownload(blob,name);
  try{await dl.save({filename:name,data:blob})}catch(e){if(e&&e.code==="declined")return;toast("Dosya indirilemedi"+(e&&e.code?" ("+e.code+")":""),5000)}}
 async function unzip(buf){const dv=new DataView(buf);let e=buf.byteLength-22;while(e>=0&&dv.getUint32(e,true)!==0x06054b50)e--;if(e<0)throw new Error("Dosya xlsx değil");
  const n=dv.getUint16(e+10,true);let p=dv.getUint32(e+16,true);const files={},dec=new TextDecoder();
@@ -907,7 +911,7 @@ function rowsToItems(key,rows){const L=LISTS[key],H=rows.slice(0,6);let hi=-1,ma
  for(let r=0;r<H.length;r++){const hs=(H[r]||[]).map(norm),m={},used=new Set();
   hs.forEach((h,ci)=>{if(h&&L.ign?.some(a=>h.startsWith(a)))hs[ci]="";});
   const CC=[...L.cols,...(L.extra||[])];
-  hs.forEach((h,ci)=>{if(!h)return;const col=CC.find(c=>!used.has(c.k)&&c.al.includes(h));if(col){m[ci]=col;used.add(col.k)}});
+  hs.forEach((h,ci)=>{if(!h)return;const col=CC.find(c=>!used.has(c.k)&&(c.al.includes(h)||norm(en(c.l,true)||"")===h));if(col){m[ci]=col;used.add(col.k)}});
   hs.forEach((h,ci)=>{if(!h||m[ci])return;const col=CC.find(c=>!used.has(c.k)&&c.al.some(a=>a.length>=3&&h.includes(a)));if(col){m[ci]=col;used.add(col.k)}});
   if(Object.keys(m).length>=2){hi=r;map=m;break}}
  if(!map){map={};L.cols.forEach((c,i)=>map[i]=c)}
@@ -937,7 +941,7 @@ function doPaste(key,mode){const items=rowsToItems(key,parseCSV($("#pT").value))
 function inputSheets(){return[devSheet(),...Object.entries(LISTS).map(([key,L])=>{const cols=listCols(key,DERIVED[key]?ctx():null).filter(c=>c.col||c.der?.x);
  return{name:L.sheet,freeze:1,widths:cols.map(c=>!c.col?14:c.col.t==="date"?13:c.col.t==="code"?8:c.col.w?Math.round(c.col.w/7):14),
  rows:[cols.map(c=>({v:c.l,b:1,fill:"D9D9D9",bd:1})),...DB[key].map(it=>cols.map(c=>{if(!c.col)return{v:c.txt(it),bd:1};const cc=c.col,v=it[cc.k];
-  if(cc.t==="dev")return{v:devById(v)?.c||"",bd:1};if(cc.t==="date")return{v:toDn(v),d:toDn(v)!=null,bd:1};if(cc.t==="check")return{v:v?"E":"H",bd:1,c:1};if(cc.t==="days")return{v:daysStr(v),bd:1};return{v:v??"",bd:1}}))]}})]}
+  if(cc.t==="dev")return{v:devById(v)?.c||"",bd:1};if(cc.t==="date")return{v:toDn(v),d:toDn(v)!=null,bd:1};if(cc.t==="check")return{v:v?(LANG==="en"?"Y":"E"):(LANG==="en"?"N":"H"),bd:1,c:1};if(cc.t==="days")return{v:daysStr(v),bd:1};return{v:v??"",bd:1}}))]}})]}
 function exportPlan(){const X=ctx(),R=evaluate(X),FILL={LPC:"FFC000",OPC:"FFFF00"},FM=finalSet(R),VX=visaSet(R);
  const head=TH.map(([h])=>({v:h,b:1,fill:"BFBFBF",bd:1,c:1,wrap:1}));
  const rows=tableSort(X,R.rows).map(r=>{const o=r.o,f=FILL[r.ev.type],C=(v,x={})=>({v,fill:f,bd:1,c:1,...x}),D=(dn,x={})=>C(dn,{d:dn!=null,...x});
@@ -1083,10 +1087,10 @@ const EN_T={
 // ekip / listeler
 "Rütbe":"Rank","Ad Soyad":"Name Surname","Kod":"Code","LPC Geçerlilik":"LPC validity","Son Sim Tarihi":"Last sim date","Sıradaki":"Next","Yetki":"Rating","Not":"Note",
 "Vize türü":"Visa type","Gerektiği sim lokasyonları":"Sim locations requiring it","Yeşil pasaportla gerekmez":"Not required with green passport","Yeşil Pasaport":"Green passport",
-"Tarih":"Date","Başlangıç":"Start","Bitiş":"End","Açıklama":"Description","Kod 1":"Code 1","Kod 2":"Code 2","Görev":"Role","Durum":"Status","Saat":"Time",
+"Tarih":"Date","Başlangıç":"Start","Bitiş":"End","Açıklama":"Description","Kod #":"Code #","Görev":"Role","Durum":"Status","Saat":"Time",
 "Cihaz":"Device","Kod / Tescil":"Code / Registration","Operatör":"Operator","Tip":"Type","Tür":"Kind","Lokasyon":"Location","Eğitmen":"Instructor","Öğrenci":"Student",
 "Oturum":"Session","Pilot":"Pilot","Kilit":"Lock","Sektör":"Sector","Gece":"Nights","gece":"nights","Giriş":"Check-in","Çıkış":"Check-out","Simülatör günleri":"Simulator days",
-"Uçak":"Aircraft","Simülatör":"Simulator","Aktif":"Active","Pasif":"Passive","Tahmini":"Estimated","Seçin…":"Select…","boş":"empty","— boş (koltuk doldurucu) —":"— empty (seat filler) —","Tümü":"All","Tüm lokasyonlar":"All locations","Yesil":"Green",
+"Uçak":"Aircraft","Simülatör":"Simulator","Aktif":"Active","Hepsi":"All","Hafta içi":"Weekdays","Pasif":"Passive","Tahmini":"Estimated","Seçin…":"Select…","boş":"empty","— boş (koltuk doldurucu) —":"— empty (seat filler) —","Tümü":"All","Tüm lokasyonlar":"All locations","Yesil":"Green",
 "Hata":"Error","Filtre":"Filter","Ara (ad / kod)":"Search (name / code)","Sıralamak için tıklayın":"Click to sort","# satır":"# rows","# kayıt":"# records",
 "CPT: # · F/O: #. Zorunlu: Rütbe, Kod, LPC Geçerlilik. \"Sıradaki\" sütunu girilen bilgilere göre hesaplanır.":"CPT: # · F/O: #. Required: Rank, Code, LPC validity. The \"Next\" column is calculated from the entered data.",
 "Bu iki kişi aynı oturuma (öğrenci–öğrenci ya da öğrenci–eğitmen) konmaz.":"These two people are never put in the same session (student–student or student–instructor).",
@@ -1156,6 +1160,8 @@ const EN_T={
 const EN_R=[
  [/^(Oca|Şub|Mar|Nis|May|Haz|Tem|Ağu|Eyl|Eki|Kas|Ara)\.(\d\d)$/,(m,a,y)=>({Oca:"Jan",Şub:"Feb",Mar:"Mar",Nis:"Apr",May:"May",Haz:"Jun",Tem:"Jul",Ağu:"Aug",Eyl:"Sep",Eki:"Oct",Kas:"Nov",Ara:"Dec"})[a]+"."+y],
  [/^([⚠✖]) (.*)$/,(m,a,r)=>{const e=en(r);return e?a+" "+e:null}],[/^(\d\d\.\d\d\.\d{4}) (Pzt|Sal|Çar|Per|Cum|Cmt|Paz)$/,(m,d,w)=>d+" "+({Pzt:"Mon",Sal:"Tue",Çar:"Wed",Per:"Thu",Cum:"Fri",Cmt:"Sat",Paz:"Sun"})[w]],
+ [/^(Pzt|Sal|Çar|Per|Cum|Cmt|Paz)(,(Pzt|Sal|Çar|Per|Cum|Cmt|Paz))*$/,m=>m.split(",").map(d=>({Pzt:"Mon",Sal:"Tue",Çar:"Wed",Per:"Thu",Cum:"Fri",Cmt:"Sat",Paz:"Sun"})[d]).join(",")],
+ [/^sektör (\d+)\/(\d+)$/,"sector $1/$2"],
  [/^(\d+)\. öğrenci$/,"Student $1"],[/^(\d+)\. kontrol$/,"$1. check"],[/^(\d+)\. eğitim$/,"$1. training"],
  [/^son planlama (.+)$/,"last planned $1"],[/^Eğitmen yükü: (.*)$/,"Instructor load: $1"],[/^En erken (\S+)$/,"Earliest $1"],[/^en geç (\S+)( \(süresi dolmuş\))?$/,(m,d,x)=>"latest "+d+(x?" (expired)":"")],
  [/^en erken( (\S+))?$/,(m,x,d)=>"earliest"+(d?" "+d:"")],[/^(\S+) gece$/,"$1 nights"],[/^(\S+) (\d+) gece$/,"$1 $2 nights"],[/^Ekip: (\d+)$/,"Crew: $1"],[/^Eğitmen: (\d+) (.*)$/,(m,n,r)=>{const e=en(r)??(EN_S?null:enPh(r));return e?"Instructors: "+n+" "+e:null}],
