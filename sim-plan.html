@@ -1036,5 +1036,163 @@ $("#bMore").onclick=()=>dlg("Diğer işlemler",`<div class="row"><button id="mB"
  $("#mR").onclick=()=>{closeDlg();$("#fImp").click()};
  $("#mS").onclick=()=>confirmDlg("Örnek veri","Mevcut veriler örnek veriyle değiştirilecek.","Yükle",()=>{DB=sampleDB();save();tabCounts();render()});
  $("#mC").onclick=()=>confirmDlg("Tüm verileri temizle","Ekip, eğitmen, simülatör, kısıt ve plan verilerinin tamamı silinecek.","Temizle",()=>{DB=emptyDB();save();tabCounts();render()},"d")});
+/* ---- İngilizce ipuçları: Türkçe yazının üzerine gelince İngilizcesi görünür ---- */
+// Anahtarlarda sayılar # ile yazılır; İngilizcedeki # aynı sırayla gerçek sayılarla doldurulur.
+const EN_T={
+"Yıllık Simülatör Planı":"Annual Simulator Plan",
+"Veriler yalnızca bu cihazda (tarayıcı hafızasında) saklanır. İnternet gerekmez. Yedek almak için Diğer ▸ Yedek al.":"Data is stored only on this device (browser storage). No internet needed. To back up: More ▸ Back up.",
+"Planı oluştur":"Build plan","Sadece Reserved ile planla":"Plan with Reserved only","Excel / CSV yükle":"Upload Excel / CSV","Excel şablonu indir":"Download Excel template",
+"Planı Excel'e aktar":"Export plan to Excel","Yazdır":"Print","Diğer ▾":"More ▾","Diğer":"More",
+"Ayarlar":"Settings","Ekip":"Crew","Vize":"Visa","Eğitmenler":"Instructors","FSTD / Uçak":"FSTD / Aircraft","Kapalı günler & izinler":"Closed days & leave",
+"Birlikte uçmayacaklar":"Do-not-pair","Uygunluk tablosu":"Eligibility table","Taslak plan":"Draft plan","Otel taslağı":"Hotel draft",
+"+ Oturum ekle":"+ Add session","+ Planla":"+ Schedule","+ Satır ekle":"+ Add row","+ Yeni simülatör":"+ New simulator","+ Yeni uçak":"+ New aircraft",
+"Düzelt":"Fix","Excel'den yapıştır":"Paste from Excel","Kapat":"Close","Kaydet":"Save","Kilitleri kaldır":"Unlock all","Tümünü kilitle":"Lock all","Tümünü sil":"Delete all",
+"Otel taslağını Excel'e aktar":"Export hotel draft to Excel","Planla":"Schedule","Sil":"Delete","Vazgeç":"Cancel","Tüm verileri temizle":"Clear all data",
+"Yedek al (JSON)":"Back up (JSON)","Yedekten yükle":"Restore from backup","Örnek listeye dön":"Back to sample list","Örnek veriyi yükle":"Load sample data","Yükle":"Load","Temizle":"Clear",
+"Geri al":"Undo","Göster":"Show","Tamam":"OK","Evet":"Yes","Hayır":"No",
+// başlıklar
+"Diğer işlemler":"Other actions","Kapalı günler":"Closed days","Kişi izinleri":"Personal leave","Kişi vizeleri":"Personal visas","Kurallar":"Rules","Otel":"Hotel",
+"Oturumu düzenle":"Edit session","Yeni oturum":"New session","Plan dönemi ve sektör sayıları":"Plan period and sector counts","Planlama nasıl yapılır":"How planning works",
+"Simülatör müsaitliği":"Simulator availability","Sorunlar":"Issues","Vize türleri":"Visa types",
+"Taslak plan hangi simülatör ve slotta kurulsun?":"Which simulator and slot should the draft plan use?","Öncelikli kurallar":"Priority rules","Yalnızca Reserved günler":"Reserved days only",
+// ayarlar
+"Plan başlangıcı":"Plan start","Plan bitişi":"Plan end","LPC kaç sektör?":"How many LPC sectors?","OPC kaç sektör?":"How many OPC sectors?",
+"LPC kaç sektör planlansın?":"How many LPC sectors to plan?","OPC kaç sektör planlansın?":"How many OPC sectors to plan?",
+"Son … ay kuralı (ay)":"Last … months rule (months)","İki kontrol arası en az (ay)":"Minimum between two checks (months)","LPC geçerlilik süresi (ay)":"LPC validity (months)",
+"OPC geçerlilik süresi (ay, ay sonuna yuvarlanır)":"OPC validity (months, rounded to month end)","Sektörler arası en fazla gün farkı":"Max days between sectors","# = art arda günler":"# = consecutive days",
+"Eğitmen günde en fazla oturum":"Max sessions per instructor per day",
+"Aynı ay ve lokasyonda mümkün olduğunca aynı eğitmenler (bilet masrafı); o ay kendi LPC/OPC'si için gelen eğitmen diğer oturumlarda da görev alır":"Same instructors within a month and location where possible (ticket cost); an instructor who comes for their own LPC/OPC that month also works other sessions",
+"Eğitmen olarak SFI/SFE kullanılsın; TRI/TRE yalnızca o ay o lokasyonda kendi LPC/OPC'si varsa (zaten oradaysa) görev alsın":"Use SFI/SFE as instructors; TRI/TRE only work if they have their own LPC/OPC at that location that month (already there)",
+"Vizesi geçersiz pilot ya da eğitmeni vize gereken simülatöre hiç planlama":"Never plan a pilot or instructor with an invalid visa at a simulator that requires one",
+"Mümkünse kişiyi son ayında planlama":"Avoid planning a person in their final month if possible","Mecbur kalmadıkça LPC ve OPC aynı oturumda planlama":"Do not mix LPC and OPC in one session unless necessary",
+"Mecbur kalmadıkça 1 CPT + # F/O eşleşmesi (iki CPT / iki F/O yok)":"Pair # CPT + # F/O unless necessary (no two CPTs / two F/Os)",
+"# = en önemli. Kurallar çakışınca üstteki kural korunur, alttaki gerekirse esnetilir. İşareti kaldırılan kural uygulanmaz.":"# = most important. When rules conflict the higher rule is kept and the lower one relaxed if needed. Unticked rules are not applied.",
+"Önceliği artır":"Raise priority","Önceliği azalt":"Lower priority",
+"Otel girişi":"Hotel check-in","Otel çıkışı":"Hotel check-out","Simülatör günü (aynı gün)":"Simulator day (same day)","Simülatörden # gün önce":"# day before the simulator",
+"Son simülatör günü (aynı gün)":"Last simulator day (same day)","Son simülatörden # gün sonra":"# day after the last simulator",
+"Otel taslağı bu seçimlere göre taslak plandan kurulur. Aynı kişinin aynı lokasyondaki art arda simülatör günleri (ve birbirine değen / çakışan konaklamaları) tek konaklama sayılır.":"The hotel draft is built from the draft plan using these choices. A person's consecutive simulator days at the same location (and touching / overlapping stays) count as one stay.",
+"Son # ay kuralı: kontrol geçerliliğin son # ayında yapılırsa yeni geçerlilik eski bitiş tarihinden sayılır (LPC +# ay). Bu yüzden en erken tarih = geçerlilik − # ay.":"Last # months rule: if the check is done in the last # months of validity, the new validity counts from the old expiry (LPC +# months). So earliest date = validity − # months.",
+"# ay kuralı: yılda iki kontrol; art arda iki kontrol # aydan yakın olamaz. En erken tarih = son kontrol + # ay (tabloda kırmızı kalın ise bu kural belirleyicidir).":"# months rule: two checks a year; two consecutive checks cannot be closer than # months. Earliest date = last check + # months (red bold in the table means this rule decides).",
+"OPC: LPC'den # ay önce ya da sonra (bugünden sonraki ilk tarih). LPC'ler turuncu, OPC'ler sarı gösterilir. LPC aynı zamanda OPC yerine geçer.":"OPC: # months before or after the LPC (first date after today). LPCs are orange, OPCs yellow. An LPC also counts as an OPC.",
+"Her oturumda en az # öğrenci + # eğitmen. Süresi en yakın olan önce yerleştirilir.":"Each session has at least # students + # instructor. The soonest expiry is placed first.",
+"Reserved günler her zaman önce: müsaitlik listesinde boş Reserved gün varsa planlayıcı tahmini güne geçmeden onu doldurur; bu, öncelikli kurallardan (son ay dahil) de önce gelir. Tahmini bloklar ancak Reserved günler yetmediğinde kullanılır. Bir oturumun sektörleri aynı simülatörün farklı slotlarında olabilir.":"Reserved days always first: if the availability list has a free Reserved day the planner fills it before using an estimated day; this comes before the priority rules too (final month included). Estimated blocks are used only when Reserved days are not enough. A session's sectors may be in different slots of the same simulator.",
+"Son sim tarihi sıradaki OPC'nin son # ay penceresine düşüyorsa o OPC yapılmış sayılır.":"If the last sim date falls in the last # months window of the next OPC, that OPC counts as done.",
+"Excel'deki gibi plan tarihi Earliest Auto'dan sonra (eşit olamaz) ve Valid'e kadar olmalı; değilse ya da planlanmamışsa \"Hata\".":"As in Excel, the plan date must be after Earliest Auto (not equal) and up to Valid; otherwise, or if unplanned, \"Error\".",
+"Eğitmenler: aynı ay ve lokasyonda mümkün olduğunca aynı kişiler kullanılır (bilet masrafı); o ay kendi LPC/OPC'si için gelen eğitmen, kendi oturumu dışındaki günlerde diğer oturumlarda görev alabilir. Kontrol sektörüne yalnızca TRE/SFE.":"Instructors: the same people are used within a month and location where possible (ticket cost); an instructor who comes for their own LPC/OPC can work other sessions on other days. Check sectors: TRE/SFE only.",
+"Kontrol tarihi = son sektörün tarihi. Kilitli ve slotları Reserved olan oturumlar yeniden planlamada korunur; diğerleri (Tahmini slottaki kilitliler dahil) silinip yeniden dağıtılır.":"Check date = date of the last sector. Locked sessions on Reserved slots are kept when re-planning; the others (including locked ones on estimated slots) are deleted and redistributed.",
+// ekip / listeler
+"Rütbe":"Rank","Ad Soyad":"Name Surname","Kod":"Code","LPC Geçerlilik":"LPC validity","Son Sim Tarihi":"Last sim date","Sıradaki":"Next","Yetki":"Rating","Not":"Note",
+"Vize türü":"Visa type","Gerektiği sim lokasyonları":"Sim locations requiring it","Yeşil pasaportla gerekmez":"Not required with green passport","Yeşil Pasaport":"Green passport",
+"Tarih":"Date","Başlangıç":"Start","Bitiş":"End","Açıklama":"Description","Kod 1":"Code 1","Kod 2":"Code 2","Görev":"Role","Durum":"Status","Saat":"Time",
+"Cihaz":"Device","Kod / Tescil":"Code / Registration","Operatör":"Operator","Tip":"Type","Tür":"Kind","Lokasyon":"Location","Eğitmen":"Instructor","Öğrenci":"Student",
+"Oturum":"Session","Pilot":"Pilot","Kilit":"Lock","Sektör":"Sector","Gece":"Nights","Giriş":"Check-in","Çıkış":"Check-out","Simülatör günleri":"Simulator days",
+"Uçak":"Aircraft","Simülatör":"Simulator","Aktif":"Active","Pasif":"Passive","Tahmini":"Estimated","Seçin…":"Select…","boş":"empty","— boş (koltuk doldurucu) —":"— empty (seat filler) —","Tümü":"All","Tüm lokasyonlar":"All locations","Yesil":"Green",
+"Hata":"Error","Filtre":"Filter","Ara (ad / kod)":"Search (name / code)","Sıralamak için tıklayın":"Click to sort","# satır":"# rows","# kayıt":"# records",
+"CPT: # · F/O: #. Zorunlu: Rütbe, Kod, LPC Geçerlilik. \"Sıradaki\" sütunu girilen bilgilere göre hesaplanır.":"CPT: # · F/O: #. Required: Rank, Code, LPC validity. The \"Next\" column is calculated from the entered data.",
+"Bu iki kişi aynı oturuma (öğrenci–öğrenci ya da öğrenci–eğitmen) konmaz.":"These two people are never put in the same session (student–student or student–instructor).",
+"Bu tarihlerde hiçbir simülatöre plan yapılmaz (tatil vb.).":"Nothing is planned on any simulator on these dates (holidays etc.).",
+"Pilot ya da eğitmenin plana alınmayacağı tarihler (kod ile).":"Dates on which a pilot or instructor is not planned (by code).",
+"Excel'deki Visa sayfası. Yeşil Pasaport işaretli kişide \"yeşil pasaportla gerekmez\" türlere (SCHENGEN, UAE) bakılmaz, tabloda Yesil yazar; diğer türler yine kontrol edilir. Kaydı olmayan kişide #N/A, tarih boşsa planlandığında Expired yazar. Ekip ve eğitmen listesine eklenen herkes buraya otomatik gelir. Eğitmenin vizesi de oturumdaki simülatör lokasyonuna göre kontrol edilir.":"The Visa sheet from Excel. For a person marked Green passport, types \"not required with green passport\" are skipped and the table shows Green; other types are still checked. A person with no record shows #N/A; an empty date shows Expired when planned. Everyone added to the crew and instructor lists appears here automatically. Instructor visas are also checked against the session's simulator location.",
+"Hangi simülatör lokasyonunda hangi vizenin gerektiğini belirler. Yeni tür (ör. UK – lokasyon LHR) eklediğinizde aşağıdaki listeye sütunu eklenir. * = başka türde yazmayan tüm lokasyonlar. Bir lokasyon hiçbir türde yoksa vize aranmaz.":"Defines which visa is required at which simulator location. A new type (e.g. UK – location LHR) adds a column to the list below. * = all locations not listed under another type. A location in no type needs no visa.",
+"Kontrol sektörüne (LPC, OPC) yalnızca TRE/SFE atanır. Eğitim sektörüne (LPT, OPT) önce TRI/SFI atanır, yoksa TRE/SFE. Bir pilotun eğitimini veren eğitmen aynı oturumda kontrolünü yapamaz. Ayarlar'da \"SFI/SFE kullanılsın\" seçiliyse TRI/TRE yalnızca o ay o lokasyonda kendi LPC/OPC'si varsa görev alır. Eğitmen izinlerini \"Kapalı günler & izinler\" sekmesinden girin.":"Only TRE/SFE are assigned to check sectors (LPC, OPC). Training sectors (LPT, OPT) get TRI/SFI first, otherwise TRE/SFE. The instructor who trains a pilot cannot do that pilot's check in the same session. If \"Use SFI/SFE\" is ticked in Settings, TRI/TRE only work when they have their own LPC/OPC at that location that month. Enter instructor leave on the \"Closed days & leave\" tab.",
+"Her satır tek bir slot günüdür (tarih + simülatör + slot; saat ayrı sütunda). Planı oluştur taslak planı kurar ve plandaki her oturum günü için buraya Tahmini satır açar. Rezervasyon yapınca Durum'u Reserved yapın: Reserved günler yeni planda önce kullanılır ve hiç silinmez (oturum kilitlenmez). Plandan bağımsız alınan slotları + Satır ekle, Excel'den yapıştır ya da Excel / CSV yükle ile Reserved olarak ekleyebilirsiniz.":"Each row is one slot day (date + simulator + slot; time in a separate column). Build plan creates the draft plan and adds an Estimated row here for every session day. When you book, set Status to Reserved: Reserved days are used first in a new plan and never deleted (the session is not locked). Slots booked independently of the plan can be added as Reserved with + Add row, Paste from Excel or Upload Excel / CSV.",
+"Slot saatleri yerel saattir; gece yarısını geçen slot ertesi gün biter. Uçakta uçuş saati değişken olduğu için slot yoktur. Liste SHGM form uygulamasındaki FSTD / Uçak tablosuyla aynı yapıdadır.":"Slot times are local; a slot past midnight ends the next day. Aircraft have no slots because flight times vary. The list has the same structure as the FSTD / Aircraft table in the SHGM form app.",
+"Slot saatleri (yerel; kullanılmayan slotu boş bırakın)":"Slot times (local; leave unused slots empty)",
+"Tahmini satır taslak plandan gelir; değiştirmek için oturumu düzenleyin":"Estimated rows come from the draft plan; edit the session to change them",
+"Taslak plandaki bir oturumun tahmini günü; burada silinemez. Değiştirmek için oturumu düzenleyin ya da silin; Reserved yaparsanız serbest kalır.":"Estimated day of a draft plan session; cannot be deleted here. Edit or delete the session to change it; setting it to Reserved frees it.",
+"Yalnızca müsaitlik listesindeki Reserved günleri kullanır; tahmini slot açmaz":"Uses only Reserved days from the availability list; opens no estimated slots",
+"Eğitmenin rütbesi (pilot değilse boş bırakın).":"Instructor's rank (leave empty if not a pilot).",
+"OPC geçerliliği bundan hesaplanır: LPC'den # ay önce ya da sonra (bugünden sonraki ilk tarih, ay sonuna yuvarlanır).":"OPC validity is calculated from this: # months before or after the LPC (first date after today, rounded to month end).",
+"En son katıldığı kontrolün (LPC/OPC) tarihi; # ay kuralı buna göre uygulanır.":"Date of the latest check attended (LPC/OPC); the # months rule is applied from it.",
+"Virgülle ayırın (ör. AMS, FRA). * = başka bir vize türünde yazmayan tüm lokasyonlar.":"Separate with commas (e.g. AMS, FRA). * = all locations not listed under another visa type.",
+"İşaretliyse 'Yeşil pasaportla gerekmez' olan vize türlerine bakılmaz; diğer türler (ör. UK) yine kontrol edilir.":"If ticked, visa types 'not required with green passport' are skipped; other types (e.g. UK) are still checked.",
+"Kontrol sektörlerine (LPC/OPC) yalnızca TRE ve SFE atanır; eğitim sektörlerine (LPT/OPT) herkes.":"Only TRE and SFE are assigned to check sectors (LPC/OPC); anyone to training sectors (LPT/OPT).",
+"FSTD / Uçak listesinden seçin":"Select from the FSTD / Aircraft list","Seçilen simülatörün slotu (A–F). Uçakta slot yoktur.":"Slot of the selected simulator (A–F). Aircraft have no slots.",
+"Reserved: rezervasyonu yapılmış slot; yeni planda önce kullanılır. Tahmini: taslak planın önerdiği slot.":"Reserved: a booked slot; used first in a new plan. Estimated: a slot proposed by the draft plan.",
+// uygunluk tablosu
+"Excel # sayfası formülleri":"Excel # sheet formulas","Yalnızca Hata / Final! / Expired":"Only Error / Final! / Expired","Filtre / sıralamayı temizle":"Clear filter / sort",
+"Oturum":"Session","Planlanan kontrol":"Planned checks","Planlanmamış":"Unplanned","Hatalı oturum":"Sessions with errors","Uyarılı oturum":"Sessions with warnings","Konaklama":"Stays","Toplam gece":"Total nights",
+"# / # satır":"# / # rows",
+"Başlığa tıklayınca sıralanır (▲/▼/kapalı); başlığın altındaki kutularla sütun filtrelenir. Başlığın üzerine gelince Excel formülü, \"Hata\" üzerine gelince nedeni görünür. Excel'e aktarmada tablonun tamamı yazılır.":"Click a header to sort (▲/▼/off); filter a column with the boxes under the header. Hover a header for the Excel formula, hover \"Error\" for the reason. Export to Excel writes the whole table.",
+"Planlanan kontrol tarihi (son sektör). Tıklayın: oturumu düzenle":"Planned check date (last sector). Click: edit session","Simülatör lokasyonu":"Simulator location",
+"Önceki kontrol tarihi. Kırmızı: bu plandan gelen tarih":"Previous check date. Red: date from this plan","Geçerlilik bitişi":"Validity end","Kontrol tipi":"Check type",
+"Sim lokasyonuna göre vize türü (Vize sekmesi). Yesil: yeşil pasaport, bu türde vize gerekmez":"Visa type for the sim location (Visa tab). Green: green passport, no visa needed for this type",
+"Kırmızı kalın: # ay kuralı belirleyici":"Red bold: the # months rule decides","Bu lokasyonda vize aranmıyor":"No visa required at this location","Vize sekmesinde kaydı yok":"No record on the Visa tab",
+"Girdi verileri plan oluşturulduktan sonra değişti. Tablo ve hatalar güncel verilerle yeniden hesaplandı; oturumları yeniden dağıtmak için Planı oluştur.":"Input data changed after the plan was built. The table and errors were recalculated with current data; to redistribute sessions, Build plan.",
+// taslak plan
+"Boş simülatör günlerini göster":"Show empty simulator days","Boş simülatör günü – oturum eklemek için tıklayın":"Empty simulator day – click to add a session","Son sürükle-bırak işlemini geri alır":"Undoes the last drag and drop",
+"Reserved slot (gün yeşil)":"Reserved slot (day green)","son ayına kalan (kırmızı çerçeve)":"in final month (red frame)","AB son ayına kalan (kırmızı çerçeve)":"AB in final month (red frame)","AB vizesi geçmiş ya da vize kaydı yok (mor kesik çerçeve; pilot ve eğitmen)":"AB visa expired or no visa record (purple dashed frame; pilot and instructor)",
+"vizesi geçmiş ya da vize kaydı yok (mor kesik çerçeve; pilot ve eğitmen)":"visa expired or no visa record (purple dashed frame; pilot and instructor)",
+"Satırlar: gün, simülatör (birden fazlaysa), slot saati (yerel), eğitmen, öğrenciler":"Rows: day, simulator (if more than one), slot time (local), instructor, students",
+"sektör adı ve tarih üzerine gelince görünür":"sector name and date appear on hover","🔒 kilitli":"🔒 locked","kilitli":"locked","hata uyarı":"error warning","hata":"error","uyarı":"warning",
+"Bir sütuna tıklayıp oturumu düzenleyin; pilotu ya da eğitmeni sürükleyip başka bir pilotun / eğitmenin üzerine bırakarak yer değiştirin (pilotta bütün oturum, eğitmende o gün).":"Click a column to edit the session; drag a pilot or instructor onto another pilot / instructor to swap them (whole session for a pilot, that day for an instructor).",
+"SON AYINDA (Final!)":"IN FINAL MONTH (Final!)","VİZE KAYDI YOK":"NO VISA RECORD",
+"İlk sektör tarihini değiştirince diğerleri aynı miktarda kayar. Kontrol tarihi = son sektör.":"Changing the first sector date shifts the others by the same amount. Check date = last sector.",
+"Simülatör / slot":"Simulator / slot","Sektör sayısı":"Number of sectors","Bu sektörün eğitmeni kilitli":"This sector's instructor is locked","Bu öğrenci kilitli":"This student is locked",
+"Tümü kilitli (slotları Reserved ise yeniden planlamada korunur; Tahmini slottaki oturum yeni plana göre taşınır). Öğrenci ve eğitmenler tek tek de kilitlenebilir: oturum korunur, kilitsiz kişinin yerine yeniden planlamada uygun biri konur.":"All locked (kept when re-planning if its slots are Reserved; a session on estimated slots moves with the new plan). Students and instructors can also be locked one by one: the session is kept and unlocked people are re-planned.",
+// planı oluştur penceresi
+"Önce müsaitlik listesindeki Reserved günler kullanılır (dönemde # gün). Kalan ihtiyaç için seçilen simülatörlerde her ay bir blok açılır: aylara dengeli (ayda yaklaşık # oturum), kapalı günler hariç, mümkünse ayın ilk ve son # günü dışında. Plandaki her gün müsaitlik listesine Tahmini satır olarak eklenir.":"Reserved days from the availability list are used first (# days in the period). For the rest, one block a month is opened on the selected simulators: balanced over months (about # sessions a month), excluding closed days, if possible outside the first and last # days of the month. Every plan day is added to the availability list as an Estimated row.",
+"Taslak plan yalnızca müsaitlik listesindeki Reserved günlerle kurulur (dönemde # gün); tahmini slot açılmaz. Sığmayan kontroller uygunluk tablosunda Planlanmadı olarak görünür.":"The draft plan is built only with Reserved days from the availability list (# days in the period); no estimated slots are opened. Checks that do not fit show as Not planned in the eligibility table.",
+"Dönemde Reserved gün yok.":"No Reserved days in the period.",
+// otel
+"Giriş: simülatörden # gün önce":"Check-in: # day before the simulator","Giriş: simülatör günü":"Check-in: simulator day","Çıkış: son simülatör günü (Ayarlar'dan değişir)":"Check-out: last simulator day (change in Settings)",
+"Çıkış: son simülatörden # gün sonra (Ayarlar'dan değişir)":"Check-out: # day after the last simulator (change in Settings)",
+"Taslak plandaki her oturumdan kurulur: öğrenciler oturumun bütün günleri, eğitmen yalnızca görev aldığı gün için. Aynı kişinin aynı lokasyondaki konaklamaları birbirine değiyor ya da çakışıyorsa birleştirilir. Satır rengi giriş ayını gösterir. Plan değişince bu sekme kendiliğinden güncellenir.":"Built from every session in the draft plan: students for all session days, the instructor only for the day they work. A person's stays at the same location are merged when they touch or overlap. Row colour shows the check-in month. This tab updates itself when the plan changes.",
+// diğer
+"Yedek dosyası tüm girdileri, ayarları ve planı içerir; başka cihaza taşımak için kullanın.":"The backup file contains all inputs, settings and the plan; use it to move to another device.",
+// uyarı ve hatalar
+"Sektörler farklı simülatörlerde":"Sectors on different simulators","Sektör tarihleri ardışık değil":"Sector dates are not consecutive","Öğrenci yok":"No students",
+"Tek öğrenci – koltuk doldurucu gerekli":"Single student – seat filler needed","Aynı kişi iki kez yazılmış":"Same person entered twice","Eğitmen listesi boş":"Instructor list is empty",
+"Geçerlilik plan başlangıcından önce dolmuş":"Validity expired before the plan start","Son # ay dışında: yeni geçerlilik kontrol tarihinden sayılır":"Outside the last # months: new validity counts from the check date",
+"OPC ile LPC arası # aydan kısa olduğu için LPC, OPC süresi içinde":"LPC within OPC validity because OPC–LPC gap is under # months","Planlanmadı":"Not planned","Karışık oturum (LPC + OPC)":"Mixed session (LPC + OPC)",
+"LPC OPC Reserved slot (gün yeşil)":"LPC OPC Reserved slot (day green)",
+"# kilitli ve slotları Reserved oturum korunacak":"# locked sessions on Reserved slots will be kept","(# tanesi kısmen kilitli: kilitsiz kişilerin yerine uygun kişi konur)":"(# partly locked: suitable people replace the unlocked ones)",
+"# oturum yeniden dağıtılacak.":"# sessions will be redistributed.","# oturum yeniden dağıtılacak (bunların # tanesi kilitli ama slotu Tahmini olduğu için yeni seçime göre taşınır).":"# sessions will be redistributed (# of them are locked but move with the new choice because their slot is Estimated).",
+"Son ay = geçerliliğin bittiği takvim ayı (Excel'de \"Final!\")":"Final month = calendar month in which validity ends (\"Final!\" in Excel)","LPC ile OPC ancak sektör sayıları eşitse aynı oturumda olabilir":"LPC and OPC can share a session only if their sector counts are equal","LPC ile OPC ancak sektör sayıları eşitse aynı oturumda olabilir.":"LPC and OPC can share a session only if their sector counts are equal.","▀ hata ▀ uyarı":"▀ error ▀ warning",
+"Mevcut veriler örnek veriyle değiştirilecek.":"Current data will be replaced with sample data.","Örnek veri":"Sample data",
+"Ekip, eğitmen, simülatör, kısıt ve plan verilerinin tamamı silinecek.":"All crew, instructor, simulator, constraint and plan data will be deleted."
+};
+// kalıp kurallar: [düzenli ifade, İngilizce] — bir parçanın tamamına uygulanır
+const EN_R=[
+ [/^(Oca|Şub|Mar|Nis|May|Haz|Tem|Ağu|Eyl|Eki|Kas|Ara)\.(\d\d)$/,(m,a,y)=>({Oca:"Jan",Şub:"Feb",Mar:"Mar",Nis:"Apr",May:"May",Haz:"Jun",Tem:"Jul",Ağu:"Aug",Eyl:"Sep",Eki:"Oct",Kas:"Nov",Ara:"Dec"})[a]+"."+y],
+ [/^([⚠✖]) (.*)$/,(m,a,r)=>{const e=en(r);return e?a+" "+e:null}],[/^(\d\d\.\d\d\.\d{4}) (Pzt|Sal|Çar|Per|Cum|Cmt|Paz)$/,(m,d,w)=>d+" "+({Pzt:"Mon",Sal:"Tue",Çar:"Wed",Per:"Thu",Cum:"Fri",Cmt:"Sat",Paz:"Sun"})[w]],
+ [/^(\d+)\. öğrenci$/,"Student $1"],[/^(\d+)\. kontrol$/,"$1. check"],[/^(\d+)\. eğitim$/,"$1. training"],
+ [/^son planlama (.+)$/,"last planned $1"],[/^Eğitmen yükü: (.*)$/,"Instructor load: $1"],[/^En erken (\S+)$/,"Earliest $1"],[/^en geç (\S+)( \(süresi dolmuş\))?$/,(m,d,x)=>"latest "+d+(x?" (expired)":"")],
+ [/^en erken( (\S+))?$/,(m,x,d)=>"earliest"+(d?" "+d:"")],[/^(\S+) gece$/,"$1 nights"],[/^(\S+) (\d+) gece$/,"$1 $2 nights"],[/^Ekip: (\d+)$/,"Crew: $1"],[/^Eğitmen: (\d+) (.*)$/,(m,n,r)=>"Instructors: "+n+" "+(en(r)??enPh(r))],
+ [/^Kurallar \(Ayarlar'dan\): (.*)$/,(m,r)=>"Rules (from Settings): "+enSeg(r)],[/^Öncelikli kurallar \(şu anki sıra\): (.*)$/,(m,r)=>"Priority rules (current order): "+enSeg(r)],
+ [/^(\d+)\. (.+)$/,(m,n,r)=>{const e=enOne(r);return e?n+". "+e:null}],
+ [/^(.*\.) (Eğitmen yükü: .*)$/,(m,a,b)=>{const x=en(a),y=enOne(b);return x||y?(x??a)+" "+(y??b):null}],
+ [/^(.+?) (\d+)$/,(m,a,n)=>{const e=enOne(a);return e?e+" "+n:null}],
+ [/^(.+) \(eğitmen\)$/,"$1 (instructor)"],[/^(.+) – Vize sekmesinde kaydı yok$/,"$1 – No record on the Visa tab"]
+];
+// cümle içi parça çevirileri (son çare): mesajlardaki kodlar ve tarihler yerinde kalır
+const EN_P=[["kontrolü, eğitimi veren eğitmen yapıyor","check is done by the instructor who gave the training"],["o ay o lokasyonda kendi LPC/OPC'si olmadan eğitmen","instructor without their own LPC/OPC at that location that month"],
+ ["kontrol sektörü için TRE/SFE gerekli","TRE/SFE required for the check sector"],["aynı oturumda hem öğrenci hem eğitmen","both student and instructor in the same session"],["aynı simülatör/slotta başka oturum var","another session on the same simulator/slot"],
+ ["birden fazla oturumda","in more than one session"],["birlikte planlanmamalı","should not be planned together"],["eğitmen listesinde yok","not in the instructor list"],["ekip listesinde yok","not in the crew list"],
+ ["eğitmen atanmadı","no instructor assigned"],["müsaitlik satırı yok","no availability row"],["kapalı gün","closed day"],["izinli","on leave"],["vize kaydı yok","no visa record"],["vizesi geçersiz","visa invalid"],
+ ["Simülatör tanımlı değil","Simulator not defined"],["pasif","passive"],["Aynı rütbe","Same rank"],["sektör tanımlı, oturum","sectors defined, session has"],["sektör","sector"],["için","for"],
+ ["Geçerlilik bitişinden","After validity end"],["sonra","after"],["Planlanmadı – geçerlilik dönem sonrasında","Not planned – validity after the period"],["ay kuralı: en erken","months rule: earliest"],
+ ["VİZESİ GEÇMİŞ","VISA EXPIRED"],["SON AYINDA","IN FINAL MONTH"],["Eğitmen","Instructor"],["eğitmen","instructor"],["öğrenci","student"],["kilitli","locked"],[" ve "," and "],["(süresi dolmuş)","(expired)"],["süresi dolmuş","expired"],["(uçak)","(aircraft)"]];
+const enKey=t=>t.replace(/\d+(?:[.:,/]\d+)*/g,"#");
+const EN_M=new Map(Object.entries(EN_T).map(([k,v])=>[enKey(k),v]));
+function enOne(t){const nums=t.match(/\d+(?:[.:,/]\d+)*/g)||[];const v=EN_M.get(enKey(t));if(v!=null){let i=0;return v.replace(/#/g,()=>nums[i++]??"#")}
+ for(const[re,f]of EN_R){const m=t.match(re);if(m){const r=typeof f==="function"?f(...m):t.replace(re,f);if(r)return r}}return null}
+function enPh(t){let r=t;for(const[a,b]of EN_P)r=r.split(a).join(b);return r}
+function enSeg(t){return t.split(" · ").map(s=>en(s)??s).join(" · ")}
+// metnin İngilizcesi; Türkçe değilse ya da çevrilemezse null
+function en(t){t=(t||"").replace(/\s+/g," ").replace(/ ?ⓘ/g,"").trim();if(!t||!/[a-zçğıöşüÇĞİÖŞÜ]/i.test(t))return null;
+ let r=enOne(t);if(r==null){const seps=[" · "," – ","\n","; ",": ",". "];for(const sp of seps){if(t.includes(sp)){const ps=t.split(sp),out=ps.map(p=>en(p)??p);if(out.some((x,i)=>x!==ps[i])){r=out.join(sp);break}}}}
+ if(r==null){const p=enPh(t);if(p!==t)r=p}return r&&r!==t?r:null}
+function enTitle(t){if(!t)return null;const ls=t.split("\n"),out=ls.map(l=>en(l)??l);return out.some((x,i)=>x!==ls[i])?out.join("\n"):null}
+// ekrandaki öğelerin kendi yazısı (sayaç rozetleri hariç)
+function ownText(el){if(el.tagName==="SELECT")return el.selectedOptions[0]?.textContent||"";let s="";el.childNodes.forEach(n=>{if(n.nodeType===3)s+=n.textContent;else if(n.nodeType===1&&!n.classList.contains("n")&&!["SELECT","INPUT","TEXTAREA","BUTTON","TABLE","UL","DIV"].includes(n.tagName))s+=n.textContent});return s}
+const EN_SEL="button,th,h1,h2,h3,label>span,.ck>span,.chip,.mu,.banner,li,td,a,select,.iss,span.warn,span.bad,option,small";
+function enTips(root){(root||document).querySelectorAll(EN_SEL).forEach(el=>{
+ const base=el.dataset.enB??el.getAttribute("title")??"",txt=ownText(el),k=txt+"\u0001"+base;if(el.dataset.enK===k)return;el.dataset.enK=k;el.dataset.enB=base;
+ const a=en(txt),b=enTitle(base),parts=[];if(a)parts.push(a);if(b)parts.push(b);
+ if(!parts.length){if(base)el.setAttribute("title",base);else el.removeAttribute("title");return}
+ el.setAttribute("title",(base?base+"\n\n":"")+"EN: "+parts.join("\n"))})}
+let enQ=0;new MutationObserver(()=>{if(!enQ)enQ=requestAnimationFrame(()=>{enQ=0;enTips()})}).observe(document.body,{childList:true,subtree:true,characterData:true});
+document.addEventListener("change",e=>{if(e.target.tagName==="SELECT")requestAnimationFrame(()=>enTips(e.target.parentNode))});
 load();tabCounts();render();
 </script></body></html>
