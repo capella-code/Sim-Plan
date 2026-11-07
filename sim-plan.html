@@ -692,13 +692,14 @@ function hotelStays(X,R){const S=DB.settings,bi=+S.hotelIn||0,ao=+S.hotelOut||0,
  out.forEach(h=>{h.nights=h.out-h.in;const c=X.crewMap.get(h.code),t=X.instrMap.get(h.code);h.name=c?.name||t?.name||"";
   h.role=[h.roles.has("te")?"Eğitmen"+(t?.role?" ("+t.role+")":""):"",h.roles.has("st")?(c?.rank||"Öğrenci"):""].filter(Boolean).join(" + ");h.isT=h.roles.has("te")});
  return out.sort((a,b)=>a.in-b.in||a.loc.localeCompare(b.loc)||(b.isT-a.isT)||a.code.localeCompare(b.code))}
-const HCOL=[["Giriş",h=>fmt(h.in),h=>h.in],["Çıkış",h=>fmt(h.out),h=>h.out],["Gece",h=>h.nights,h=>h.nights],["Lokasyon",h=>h.loc||"—"],["Kod",h=>h.code],["Ad Soyad",h=>h.name],["Görev",h=>h.role],["Simülatör günleri",h=>h.days.map(d=>fmt(d).slice(0,5)).join(", "),h=>h.days[0]]];
+// sütun: [başlık, metin, sıralama değeri, ortala]
+const HCOL=[["Rütbe",h=>h.role,null,1],["Ad Soyad",h=>h.name],["Kod",h=>h.code,null,1],["Lokasyon",h=>h.loc||"—",null,1],["Giriş",h=>fmt(h.in),h=>h.in,1],["Çıkış",h=>fmt(h.out),h=>h.out,1],["Gece",h=>h.nights,h=>h.nights,1],["Simülatör günleri",h=>h.days.map(d=>fmt(d).slice(0,5)).join(", "),h=>h.days[0]]];
 function vHotel(){const X=ctx(),R=evaluate(X),S=DB.settings,all=hotelStays(X,R);UI.hs=UI.hs||{s:null,d:1,f:{}};const hs=UI.hs;
  let rows=all;if(UI.hloc)rows=rows.filter(h=>h.loc===UI.hloc);const tf=Object.entries(hs.f).filter(([,v])=>v);if(tf.length)rows=rows.filter(h=>tf.every(([i,q])=>matchF(String(HCOL[i][1](h)),q)));
  if(hs.s!=null){const c=HCOL[hs.s],g=c[2]||c[1];rows=rows.map((h,i)=>[h,g(h),i]).sort((a,b)=>cmpV(a[1],b[1],hs.d)||a[2]-b[2]).map(x=>x[0])}
  const locs=[...new Set(all.map(h=>h.loc))].sort(),sum=new Map();rows.forEach(h=>sum.set(h.loc,(sum.get(h.loc)||0)+h.nights));
  const nights=rows.reduce((t,h)=>t+h.nights,0),inT=S.hotelIn==="1"?"simülatörden 1 gün önce":"simülatör günü",outT=S.hotelOut==="1"?"son simülatörden 1 gün sonra":"son simülatör günü";
- const body=rows.map(h=>`<tr${h.isT?' style="font-weight:600"':""}>${HCOL.map((c,i)=>`<td class="${i<5?"c":""}">${esc(String(c[1](h)))}</td>`).join("")}</tr>`).join("");
+ const body=rows.map(h=>`<tr${h.isT?' style="font-weight:600"':""}>${HCOL.map(c=>`<td class="${c[3]?"c":""}">${esc(String(c[1](h)))}</td>`).join("")}</tr>`).join("");
  return`${stale()}<div class="cd"><div class="row np"><h2>Otel taslağı</h2><span class="mu">Giriş: ${inT} · Çıkış: ${outT} (Ayarlar'dan değişir)</span><span class="sp"></span>
  <select data-ui="hloc"><option value="">Tüm lokasyonlar</option>${locs.map(l=>`<option value="${esc(l)}"${UI.hloc===l?" selected":""}>${esc(l||"—")}</option>`).join("")}</select><button data-hexp="1"${all.length?"":" disabled"}>Otel taslağını Excel'e aktar</button></div>
  <div class="chips"><span class="chip">Konaklama <b>${rows.length}</b></span><span class="chip">Toplam gece <b>${nights}</b></span>${[...sum].map(([l,n])=>`<span class="chip">${esc(l||"—")} <b>${n}</b> gece</span>`).join("")}</div>
@@ -706,8 +707,8 @@ function vHotel(){const X=ctx(),R=evaluate(X),S=DB.settings,all=hotelStays(X,R);
  <div class="sc"><table class="ot"><thead><tr>${HCOL.map((c,i)=>`<th class="so" data-hs="${i}">${c[0]}${arrow(hs.s===i,hs.d)}</th>`).join("")}</tr>
  <tr class="fr np">${HCOL.map((_,i)=>`<th><input data-hf="${i}" value="${esc(hs.f[i]||"")}" placeholder="Filtre"></th>`).join("")}</tr></thead><tbody>${body||`<tr><td colspan="${HCOL.length}">${all.length?"Filtreye uyan satır yok.":"Taslak plan boş. Önce <b>Planı oluştur</b>'a basın."}</td></tr>`}</tbody></table></div></div>`}
 function exportHotel(){const X=ctx(),R=evaluate(X),H=hotelStays(X,R),hd=HCOL.map(c=>({v:c[0],b:true,bd:true,fill:"D9D9D9",c:true}));
- const rows=[hd,...H.map(h=>[{v:h.in,d:true,bd:true,c:true},{v:h.out,d:true,bd:true,c:true},{v:h.nights,bd:true,c:true},{v:h.loc,bd:true,c:true},{v:h.code,bd:true,c:true,b:h.isT},{v:h.name,bd:true,b:h.isT},{v:h.role,bd:true},{v:HCOL[7][1](h),bd:true}])];
- download(xlsxBlob([{name:"Otel Taslagi",freeze:1,widths:[12,12,7,10,7,24,18,40],rows}]),"otel-taslagi-"+toIso(todayDn())+".xlsx")}
+ const rows=[hd,...H.map(h=>[{v:h.role,bd:true,c:true,b:h.isT},{v:h.name,bd:true,b:h.isT},{v:h.code,bd:true,c:true,b:h.isT},{v:h.loc,bd:true,c:true},{v:h.in,d:true,bd:true,c:true},{v:h.out,d:true,bd:true,c:true},{v:h.nights,bd:true,c:true},{v:HCOL[7][1](h),bd:true}])];
+ download(xlsxBlob([{name:"Otel Taslagi",freeze:1,widths:[16,24,7,10,12,12,7,40],rows}]),"otel-taslagi-"+toIso(todayDn())+".xlsx")}
 
 /* ---- taslak plan ---- */
 function planCols(X,R){const cols=[];for(const o of R.ses)o.dn.forEach((d,k)=>cols.push({d,lane:laneAt(o.s,k),o,k}));
