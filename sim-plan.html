@@ -51,7 +51,7 @@ ul.rules{margin:4px 0;padding-left:18px}ul.rules li{margin:3px 0}
 @media print{.np,.tabs,.toast{display:none!important}body{background:#fff}.w{max-width:none;padding:0}.cd{border:none;padding:0}.sc{max-height:none;overflow:visible}.ot,.mt{font-size:10px}}
 </style></head><body><div class="w">
 <div class="row"><h1>Yıllık Simülatör Planı</h1><span class="sp"></span>
-<div class="row np"><button class="p" id="bPlan">Planı oluştur</button><button class="p" id="bPlanR" title="Yalnızca müsaitlik listesindeki Reserved günleri kullanır; tahmini slot açmaz">Sadece Reserved ile planla</button><button id="bImp">Excel / CSV yükle</button><button id="bTpl">Excel şablonu indir</button><button id="bExp">Planı Excel'e aktar</button><button id="bPrint">Yazdır</button>
+<div class="row np"><button class="p" id="bPlan">Planı oluştur</button><button class="p" id="bPlanR" title="Yalnızca müsaitlik listesindeki Reserved günleri kullanır; tahmini slot açmaz">Sadece Reserved ile planla</button><button id="bImp">Excel / CSV yükle</button><button id="bTpl">Excel şablonu indir</button><button id="bExp">Planı Excel'e aktar</button><button id="bPrint">Yazdır</button><button id="bLang" class="np" title="Dil / Language">EN</button>
 <button id="bMore">Diğer ▾</button></div></div>
 <div class="mu">Veriler yalnızca bu cihazda (tarayıcı hafızasında) saklanır. İnternet gerekmez. Yedek almak için Diğer ▸ Yedek al.</div>
 <input type="file" id="fImp" accept=".xlsx,.csv,.txt,.json" hidden>
@@ -1085,7 +1085,7 @@ const EN_T={
 "Vize türü":"Visa type","Gerektiği sim lokasyonları":"Sim locations requiring it","Yeşil pasaportla gerekmez":"Not required with green passport","Yeşil Pasaport":"Green passport",
 "Tarih":"Date","Başlangıç":"Start","Bitiş":"End","Açıklama":"Description","Kod 1":"Code 1","Kod 2":"Code 2","Görev":"Role","Durum":"Status","Saat":"Time",
 "Cihaz":"Device","Kod / Tescil":"Code / Registration","Operatör":"Operator","Tip":"Type","Tür":"Kind","Lokasyon":"Location","Eğitmen":"Instructor","Öğrenci":"Student",
-"Oturum":"Session","Pilot":"Pilot","Kilit":"Lock","Sektör":"Sector","Gece":"Nights","Giriş":"Check-in","Çıkış":"Check-out","Simülatör günleri":"Simulator days",
+"Oturum":"Session","Pilot":"Pilot","Kilit":"Lock","Sektör":"Sector","Gece":"Nights","gece":"nights","Giriş":"Check-in","Çıkış":"Check-out","Simülatör günleri":"Simulator days",
 "Uçak":"Aircraft","Simülatör":"Simulator","Aktif":"Active","Pasif":"Passive","Tahmini":"Estimated","Seçin…":"Select…","boş":"empty","— boş (koltuk doldurucu) —":"— empty (seat filler) —","Tümü":"All","Tüm lokasyonlar":"All locations","Yesil":"Green",
 "Hata":"Error","Filtre":"Filter","Ara (ad / kod)":"Search (name / code)","Sıralamak için tıklayın":"Click to sort","# satır":"# rows","# kayıt":"# records",
 "CPT: # · F/O: #. Zorunlu: Rütbe, Kod, LPC Geçerlilik. \"Sıradaki\" sütunu girilen bilgilere göre hesaplanır.":"CPT: # · F/O: #. Required: Rank, Code, LPC validity. The \"Next\" column is calculated from the entered data.",
@@ -1145,8 +1145,8 @@ const EN_T={
 "Tek öğrenci – koltuk doldurucu gerekli":"Single student – seat filler needed","Aynı kişi iki kez yazılmış":"Same person entered twice","Eğitmen listesi boş":"Instructor list is empty",
 "Geçerlilik plan başlangıcından önce dolmuş":"Validity expired before the plan start","Son # ay dışında: yeni geçerlilik kontrol tarihinden sayılır":"Outside the last # months: new validity counts from the check date",
 "OPC ile LPC arası # aydan kısa olduğu için LPC, OPC süresi içinde":"LPC within OPC validity because OPC–LPC gap is under # months","Planlanmadı":"Not planned","Karışık oturum (LPC + OPC)":"Mixed session (LPC + OPC)",
-"LPC OPC Reserved slot (gün yeşil)":"LPC OPC Reserved slot (day green)",
-"# kilitli ve slotları Reserved oturum korunacak":"# locked sessions on Reserved slots will be kept","(# tanesi kısmen kilitli: kilitsiz kişilerin yerine uygun kişi konur)":"(# partly locked: suitable people replace the unlocked ones)",
+"LPC OPC Reserved slot (gün yeşil)":"LPC OPC Reserved slot (day green)","Reserved slot (gün yeşil)":"Reserved slot (day green)",
+"kilitli ve slotları Reserved oturum korunacak":"locked sessions on Reserved slots will be kept","# kilitli ve slotları Reserved oturum korunacak":"# locked sessions on Reserved slots will be kept","(# tanesi kısmen kilitli: kilitsiz kişilerin yerine uygun kişi konur)":"(# partly locked: suitable people replace the unlocked ones)",
 "# oturum yeniden dağıtılacak.":"# sessions will be redistributed.","# oturum yeniden dağıtılacak (bunların # tanesi kilitli ama slotu Tahmini olduğu için yeni seçime göre taşınır).":"# sessions will be redistributed (# of them are locked but move with the new choice because their slot is Estimated).",
 "Son ay = geçerliliğin bittiği takvim ayı (Excel'de \"Final!\")":"Final month = calendar month in which validity ends (\"Final!\" in Excel)","LPC ile OPC ancak sektör sayıları eşitse aynı oturumda olabilir":"LPC and OPC can share a session only if their sector counts are equal","LPC ile OPC ancak sektör sayıları eşitse aynı oturumda olabilir.":"LPC and OPC can share a session only if their sector counts are equal.","▀ hata ▀ uyarı":"▀ error ▀ warning",
 "Mevcut veriler örnek veriyle değiştirilecek.":"Current data will be replaced with sample data.","Örnek veri":"Sample data",
@@ -1158,7 +1158,7 @@ const EN_R=[
  [/^([⚠✖]) (.*)$/,(m,a,r)=>{const e=en(r);return e?a+" "+e:null}],[/^(\d\d\.\d\d\.\d{4}) (Pzt|Sal|Çar|Per|Cum|Cmt|Paz)$/,(m,d,w)=>d+" "+({Pzt:"Mon",Sal:"Tue",Çar:"Wed",Per:"Thu",Cum:"Fri",Cmt:"Sat",Paz:"Sun"})[w]],
  [/^(\d+)\. öğrenci$/,"Student $1"],[/^(\d+)\. kontrol$/,"$1. check"],[/^(\d+)\. eğitim$/,"$1. training"],
  [/^son planlama (.+)$/,"last planned $1"],[/^Eğitmen yükü: (.*)$/,"Instructor load: $1"],[/^En erken (\S+)$/,"Earliest $1"],[/^en geç (\S+)( \(süresi dolmuş\))?$/,(m,d,x)=>"latest "+d+(x?" (expired)":"")],
- [/^en erken( (\S+))?$/,(m,x,d)=>"earliest"+(d?" "+d:"")],[/^(\S+) gece$/,"$1 nights"],[/^(\S+) (\d+) gece$/,"$1 $2 nights"],[/^Ekip: (\d+)$/,"Crew: $1"],[/^Eğitmen: (\d+) (.*)$/,(m,n,r)=>"Instructors: "+n+" "+(en(r)??enPh(r))],
+ [/^en erken( (\S+))?$/,(m,x,d)=>"earliest"+(d?" "+d:"")],[/^(\S+) gece$/,"$1 nights"],[/^(\S+) (\d+) gece$/,"$1 $2 nights"],[/^Ekip: (\d+)$/,"Crew: $1"],[/^Eğitmen: (\d+) (.*)$/,(m,n,r)=>{const e=en(r)??(EN_S?null:enPh(r));return e?"Instructors: "+n+" "+e:null}],
  [/^Kurallar \(Ayarlar'dan\): (.*)$/,(m,r)=>"Rules (from Settings): "+enSeg(r)],[/^Öncelikli kurallar \(şu anki sıra\): (.*)$/,(m,r)=>"Priority rules (current order): "+enSeg(r)],
  [/^(\d+)\. (.+)$/,(m,n,r)=>{const e=enOne(r);return e?n+". "+e:null}],
  [/^(.*\.) (Eğitmen yükü: .*)$/,(m,a,b)=>{const x=en(a),y=enOne(b);return x||y?(x??a)+" "+(y??b):null}],
@@ -1180,9 +1180,12 @@ function enOne(t){const nums=t.match(/\d+(?:[.:,/]\d+)*/g)||[];const v=EN_M.get(
 function enPh(t){let r=t;for(const[a,b]of EN_P)r=r.split(a).join(b);return r}
 function enSeg(t){return t.split(" · ").map(s=>en(s)??s).join(" · ")}
 // metnin İngilizcesi; Türkçe değilse ya da çevrilemezse null
-function en(t){t=(t||"").replace(/\s+/g," ").replace(/ ?ⓘ/g,"").trim();if(!t||!/[a-zçğıöşüÇĞİÖŞÜ]/i.test(t))return null;
- let r=enOne(t);if(r==null){const seps=[" · "," – ","\n","; ",": ",". "];for(const sp of seps){if(t.includes(sp)){const ps=t.split(sp),out=ps.map(p=>en(p)??p);if(out.some((x,i)=>x!==ps[i])){r=out.join(sp);break}}}}
- if(r==null){const p=enPh(t);if(p!==t)r=p}return r&&r!==t?r:null}
+// strict: cümle içi parça çevirisi (EN_P) kullanılmaz; yarım çeviri olmasın diye
+const EN_C=new Map();let EN_S=false;
+function en(t,strict){t=(t||"").replace(/\s+/g," ").replace(/ ?ⓘ/g,"").trim();strict=strict??EN_S;const ck=(strict?"1":"0")+t;if(EN_C.has(ck))return EN_C.get(ck);const sv=EN_S;EN_S=strict;let r;try{r=en0(t)}finally{EN_S=sv}if(EN_C.size>5000)EN_C.clear();EN_C.set(ck,r);return r}
+function en0(t){if(!t||!/[a-zçğıöşüÇĞİÖŞÜ]/i.test(t))return null;
+ let r=enOne(t);if(r==null){const seps=[" · "," – ","\n","; ",": ",". "];for(const sp of seps){if(t.includes(sp)){const ps=t.split(sp),tt=ps.map(p=>en(p)),out=tt.map((x,i)=>x??ps[i]);if(EN_S&&tt.some((x,i)=>x==null&&TRW.test(ps[i])))continue;if(out.some((x,i)=>x!==ps[i])){r=out.join(sp);break}}}}
+ if(r==null&&!EN_S){const p=enPh(t);if(p!==t)r=p}return r&&r!==t?r:null}
 function enTitle(t){if(!t)return null;const ls=t.split("\n"),out=ls.map(l=>en(l)??l);return out.some((x,i)=>x!==ls[i])?out.join("\n"):null}
 // ekrandaki öğelerin kendi yazısı (sayaç rozetleri hariç)
 function ownText(el){if(el.tagName==="SELECT")return el.selectedOptions[0]?.textContent||"";let s="";el.childNodes.forEach(n=>{if(n.nodeType===3)s+=n.textContent;else if(n.nodeType===1&&!n.classList.contains("n")&&!["SELECT","INPUT","TEXTAREA","BUTTON","TABLE","UL","DIV"].includes(n.tagName))s+=n.textContent});return s}
@@ -1192,7 +1195,32 @@ function enTips(root){(root||document).querySelectorAll(EN_SEL).forEach(el=>{
  const a=en(txt),b=enTitle(base),parts=[];if(a)parts.push(a);if(b)parts.push(b);
  if(!parts.length){if(base)el.setAttribute("title",base);else el.removeAttribute("title");return}
  el.setAttribute("title",(base?base+"\n\n":"")+"EN: "+parts.join("\n"))})}
-let enQ=0;new MutationObserver(()=>{if(!enQ)enQ=requestAnimationFrame(()=>{enQ=0;enTips()})}).observe(document.body,{childList:true,subtree:true,characterData:true});
-document.addEventListener("change",e=>{if(e.target.tagName==="SELECT")requestAnimationFrame(()=>enTips(e.target.parentNode))});
+// ---- EN/TR sürümü: EN seçiliyse arayüz İngilizce yazılır, üzerine gelince Türkçesi görünür (veriler, kodlar ve Excel çıktısı değişmez) ----
+const LANG=ls.g("simplan.lang")==="en"?"en":"tr";
+const KEEP=new Set(["BUTTON","INPUT","SELECT","TEXTAREA","DIV","TABLE","UL","OL","LABEL","SVG","IMG","TD","TH","TR"]);
+const hasTr=t=>/[a-zçğıöşü]/i.test(t),TRW=/[çğıöşüÇĞİÖŞÜ]|\b(ve|ya|için|yok|gün|ay|ile|olarak|sektör|oturum|kişi|satır|planla|ekle|sil|gece)\b/i;
+function trApply(){
+ if(document.title!=="Annual Simulator Plan")document.title="Annual Simulator Plan";
+ const tw=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT),groups=new Map();let n;
+ while((n=tw.nextNode())){const pe=n.parentElement;if(!pe||/^(SCRIPT|STYLE|TEXTAREA)$/.test(pe.tagName)||!hasTr(n.data))continue;if(!groups.has(pe))groups.set(pe,[]);groups.get(pe).push(n)}
+ const tip=(el,o)=>{if(!o||el.tagName==="OPTION")return;const b=el.getAttribute("title");if(!b){const v="TR: "+o;el.setAttribute("title",v);el.dataset.trK=v}};
+ const depth=e=>{let d=0;while((e=e.parentElement))d++;return d};
+ for(const[el,nodes]of[...groups].sort((a,b)=>depth(a[0])-depth(b[0]))){if(!el.isConnected)continue;const orig=ownText(el).replace(/\s+/g," ").trim();
+  const tr=nodes.map(x=>{const m=x.data.match(/^(\s*)([\s\S]*?)(\s*)$/),e=en(m[2],true);if(e!=null)return m[1]+e+m[3];
+   const c=x.data.match(/^([\s·]*)([\s\S]*?)([\s·.,;:]*)$/),f=c[2]?en(c[2],true):null;return f!=null?c[1]+f+c[3]:null});
+  // her parça ayrı çevrilebiliyorsa biçim (kalın vb.) korunur
+  if(tr.every((e,i)=>e!=null||!TRW.test(nodes[i].data))){let any=false;
+   nodes.forEach((x,i)=>{if(tr[i]==null)return;x.data=tr[i];any=true});
+   if(any)tip(el,orig);continue}
+  // değilse öğenin bütün yazısı tek parça çevrilir (içteki kalın yazılar düz olur)
+  const e=en(orig,true)??(el.children.length?null:en(orig));if(e==null)continue;
+  [...el.childNodes].forEach(c=>{if(c.nodeType===3||(c.nodeType===1&&!KEEP.has(c.tagName)&&!c.classList.contains("n")&&!Object.keys(c.dataset).length))c.remove()});
+  el.insertBefore(document.createTextNode(e+" "),el.firstChild);tip(el,orig)}
+ document.querySelectorAll("[placeholder]").forEach(i=>{const e=en(i.placeholder);if(e)i.placeholder=e});
+ document.querySelectorAll("[title]").forEach(el=>{const t=el.getAttribute("title");if(el.dataset.trK===t)return;const e=enTitle(t);if(e){const v=e+"\n\nTR: "+t;el.setAttribute("title",v);el.dataset.trK=v}else el.dataset.trK=t})}
+const enPass=()=>LANG==="en"?trApply():enTips();
+let enQ=0;new MutationObserver(()=>{if(!enQ)enQ=requestAnimationFrame(()=>{enQ=0;enPass()})}).observe(document.body,{childList:true,subtree:true,characterData:true});
+document.addEventListener("change",e=>{if(LANG==="tr"&&e.target.tagName==="SELECT")requestAnimationFrame(()=>enTips(e.target.parentNode))});
+$("#bLang").textContent=LANG==="en"?"TR":"EN";$("#bLang").onclick=()=>{ls.s("simplan.lang",LANG==="en"?"tr":"en");location.reload()};
 load();tabCounts();render();
 </script></body></html>
