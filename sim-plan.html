@@ -115,6 +115,7 @@ const LISTS={
   {k:"green",l:"Yeşil Pasaport",t:"check",al:["yesilpasaport","greenpassport","yesil","green"],tip:"İşaretliyse 'Yeşil pasaportla gerekmez' olan vize türlerine bakılmaz; diğer türler (ör. UK) yine kontrol edilir."},
   ...(DB?.visaTypes||[]).filter(t=>t.name&&t.id).map(t=>({k:"v_"+t.id,l:t.name,t:"date",al:[norm(t.name)],tip:(t.locs||"")+(t.green?" · yeşil pasaportla gerekmez":"")}))]}},
  instr:{t:"Eğitmenler",sheet:"Egitmenler",cols:[
+  {k:"rank",l:"Rütbe",t:"sel",o:["CPT","F/O"],al:["rutbe","rank","unvan","gorev","pozisyon"],tip:"Eğitmenin rütbesi (pilot değilse boş bırakın)."},
   {k:"code",l:"Kod",t:"code",al:["kod","code"]},
   {k:"name",l:"Ad Soyad",t:"text",al:["adsoyad","name","adisoyadi","isim"],w:190},
   {k:"role",l:"Yetki",t:"sel",o:["TRE","SFE","TRI","SFI"],al:["yetki","role","rol","yetkisi","rating"],tip:"Kontrol sektörlerine (LPC/OPC) yalnızca TRE ve SFE atanır; eğitim sektörlerine (LPT/OPT) herkes."},
@@ -690,7 +691,7 @@ function hotelStays(X,R){const S=DB.settings,bi=+S.hotelIn||0,ao=+S.hotelOut||0,
    else{flush();cur={code:p.code,loc:p.loc,in:a,out:b,days:[d],roles:new Set(x.roles)}}}
   flush()}
  out.forEach(h=>{h.nights=h.out-h.in;const c=X.crewMap.get(h.code),t=X.instrMap.get(h.code);h.name=c?.name||t?.name||"";
-  h.role=[h.roles.has("te")?"Eğitmen"+(t?.role?" ("+t.role+")":""):"",h.roles.has("st")?(c?.rank||"Öğrenci"):""].filter(Boolean).join(" + ");h.isT=h.roles.has("te")});
+  const rk=t?.rank||c?.rank||"";h.role=h.roles.has("te")?[rk,"Eğitmen"+(t?.role?" ("+t.role+")":"")].filter(Boolean).join(" · "):rk||"Öğrenci";h.isT=h.roles.has("te")});
  return out.sort((a,b)=>a.in-b.in||a.loc.localeCompare(b.loc)||(b.isT-a.isT)||a.code.localeCompare(b.code))}
 // sütun: [başlık, metin, sıralama değeri, ortala]
 const HCOL=[["Rütbe",h=>h.role,null,1],["Ad Soyad",h=>h.name],["Kod",h=>h.code,null,1],["Lokasyon",h=>h.loc||"—",null,1],["Giriş",h=>fmt(h.in),h=>h.in,1],["Çıkış",h=>fmt(h.out),h=>h.out,1],["Gece",h=>h.nights,h=>h.nights,1],["Simülatör günleri",h=>h.days.map(d=>fmt(d).slice(0,5)).join(", "),h=>h.days[0]]];
