@@ -38,7 +38,7 @@ tr.fr th{padding:2px 3px;background:var(--hd)}tr.fr input{width:100%;min-width:4
 .mt th.mh{background:var(--gr);font-weight:700;font-size:15px}.mt td.dy{font-size:15px;cursor:pointer;position:relative}.mt td.dy small{display:block;font-size:10px;color:#555;line-height:1}
 .mt td.ln{font-size:10px;color:#333}.mt td.tm{font-size:11px;color:#000;white-space:nowrap}.mt td.lb{font-size:10px;color:#333;background:#f2f2f2}
 .mt td.LPC{background:var(--lpc)}.mt td.OPC{background:var(--opc)}.mt td.x{background:#eee;color:#777}
-.mt td.cl{cursor:pointer}.mt td.rs{background:#c6efce;color:#006100;font-weight:700}.mt td.fm{box-shadow:inset 0 0 0 2px #d00000}.mt td.vx{outline:2px dashed #7030a0;outline-offset:-5px}.mt td[draggable=true]{cursor:grab}.mt td.cl small{font-size:9px;margin-left:1px}.mt td.cp{font-weight:700}.mt td.dtg{outline:3px solid #0070c0!important;outline-offset:-3px}.mt td.dsrc{opacity:.45}.mt td.ce{box-shadow:inset 0 4px 0 #d00000}.mt td.cl.re{color:#d00000!important}.mt td.cw{box-shadow:inset 0 4px 0 #ff4fa3}.mt td.em{color:#999;cursor:pointer}
+.mt td.cl{cursor:pointer}.mt td.rs{background:#c6efce;color:#006100;font-weight:700}.mt td.fm{box-shadow:inset 0 0 0 2px #d00000}.mt td.vx{outline:2px dashed #7030a0;outline-offset:-5px}.mt td[draggable=true]{cursor:grab}.mt td.cl small{font-size:9px;margin-left:1px}.mt td.cp{font-weight:700}.mt td.dtg{outline:3px solid #0070c0!important;outline-offset:-3px}.mt td.dsrc{opacity:.45}.mt td.ce{box-shadow:inset 0 4px 0 #d00000}.mt td.nb{border:none!important;background:transparent!important}.mt td.cl.re{color:#d00000!important}.mt td.cw{box-shadow:inset 0 4px 0 #ff4fa3}.mt td.em{color:#999;cursor:pointer}
 .lg{display:inline-block;width:14px;height:14px;border:1px solid #000;vertical-align:-2px;margin-right:3px}
 .ov{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;z-index:50;padding:30px 10px;overflow:auto}
 .dl{background:var(--cd);border-radius:12px;max-width:760px;width:100%;padding:16px;box-shadow:0 10px 40px rgba(0,0,0,.35)}
@@ -88,7 +88,7 @@ const ls={g:k=>{try{return localStorage.getItem(k)}catch(e){return null}},s:(k,v
 
 /* ============ veri ============ */
 const LS_KEY="simplan.v1";
-const DEF={start:"",end:"",lpcSec:2,opcSec:2,maxGap:1,winM:3,gapM:4,lpcM:12,opcM:6,instrPerDay:1,avoidFinal:true,avoidMix:true,pairRank:true,prio:["rank","final","mix"],visaHard:false,diffInstr:true,sameInstr:true,sfOnly:false,hotelIn:"1",hotelOut:"0"};
+const DEF={start:"",end:"",lpcSec:2,opcSec:2,maxGap:1,winM:3,gapM:4,lpcM:12,opcM:6,instrPerDay:1,pilotPerDay:1,secPerDay:0,avoidFinal:true,avoidMix:true,pairRank:true,prio:["rank","final","mix"],visaHard:false,diffInstr:true,sameInstr:true,sfOnly:false,hotelIn:"1",hotelOut:"0"};
 // öncelikli kurallar (prio: 0 = en önemli); kurallar çakışınca üstteki korunur
 const PRULES={final:"Mümkünse kişiyi son ayında planlama",mix:"Mecbur kalmadıkça LPC ve OPC aynı oturumda planlama",rank:"Mecbur kalmadıkça 1 CPT + 1 F/O eşleşmesi (iki CPT / iki F/O yok)"};
 const RULEKEY={final:"avoidFinal",mix:"avoidMix",rank:"pairRank"};
@@ -161,6 +161,8 @@ const devById=id=>DB.devices.find(d=>id!==""&&id!=null&&String(d.id)===String(id
 const slotTime=(d,k)=>d&&!isAC(d)&&d.s?.[k]?d.s[k][0]+"–"+d.s[k][1]:"";
 const devLane=(d,k)=>d.c+(isAC(d)||!k?"":" "+k);
 const nextDevId=list=>Math.max(-1,...list.map(d=>+d.id).filter(n=>!isNaN(n)))+1;
+const slotMin=t=>{const p=parseSlot(t);if(!p)return null;const m=x=>{const[h,mi]=x.split(":").map(Number);return h*60+mi};const a=m(p[0]);let b=m(p[1]);if(b<=a)b+=1440;return[a,b]};
+const overlap=(a,b)=>!a||!b||a[0]<b[1]&&b[0]<a[1];// saat bilinmiyorsa çakışıyor sayılır
 const parseSlot=v=>{const m=/(\d{1,2})[:.](\d{2})\s*[-–]\s*(\d{1,2})[:.](\d{2})/.exec(String(v||""));return m?[pad(m[1])+":"+m[2],pad(m[3])+":"+m[4]]:null};
 const makeLane=(dv,k)=>{const key=devLane(dv,k),t=slotTime(dv,k);return{key,sim:dv.c,slot:k,time:t,label:key+(t?" ("+t+")":isAC(dv)?" (uçak)":""),loc:(dv.loc||"").toUpperCase(),kind:dv.k,active:!!dv.a,avail:new Set(),res:new Set()}};
 const rowLane=r=>{const dv=devById(r.dev);return dv?devLane(dv,isAC(dv)?"":r.slot):null};
@@ -317,10 +319,13 @@ function schedule(X,tent=new Map()){const S=X.S,out=[];
  tent.forEach((days,key)=>{let L=lmap.get(key);if(!L){const[dv,k]=X.prefLanes?.find(p=>p.key===key)?.dk||[];if(!dv)return;L={...makeLane(dv,k),tent:new Set()};lanes.push(L);lmap.set(key,L)}days.forEach(d=>{if(!L.avail.has(d)&&!X.slotRow.has(key+"|"+d))L.tent.add(d)})});
  const use=(L,x)=>L.avail.has(x)||L.tent.has(x);
  const laneBusy=new Map(lanes.map(L=>[L.key,new Set()]));
- const day=new Map(),P=(c,d)=>{let m=day.get(c);if(!m)day.set(c,m=new Map());let o=m.get(d);if(!o)m.set(d,o={st:0,te:0});return o};
+ const day=new Map(),P=(c,d)=>{let m=day.get(c);if(!m)day.set(c,m=new Map());let o=m.get(d);if(!o)m.set(d,o={st:0,te:0,tm:[]});return o};
+ const stAdd=(c,d,lane)=>{const o=P(c,d);o.st++;o.tm.push(slotMin(lmap.get(lane)?.time||X.lanes.get(lane)?.time))};
  const load=new Map(),addLoad=t=>load.set(t,(load.get(t)||0)+1);
  const lockByPilot=new Map(),lockPtr=new Map();
- for(const o of lockedS){o.dn.forEach((d,k)=>{laneBusy.get(laneAt(o.s,k))?.add(d);o.s.pilots.forEach(c=>{if(c)P(c,d).st=1});const t=o.s.instr?.[k];if(t){P(t,d).te++;addLoad(t)}});
+ // simülatör başına günlük sektör sınırı (0 = sınırsız)
+ const simDay=new Map(),simOf2=key=>(lmap.get(key)||X.lanes.get(key))?.sim||key,simOK=(sim,d)=>!(S.secPerDay>0)||(simDay.get(sim+"|"+d)||0)<S.secPerDay,simInc=(sim,d)=>simDay.set(sim+"|"+d,(simDay.get(sim+"|"+d)||0)+1);
+ for(const o of lockedS){o.dn.forEach((d,k)=>{laneBusy.get(laneAt(o.s,k))?.add(d);simInc(simOf2(laneAt(o.s,k)),d);o.s.pilots.forEach(c=>{if(c)stAdd(c,d,laneAt(o.s,k))});const t=o.s.instr?.[k];if(t){P(t,d).te++;addLoad(t)}});
   o.s.pilots.forEach(c=>{if(!c)return;if(!lockByPilot.has(c))lockByPilot.set(c,[]);lockByPilot.get(c).push({o,check:o.dn.at(-1)})})}
  lockByPilot.forEach(a=>a.sort((x,y)=>x.check-y.check));
  const st=new Map(),pend=new Map();X.crew.forEach(c=>st.set(c.code,initState(c,X)));
@@ -342,7 +347,7 @@ function schedule(X,tent=new Map()){const S=X.S,out=[];
  // blok: ilk sektör L hattında; sonraki sektörler aynı simülatörün herhangi bir slotunda olabilir (önce Reserved, sonra aynı slot)
  const block=(L,d,n)=>{const r=[d],ls=[L];let cur=d,last=L;for(let k=1;k<n;k++){let nx=null,nl=null;
    for(let g=1;g<=S.maxGap&&nx==null;g++){const x=cur+g;if(x>X.end)break;
-    const opts=(sims.get(L.sim)||[L]).filter(M=>use(M,x)&&!laneBusy.get(M.key).has(x)).sort((a,b)=>((b.res.has(x)?2:0)+(b===last?1:0))-((a.res.has(x)?2:0)+(a===last?1:0)));
+    const opts=(sims.get(L.sim)||[L]).filter(M=>use(M,x)&&!laneBusy.get(M.key).has(x)&&simOK(M.sim,x)).sort((a,b)=>((b.res.has(x)?2:0)+(b===last?1:0))-((a.res.has(x)?2:0)+(a===last?1:0)));
     if(opts.length){nx=x;nl=opts[0]}}
    if(nx==null)return null;r.push(nx);ls.push(nl);cur=nx;last=nl}
   r.lanes=ls;return r};
@@ -357,7 +362,7 @@ function schedule(X,tent=new Map()){const S=X.S,out=[];
  const cands=(L,dates)=>{const c=dates.at(-1),n=dates.length,out=[];
   for(const p of X.crew){const ev=getPend(p);if(!ev||X.sec[ev.type]!==n)continue;const latest=ev.expired?X.end:ev.deadline;if(c<=ev.earliest||c>latest)continue;
    const nl=nextLock(p);if(nl){if(reserved(p,ev))continue;if(c>addM(nl.check,-S.gapM))continue}
-   if(dates.some(x=>{const o=day.get(p.code)?.get(x);return(o&&(o.st||o.te))||onLeave(X,p.code,x)}))continue;
+   if(dates.some((x,i)=>{const o=day.get(p.code)?.get(x);if(onLeave(X,p.code,x))return true;if(!o)return false;if(o.te||o.st>=S.pilotPerDay)return true;const mm=slotMin(dates.lanes?.[i]?.time);return o.tm.some(t=>overlap(t,mm))}))continue;
    if(S.visaHard&&visaExpired(visaOf(X,p.code,L.loc),c))continue;
    out.push({p,ev,c,latest,soft:ev.soft-c,hard:latest-c})}
   return out.sort((a,b)=>a.soft-b.soft||a.hard-b.hard||X.order.get(a.p.code)-X.order.get(b.p.code))};
@@ -391,7 +396,7 @@ function schedule(X,tent=new Map()){const S=X.S,out=[];
    for(const q of parts){if(q.eff>0){if(!ok.has(q.pen))ok.set(q.pen,acceptPen(a,d,n,q.pen,!tb));if(!ok.get(q.pen))continue}const ins=assign(L,dates,[a.p,q.b.p],fx);if(ins)return{a,b:q.b,ins,dates,L,pen:q.pen}}
    if(cap(d,a.latest,n)-1<=0){const ins=assign(L,dates,[a.p],fx);if(ins)return{a,b:null,ins,dates,L,pen:9}}}
   return null};
- const commit=dec=>{const{a,b,ins,dates,L}=dec;dates.forEach((x,k)=>{laneBusy.get(dates.lanes[k].key).add(x);P(a.p.code,x).st=1;if(b)P(b.p.code,x).st=1;if(ins[k]){P(ins[k],x).te++;addLoad(ins[k])}});
+ const commit=dec=>{const{a,b,ins,dates,L}=dec;dates.forEach((x,k)=>{laneBusy.get(dates.lanes[k].key).add(x);simInc(dates.lanes[k].sim||simOf2(dates.lanes[k].key),x);stAdd(a.p.code,x,dates.lanes[k].key);if(b)stAdd(b.p.code,x,dates.lanes[k].key);if(ins[k]){P(ins[k],x).te++;addLoad(ins[k])}});
   const pl=[a.p,b?.p].filter(Boolean).sort((x,y)=>(x.rank==="CPT"?0:1)-(y.rank==="CPT"?0:1));
   const lk=dates.lanes.map(M=>M.key);out.push({id:uid(),lane:lk[0],...(lk.some(k=>k!==lk[0])?{lanes:lk}:{}),dates:dates.map(toIso),pilots:[pl[0].code,pl[1]?.code||""],instr:ins,locked:false});
   apply(a.p,dates.at(-1));if(b)apply(b.p,dates.at(-1))};
@@ -409,7 +414,7 @@ function schedule(X,tent=new Map()){const S=X.S,out=[];
      const urg=ruleOn(S,"final")&&b.soft>=0&&cap(ce+1,b.ev.soft,n)===0;const eff=urg?((pen&(WT.mix||0))&&above("mix")?WT.mix:0)+((pen&(WT.rank||0))&&above("rank")?WT.rank:0):pen;
      if(!best||eff<best.eff)best={b,eff}});
     if(best)se.pilots[j]=best.b.p.code}
-   emp.forEach(j=>{const c=se.pilots[j];if(c){fillP.add(se.id+"|"+c);o.dn.forEach(x=>P(c,x).st=1)}});
+   emp.forEach(j=>{const c=se.pilots[j];if(c){fillP.add(se.id+"|"+c);o.dn.forEach((x,k)=>stAdd(c,x,laneAt(se,k)))}});
    pil=se.pilots.map(c=>X.crewMap.get(c)).filter(Boolean)}
   if(freeK.some(Boolean)){const ins=assign(L,dates,pil,fx)||fx;se.instr=dates.map((_,k)=>freeK[k]?ins[k]||"":fx[k]);const ks=new Set();
    freeK.forEach((f,k)=>{const t=se.instr[k];if(f&&t){P(t,o.dn[k]).te++;addLoad(t);ks.add(k)}});if(ks.size)freeI.set(se,ks)}};
@@ -418,7 +423,7 @@ function schedule(X,tent=new Map()){const S=X.S,out=[];
  for(let d=X.start;d<=X.end;d++){
   while(li<lockedQ.length&&lockedQ[li].dn[0]<=d){const o=lockedQ[li++];fillSes(o,d);o.s.pilots.forEach(code=>{const c=X.crewMap.get(code);if(!c)return;apply(c,o.dn.at(-1));if(!fillP.has(o.s.id+"|"+code))lockPtr.set(code,(lockPtr.get(code)||0)+1)})}
   const order=lanes.filter(L=>use(L,d)).sort((x,y)=>(y.res.has(d)?1:0)-(x.res.has(d)?1:0));// o gün Reserved slotu olan simülatör önce
-  for(const L of order){if(laneBusy.get(L.key).has(d))continue;let best=null;
+  for(const L of order){if(laneBusy.get(L.key).has(d)||!simOK(L.sim,d))continue;let best=null;
    for(const n of secs){const dates=block(L,d,n);if(!dates)continue;const cs=cands(L,dates);if(!cs.length)continue;const dec=pick(L,d,dates,cs);
     if(dec&&(!best||dec.a.soft<best.a.soft||(dec.a.soft===best.a.soft&&dec.pen<best.pen)))best=dec}
    if(best)commit(best)}}
@@ -443,6 +448,8 @@ function evaluate(X){const S=X.S;
  const ses=DB.sessions.map(s=>{const dn=s.dates.map(toDn);return{s,dn,chk:Math.max(...dn),L:X.lanes.get(s.lane),err:[],warn:[],types:{},labels:{}}}).filter(o=>o.dn.length&&o.dn.every(v=>v!=null));
  const byId=new Map(ses.map(o=>[o.s.id,o]));const laneDay=new Map(),pd=new Map();
  const push=(m,k,v)=>{let a=m.get(k);if(!a)m.set(k,a=[]);a.push(v)};
+ if(S.secPerDay>0){const cnt=new Map(),sk=(o,k)=>(X.lanes.get(laneAt(o.s,k))?.sim||laneAt(o.s,k))+"|"+o.dn[k];ses.forEach(o=>o.dn.forEach((d,k)=>cnt.set(sk(o,k),(cnt.get(sk(o,k))||0)+1)));
+  ses.forEach(o=>o.dn.forEach((d,k)=>{const n=cnt.get(sk(o,k));if(n>S.secPerDay)o.err.push(fmt(d)+" "+sk(o,k).split("|")[0]+" simülatöründe günde "+n+" sektör (sınır "+S.secPerDay+")")}))}
  const ownE=new Set();for(const o of ses)o.dn.forEach((d,k)=>o.s.pilots.forEach(c=>{if(c)ownE.add(c+"|"+mKey(d)+"|"+(X.lanes.get(laneAt(o.s,k))?.loc||""))}));
  for(const o of ses){o.dn.forEach((d,k)=>{push(laneDay,laneAt(o.s,k)+"|"+d,o);o.s.pilots.forEach(c=>{if(c)push(pd,c+"|"+d,{o,r:"st"})});const t=o.s.instr?.[k];if(t)push(pd,t+"|"+d,{o,r:"te"})})}
  for(const o of ses){const n=o.dn.length,pil=o.s.pilots.filter(Boolean);
@@ -463,7 +470,9 @@ function evaluate(X){const S=X.S;
   if(o.L){const last=new Map();o.dn.forEach((d,k)=>{const t=o.s.instr?.[k];if(t)last.set(t,d)});
    last.forEach((d,t)=>{const v=visaOf(X,t,o.L.loc);if(v.none)return;if(v.raw==null)o.warn.push(t+" (eğitmen) vize kaydı yok");else if(visaExpired(v,d))o.err.push(t+" (eğitmen) "+v.t.name+" vizesi geçersiz")})}
   o.dn.forEach(d=>{people.forEach(c=>{const a=pd.get(c+"|"+d)||[],stN=a.filter(x=>x.r==="st").length,teN=a.filter(x=>x.r==="te").length;
-   if(a.length>1&&(stN>1||(stN&&teN)||teN>S.instrPerDay)){const m=c+" "+fmt(d)+" birden fazla oturumda";if(!o.err.includes(m))o.err.push(m)}})})}
+   if(a.length>1&&(stN>(S.pilotPerDay||1)||(stN&&teN)||teN>S.instrPerDay)){const m=c+" "+fmt(d)+" birden fazla oturumda";if(!o.err.includes(m))o.err.push(m)}
+   else if(stN>1){const tms=a.filter(x=>x.r==="st").map(x=>{const k=x.o.dn.indexOf(d);return slotMin(X.lanes.get(laneAt(x.o.s,k))?.time)});
+    if(tms.some((t,i)=>tms.some((u,j)=>j>i&&overlap(t,u)))){const m=c+" "+fmt(d)+" aynı saatte iki oturumda";if(!o.err.includes(m))o.err.push(m)}}})})}
  const rows=[];
  for(const c of X.crew){const mine=ses.filter(o=>o.s.pilots.includes(c.code)).sort((a,b)=>a.chk-b.chk);let st=initState(c,X),prevPlanned=false;
   for(const o of mine){const ev=nextEvent(st,X),n=o.dn.length,r={c,ev,o,chk:o.chk,last:st.last,lastPlanned:prevPlanned,err:[],warn:[]};
@@ -519,7 +528,7 @@ function vSettings(){const S=DB.settings;
  return`<div class="cd"><h2>Plan dönemi ve sektör sayıları</h2><div class="g">${fld("start","Plan başlangıcı","date")}${fld("end","Plan bitişi","date")}
  ${fld("lpcSec","LPC kaç sektör?","sec",`<span class="mu">${sectorLabels("LPC",S.lpcSec).join(" → ")}</span>`)}${fld("opcSec","OPC kaç sektör?","sec",`<span class="mu">${sectorLabels("OPC",S.opcSec).join(" → ")}</span>`)}</div></div>
  <div class="cd"><h2>Kurallar</h2><div class="g">${fld("winM","Son … ay kuralı (ay)","number")}${fld("gapM","İki kontrol arası en az (ay)","number")}${fld("lpcM","LPC geçerlilik süresi (ay)","number")}${fld("opcM","OPC geçerlilik süresi (ay, ay sonuna yuvarlanır)","number")}
- ${fld("maxGap","Sektörler arası en fazla gün farkı","number",'<span class="mu">1 = art arda günler</span>')}${fld("instrPerDay","Eğitmen günde en fazla oturum","number")}</div>
+ ${fld("maxGap","Sektörler arası en fazla gün farkı","number",'<span class="mu">1 = art arda günler</span>')}${fld("instrPerDay","Eğitmen günde en fazla oturum","number")}${fld("secPerDay","Simülatör başına günde en fazla sektör","number",'<span class="mu">0 = sınırsız</span>')}${fld("pilotPerDay","Öğrenci günde en fazla oturum","number",'<span class="mu">farklı saatteki slotlar; aynı saatte iki oturum olmaz</span>')}</div>
  <h3>Öncelikli kurallar</h3><div id="prioS">${prioBox(S)}</div>
  <div class="g" style="margin-top:10px"> ${fld("sameInstr","Aynı ay ve lokasyonda mümkün olduğunca aynı eğitmenler (bilet masrafı); o ay kendi LPC/OPC'si için gelen eğitmen diğer oturumlarda da görev alır","check")}${fld("sfOnly","Eğitmen olarak SFI/SFE kullanılsın; TRI/TRE yalnızca o ay o lokasyonda kendi LPC/OPC'si varsa (zaten oradaysa) görev alsın","check")}${fld("visaHard","Vizesi geçersiz pilot ya da eğitmeni vize gereken simülatöre hiç planlama","check")}</div></div>
  <div class="cd"><h2>Otel</h2><div class="g">${selFld("hotelIn","Otel girişi",[["0","Simülatör günü (aynı gün)"],["1","Simülatörden 1 gün önce"]])}${selFld("hotelOut","Otel çıkışı",[["0","Son simülatör günü (aynı gün)"],["1","Son simülatörden 1 gün sonra"]])}</div>
@@ -726,27 +735,34 @@ const winMap=R=>new Map(R.rows.filter(r=>r.o).map(r=>[r.o.s.id+"|"+r.c.code,"En 
 const dateErrMap=R=>new Map(R.rows.filter(r=>r.o&&(r.hata||r.err.length)).map(r=>[r.o.s.id+"|"+r.c.code,r.ev.type+": "+[...new Set([r.hata&&r.why,...r.err].filter(Boolean))].join(" · ")]));// tarih kuralı bozulan pilot (kırmızı yazı)
 const finalSet=R=>new Set(R.rows.filter(r=>r.o&&r.final).map(r=>r.o.s.id+"|"+r.c.code));// son ayına kalan (Final!) pilot
 function vPlan(){const X=ctx(),R=evaluate(X),months=planCols(X,R),multi=X.laneArr.length>1||R.ses.some(o=>!o.L);const CH=8,FM=finalSet(R),VX=visaSet(R),WN=winMap(R),DE=dateErrMap(R);
- const blocks=[...months].map(([k,cols])=>{const y=Math.floor(k/12),m=k%12,title=MON[m]+"."+String(y).slice(2),tabs=[];
-  for(let i=0;i<cols.length;i+=CH){const cs=cols.slice(i,i+CH);
-   const cell=(c,fn)=>c.o?fn(c):"";
+ // başlıkta her zaman lokasyon yazar (ör. "Ara.26 · FRA"); ay içinde birden fazla lokasyon varsa her lokasyon ayrı blok olur
+ // aynı gün aynı simülatördeki slotlar (dolu ya da boş) tek sütunda saat sırasıyla alt alta
+ const simOf=c=>X.lanes.get(c.lane)?.sim||c.lane,tmOf=c=>slotMin(X.lanes.get(c.lane)?.time)?.[0]??9999;
+ const blocks=[...months].flatMap(([k,all])=>{const lo=c=>X.lanes.get(c.lane)?.loc||"",locs=[...new Set(all.map(lo))];return locs.map(L0=>[k,all.filter(c=>lo(c)===L0),L0])})
+  .map(([k,cols,lc])=>{const y=Math.floor(k/12),m=k%12,title=MON[m]+"."+String(y).slice(2)+(lc?" · "+lc:""),tabs=[];
+  const groups=[],gi=new Map();cols.forEach(c=>{const key=c.d+"|"+simOf(c);let g=gi.get(key);if(!g){g={d:c.d,items:[]};gi.set(key,g);groups.push(g)}g.items.push(c)});
+  groups.forEach(g=>g.items.sort((a,b)=>tmOf(a)-tmOf(b)));
+  for(let i=0;i<groups.length;i+=CH){const gs=groups.slice(i,i+CH),NL=Math.max(...gs.map(g=>g.items.length));
    const at=c=>c.o?`data-ses="${c.o.s.id}"`:`data-new="${esc(c.lane)}|${toIso(c.d)}"`;
    const mk=c=>c.o?(c.o.err.length?" ce":c.o.warn.length?" cw":""):"";
+   const rsv=c=>X.slotRow.get(c.lane+"|"+c.d)?.status==="Reserved";
    const tip=c=>c.o?esc([c.o.L?.label||c.o.s.lane,...c.o.err.map(e=>"✖ "+e),...c.o.warn.map(e=>"⚠ "+e)].join("\n")):"Boş simülatör günü – oturum eklemek için tıklayın";
    const pc=(c,j)=>{if(!c.o)return`<td class="x" ${at(c)}></td>`;const code=c.o.s.pilots[j]||"",t=c.o.types[code]||"",cr=X.crewMap.get(code);
     const fm=FM.has(c.o.s.id+"|"+code),vx=VX.get(c.o.s.id+"|"+code),de=DE.get(c.o.s.id+"|"+code);return`<td class="cl ${t}${cr?.rank==="CPT"?" cp":""}${fm?" fm":""}${vx?" vx":""}${de?" re":""}" ${at(c)} data-dt="p|${c.o.s.id}|${j}"${code?` draggable="true" data-dg="p|${c.o.s.id}|${j}"`:""} title="${esc(cr?cr.name+" ("+cr.rank+")":code)}${t?" – "+(c.o.labels[code]?.[c.k]||t):""}${fm?" – SON AYINDA (Final!)":""}${vx?" – "+esc(vx):""}${c.o.s.lk&&pLk(c.o.s,j)?" – kilitli":""}${WN.has(c.o.s.id+"|"+code)?"&#10;"+esc(WN.get(c.o.s.id+"|"+code)):""}${de?"&#10;✖ "+esc(de):""}">${esc(code)||"<span style='color:#999'>—</span>"}${c.o.s.lk&&pLk(c.o.s,j)&&code?"<small>🔒</small>":""}</td>`};
-   tabs.push(`<table class="mt"><tr><th class="mh" colspan="${cs.length}">${title}</th></tr>
-   <tr>${cs.map(c=>`<td class="dy${mk(c)}${c.o?"":" em"}${X.slotRow.get(c.lane+"|"+c.d)?.status==="Reserved"?" rs":""}" ${at(c)} title="${fmt(c.d)} ${DAYN[wd(c.d)]}${X.slotRow.get(c.lane+"|"+c.d)?.status==="Reserved"?" · Reserved":""}&#10;${tip(c)}">${ymd(c.d)[2]}${c.o?.s.locked&&!c.o.s.lk?"🔒":""}</td>`).join("")}</tr>
-   ${multi?`<tr>${cs.map(c=>`<td class="ln" ${at(c)}>${esc((X.lanes.get(c.lane)?.loc||"")+" "+(X.lanes.get(c.lane)?.sim||c.lane))}</td>`).join("")}</tr>`:""}
-   <tr>${cs.map(c=>`<td class="tm" ${at(c)} title="Slot ${esc(X.lanes.get(c.lane)?.slot||"")} – yerel saat">${esc(X.lanes.get(c.lane)?.time||"")}</td>`).join("")}</tr>
-   <tr>${cs.map(c=>{const iv=c.o?instrVisa(X,c.o,c.k):"";return`<td class="cl${iv?" vx":""}" ${at(c)}${c.o?` data-dt="i|${c.o.s.id}|${c.k}"${c.o.s.instr?.[c.k]?` draggable="true" data-dg="i|${c.o.s.id}|${c.k}"`:""}`:""} title="Eğitmen${iv?" – "+esc(iv):""}${c.o?.s.lk&&iLk(c.o.s,c.k)?" – kilitli":""}">${c.o?esc(c.o.s.instr?.[c.k]||"?"):""}${c.o?.s.lk&&iLk(c.o.s,c.k)&&c.o.s.instr?.[c.k]?"<small>🔒</small>":""}</td>`}).join("")}</tr>
-   <tr>${cs.map(c=>pc(c,0)).join("")}</tr><tr>${cs.map(c=>pc(c,1)).join("")}</tr></table>`)}
+   const ic=c=>{const iv=c.o?instrVisa(X,c.o,c.k):"";return`<td class="cl${iv?" vx":""}" ${at(c)}${c.o?` data-dt="i|${c.o.s.id}|${c.k}"${c.o.s.instr?.[c.k]?` draggable="true" data-dg="i|${c.o.s.id}|${c.k}"`:""}`:""} title="Eğitmen${iv?" – "+esc(iv):""}${c.o?.s.lk&&iLk(c.o.s,c.k)?" – kilitli":""}">${c.o?esc(c.o.s.instr?.[c.k]||"?"):""}${c.o?.s.lk&&iLk(c.o.s,c.k)&&c.o.s.instr?.[c.k]?"<small>🔒</small>":""}</td>`};
+   const blank='<td class="nb"></td>';
+   const dayRow=`<tr>${gs.map(g=>{const c=g.items[0],a=g.items;return`<td class="dy${mk(c)}${a.some(x=>x.o)?"":" em"}${rsv(c)?" rs":""}" ${at(c)} title="${fmt(g.d)} ${DAYN[wd(g.d)]}${a.length>1?" · "+a.length+" slot":""}${rsv(c)?" · Reserved":""}&#10;${tip(c)}">${ymd(g.d)[2]}${a.some(x=>x.o?.s.locked&&!x.o.s.lk)?"🔒":""}</td>`}).join("")}</tr>`;
+   const simRow=`<tr>${gs.map(g=>`<td class="ln" ${at(g.items[0])}>${esc(simOf(g.items[0]))}</td>`).join("")}</tr>`;// lokasyon başlıkta yazdığı için burada yalnızca simülatör
+   let layers="";for(let l=0;l<NL;l++){const row=fn=>`<tr>${gs.map(g=>g.items[l]?fn(g.items[l]):blank).join("")}</tr>`;
+    layers+=row(c=>`<td class="tm${l?mk(c):""}${l&&rsv(c)?" rs":""}${c.o?"":" em"}" ${at(c)} title="Slot ${esc(X.lanes.get(c.lane)?.slot||"")} – yerel saat${rsv(c)?" · Reserved":""}${l?"&#10;"+tip(c):""}">${esc(X.lanes.get(c.lane)?.time||"")}</td>`)+row(ic)+row(c=>pc(c,0))+row(c=>pc(c,1))}
+   tabs.push(`<table class="mt"><tr><th class="mh" colspan="${gs.length}">${esc(title)}</th></tr>${dayRow}${simRow}${layers}</table>`)}
   return`<div>${tabs.join('<div style="height:6px"></div>')}</div>`}).join("");
  const load=new Map();R.ses.forEach(o=>(o.s.instr||[]).forEach(t=>t&&load.set(t,(load.get(t)||0)+1)));
  const probs=R.rows.filter(r=>!r.o&&r.err.length),bad=R.ses.filter(o=>o.err.length||o.warn.length).sort((a,b)=>a.dn[0]-b.dn[0]);
  return`${stale()}<div class="cd"><div class="row np"><h2>Taslak plan</h2><span class="mu">${fmt(X.start)} – ${fmt(X.end)}${DB.planAt?" · son planlama "+esc(DB.planAt):""}</span><span class="sp"></span>
  <label class="ck"><input type="checkbox" data-ui="showEmpty"${UI.showEmpty?" checked":""}><span>Boş simülatör günlerini göster</span></label>
  ${UI.undo?.length?`<button class="s" data-undo="1" title="Son sürükle-bırak işlemini geri alır">↶ Geri al (${UI.undo.length})</button>`:""}<button class="s" data-newses="1">+ Oturum ekle</button><button class="s" data-lockall="1">Tümünü kilitle</button><button class="s" data-lockall="0">Kilitleri kaldır</button></div>
- ${stats(R)}<div class="mu" style="margin:4px 0 10px"><span class="lg" style="background:var(--lpc)"></span>LPC <span class="lg" style="background:var(--opc)"></span>OPC <span class="lg" style="background:#c6efce"></span>Reserved slot (gün yeşil) · <span style="outline:2px solid #d00000;outline-offset:-2px;padding:0 4px">AB</span> son ayına kalan (kırmızı çerçeve) · <span style="color:#d00000;font-weight:700">AB</span> tarih kuralı hatası: en erken / en geç / 4 ay (kırmızı yazı) · <span style="outline:2px dashed #7030a0;outline-offset:-2px;padding:0 4px">AB</span> vizesi geçmiş ya da vize kaydı yok (mor kesik çerçeve; pilot ve eğitmen) · Satırlar: gün, simülatör (birden fazlaysa), slot saati (yerel), eğitmen, öğrenciler · sektör adı ve tarih üzerine gelince görünür · 🔒 kilitli · <span style="color:#d00000">▀</span> hata <span style="color:#ff4fa3">▀</span> uyarı · Bir sütuna tıklayıp oturumu düzenleyin; pilotu ya da eğitmeni sürükleyip başka bir pilotun / eğitmenin üzerine bırakarak yer değiştirin (pilotta bütün oturum, eğitmende o gün).
+ ${stats(R)}<div class="mu" style="margin:4px 0 10px"><span class="lg" style="background:var(--lpc)"></span>LPC <span class="lg" style="background:var(--opc)"></span>OPC <span class="lg" style="background:#c6efce"></span>Reserved slot (gün yeşil) · <span style="outline:2px solid #d00000;outline-offset:-2px;padding:0 4px">AB</span> son ayına kalan (kırmızı çerçeve) · <span style="color:#d00000;font-weight:700">AB</span> tarih kuralı hatası: en erken / en geç / 4 ay (kırmızı yazı) · <span style="outline:2px dashed #7030a0;outline-offset:-2px;padding:0 4px">AB</span> vizesi geçmiş ya da vize kaydı yok (mor kesik çerçeve; pilot ve eğitmen) · Satırlar: gün, simülatör, slot saati (yerel), eğitmen, öğrenciler; aynı gün aynı simülatördeki ikinci slot alt alta · sektör adı ve tarih üzerine gelince görünür · 🔒 kilitli · <span style="color:#d00000">▀</span> hata <span style="color:#ff4fa3">▀</span> uyarı · Bir sütuna tıklayıp oturumu düzenleyin; pilotu ya da eğitmeni sürükleyip başka bir pilotun / eğitmenin üzerine bırakarak yer değiştirin (pilotta bütün oturum, eğitmende o gün).
  Eğitmen yükü: ${[...load].sort().map(([t,n])=>esc(t)+" "+n).join(", ")||"—"}</div>
  <div class="months">${blocks||'<div class="mu">Henüz oturum yok. <b>Planı oluştur</b> ile taslak plan hazırlayın.</div>'}</div></div>
  ${probs.length||bad.length?`<div class="cd"><h2>Sorunlar</h2>${probs.map(r=>`<div class="iss"><span class="bad">${esc(r.c.code)} ${esc(r.c.name)}</span> – ${r.ev.type} (geçerlilik ${fmt(r.ev.deadline)}, en erken ${fmt(r.ev.earliest)}): ${esc(r.err.join(", "))} <button class="s np" data-new-for="${esc(r.c.code)}">+ Planla</button></div>`).join("")}
@@ -995,7 +1011,7 @@ document.addEventListener("change",e=>{const el=e.target,d=el.dataset;
   if(col.t==="days"){if(!Array.isArray(it.days))it.days=Array(7).fill(true);it.days[+d.j]=el.checked}else if(col.t==="check")it[d.k]=el.checked;else if(col.t==="code"){it[d.k]=el.value.trim().toUpperCase();el.value=it[d.k]}else it[d.k]=el.value;
   touch();if(d.l==="crew")crewDerived();if(d.l==="visaTypes"||d.l==="sims")render();return}
  if(d.pon){DB.settings[RULEKEY[d.pon]]=el.checked;touch();render();return}
- if(d.s){const S=DB.settings;S[d.s]=el.type==="checkbox"?el.checked:el.type==="number"?Math.max(0,+el.value||0):el.value;if(d.s==="winM"||d.s==="gapM"||d.s==="lpcM"||d.s==="opcM"||d.s==="maxGap"||d.s==="instrPerDay")S[d.s]=Math.max(1,S[d.s]);touch();render();return}
+ if(d.s){const S=DB.settings;S[d.s]=el.type==="checkbox"?el.checked:el.type==="number"?Math.max(0,+el.value||0):el.value;if(d.s==="winM"||d.s==="gapM"||d.s==="lpcM"||d.s==="opcM"||d.s==="maxGap"||d.s==="instrPerDay"||d.s==="pilotPerDay")S[d.s]=Math.max(1,S[d.s]);touch();render();return}
  if(d.ui){UI[d.ui]=el.type==="checkbox"?el.checked:el.value;render()}});
 // arama ve sütun filtreleri: yazmayı bekleyip yeniden çizer, imleci aynı kutuya geri koyar
 document.addEventListener("input",e=>{const el=e.target,d=el.dataset;let sel=null;
@@ -1065,7 +1081,7 @@ const EN_T={
 "LPC kaç sektör planlansın?":"How many LPC sectors to plan?","OPC kaç sektör planlansın?":"How many OPC sectors to plan?",
 "Son … ay kuralı (ay)":"Last … months rule (months)","İki kontrol arası en az (ay)":"Minimum between two checks (months)","LPC geçerlilik süresi (ay)":"LPC validity (months)",
 "OPC geçerlilik süresi (ay, ay sonuna yuvarlanır)":"OPC validity (months, rounded to month end)","Sektörler arası en fazla gün farkı":"Max days between sectors","# = art arda günler":"# = consecutive days",
-"Eğitmen günde en fazla oturum":"Max sessions per instructor per day",
+"Eğitmen günde en fazla oturum":"Max sessions per instructor per day","Öğrenci günde en fazla oturum":"Max sessions per student per day","Simülatör başına günde en fazla sektör":"Max sectors per simulator per day","# = sınırsız":"# = unlimited","farklı saatteki slotlar; aynı saatte iki oturum olmaz":"slots at different times; never two sessions at the same time",
 "Aynı ay ve lokasyonda mümkün olduğunca aynı eğitmenler (bilet masrafı); o ay kendi LPC/OPC'si için gelen eğitmen diğer oturumlarda da görev alır":"Same instructors within a month and location where possible (ticket cost); an instructor who comes for their own LPC/OPC that month also works other sessions",
 "Eğitmen olarak SFI/SFE kullanılsın; TRI/TRE yalnızca o ay o lokasyonda kendi LPC/OPC'si varsa (zaten oradaysa) görev alsın":"Use SFI/SFE as instructors; TRI/TRE only work if they have their own LPC/OPC at that location that month (already there)",
 "Vizesi geçersiz pilot ya da eğitmeni vize gereken simülatöre hiç planlama":"Never plan a pilot or instructor with an invalid visa at a simulator that requires one",
@@ -1128,7 +1144,7 @@ const EN_T={
 "Boş simülatör günlerini göster":"Show empty simulator days","Boş simülatör günü – oturum eklemek için tıklayın":"Empty simulator day – click to add a session","Son sürükle-bırak işlemini geri alır":"Undoes the last drag and drop",
 "Reserved slot (gün yeşil)":"Reserved slot (day green)","son ayına kalan (kırmızı çerçeve)":"in final month (red frame)","AB son ayına kalan (kırmızı çerçeve)":"AB in final month (red frame)","AB vizesi geçmiş ya da vize kaydı yok (mor kesik çerçeve; pilot ve eğitmen)":"AB visa expired or no visa record (purple dashed frame; pilot and instructor)",
 "Plan, Earliest Auto (#) tarihinden sonra olmalı":"Plan must be after Earliest Auto (#)","Plan, Valid (#) tarihinden sonra":"Plan is after Valid (#)","# ay kuralı: en erken #":"# months rule: earliest #","Geçerlilik bitişinden (#) sonra":"After validity end (#)","Planlanmadı – geçerlilik dönem sonrasında (#)":"Not planned – validity after the period (#)","AB tarih kuralı hatası: en erken / en geç / # ay (kırmızı yazı)":"AB date rule error: earliest / latest / # months (red text)","tarih kuralı hatası: en erken / en geç / # ay (kırmızı yazı)":"date rule error: earliest / latest / # months (red text)","vizesi geçmiş ya da vize kaydı yok (mor kesik çerçeve; pilot ve eğitmen)":"visa expired or no visa record (purple dashed frame; pilot and instructor)",
-"Satırlar: gün, simülatör (birden fazlaysa), slot saati (yerel), eğitmen, öğrenciler":"Rows: day, simulator (if more than one), slot time (local), instructor, students",
+"Satırlar: gün, simülatör, slot saati (yerel), eğitmen, öğrenciler; aynı gün aynı simülatördeki ikinci slot alt alta":"Rows: day, simulator, slot time (local), instructor, students; a second slot on the same day and simulator is stacked below",
 "sektör adı ve tarih üzerine gelince görünür":"sector name and date appear on hover","🔒 kilitli":"🔒 locked","kilitli":"locked","hata uyarı":"error warning","hata":"error","uyarı":"warning",
 "Bir sütuna tıklayıp oturumu düzenleyin; pilotu ya da eğitmeni sürükleyip başka bir pilotun / eğitmenin üzerine bırakarak yer değiştirin (pilotta bütün oturum, eğitmende o gün).":"Click a column to edit the session; drag a pilot or instructor onto another pilot / instructor to swap them (whole session for a pilot, that day for an instructor).",
 "SON AYINDA (Final!)":"IN FINAL MONTH (Final!)","VİZE KAYDI YOK":"NO VISA RECORD",
@@ -1175,7 +1191,7 @@ const EN_R=[
 // cümle içi parça çevirileri (son çare): mesajlardaki kodlar ve tarihler yerinde kalır
 const EN_P=[["kontrolü, eğitimi veren eğitmen yapıyor","check is done by the instructor who gave the training"],["o ay o lokasyonda kendi LPC/OPC'si olmadan eğitmen","instructor without their own LPC/OPC at that location that month"],
  ["kontrol sektörü için TRE/SFE gerekli","TRE/SFE required for the check sector"],["aynı oturumda hem öğrenci hem eğitmen","both student and instructor in the same session"],["aynı simülatör/slotta başka oturum var","another session on the same simulator/slot"],
- ["birden fazla oturumda","in more than one session"],["birlikte planlanmamalı","should not be planned together"],["eğitmen listesinde yok","not in the instructor list"],["ekip listesinde yok","not in the crew list"],
+ ["aynı saatte iki oturumda","in two sessions at the same time"],["simülatöründe günde","simulator has on one day"],["sektör (sınır","sectors (limit"],["birden fazla oturumda","in more than one session"],["birlikte planlanmamalı","should not be planned together"],["eğitmen listesinde yok","not in the instructor list"],["ekip listesinde yok","not in the crew list"],
  ["eğitmen atanmadı","no instructor assigned"],["müsaitlik satırı yok","no availability row"],["kapalı gün","closed day"],["izinli","on leave"],["vize kaydı yok","no visa record"],["vizesi geçersiz","visa invalid"],
  ["Simülatör tanımlı değil","Simulator not defined"],["pasif","passive"],["Aynı rütbe","Same rank"],["sektör tanımlı, oturum","sectors defined, session has"],["sektör","sector"],["için","for"],
  ["Geçerlilik bitişinden","After validity end"],["sonra","after"],["Planlanmadı – geçerlilik dönem sonrasında","Not planned – validity after the period"],["ay kuralı: en erken","months rule: earliest"],
