@@ -1087,7 +1087,7 @@ $("#ov").addEventListener("click",e=>{if(e.target.id==="ov")closeDlg()});
 $("#bPlan").onclick=()=>planDlg(false);$("#bPlanR").onclick=()=>planDlg(true);$("#bImp").onclick=()=>$("#fImp").click();$("#fImp").onchange=e=>{const f=e.target.files[0];e.target.value="";if(f)importFile(f)};
 $("#bTpl").onclick=()=>download(xlsxBlob(inputSheets()),"simulator-plan-veri.xlsx");$("#bExp").onclick=exportPlan;$("#bPrint").onclick=()=>window.print();
 $("#bMore").onclick=()=>dlg("Diğer işlemler",`<div class="row"><button id="mB">Yedek al (JSON)</button><button id="mR">Yedekten yükle</button><button id="mS">Örnek veriyi yükle</button><button id="mC" class="d">Tüm verileri temizle</button></div><div class="mu" style="margin-top:8px">Yedek dosyası tüm girdileri, ayarları ve planı içerir; başka cihaza taşımak için kullanın.</div>`,[{l:"Kapat"}],()=>{
- $("#mB").onclick=()=>{download(new Blob([JSON.stringify(DB,null,1)],{type:"application/json"}),"simulator-plan-yedek-"+toIso(todayDn())+".json");closeDlg()};
+ $("#mB").onclick=()=>{download(new Blob([JSON.stringify(DB,null,1)],{type:"application/json"}),"simulator-plan-yedek-"+toIso(todayDn())+"-"+(n=>pad(n.getHours())+"."+pad(n.getMinutes()))(new Date())+".json");closeDlg()};
  $("#mR").onclick=()=>{closeDlg();$("#fImp").click()};
  $("#mS").onclick=()=>confirmDlg("Örnek veri","Mevcut veriler örnek veriyle değiştirilecek.","Yükle",()=>{DB=sampleDB();save();tabCounts();render()});
  $("#mC").onclick=()=>confirmDlg("Tüm verileri temizle","Ekip, eğitmen, simülatör, kısıt ve plan verilerinin tamamı silinecek.","Temizle",()=>{DB=emptyDB();save();tabCounts();render()},"d")});
