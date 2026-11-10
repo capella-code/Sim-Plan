@@ -743,7 +743,8 @@ function vPlan(){const X=ctx(),R=evaluate(X),months=planCols(X,R),multi=X.laneAr
   const groups=[],gi=new Map();cols.forEach(c=>{const key=c.d+"|"+simOf(c);let g=gi.get(key);if(!g){g={d:c.d,items:[]};gi.set(key,g);groups.push(g)}g.items.push(c)});
   groups.forEach(g=>g.items.sort((a,b)=>tmOf(a)-tmOf(b)));
   for(let i=0;i<groups.length;i+=CH){const gs=groups.slice(i,i+CH),NL=Math.max(...gs.map(g=>g.items.length));
-   const at=c=>c.o?`data-ses="${c.o.s.id}"`:`data-new="${esc(c.lane)}|${toIso(c.d)}"`;
+   const at=c=>c.o?`data-ses="${c.o.s.id}"`:`data-new="${esc(c.lane)}|${toIso(c.d)}" data-dt="e|${esc(c.lane)}|${toIso(c.d)}"`;
+   const sdg=c=>c.o?` draggable="true" data-dg="s|${c.o.s.id}|${c.k}" data-dt="s|${c.o.s.id}|${c.k}"`:"";// bütün oturumu taşımak için
    const mk=c=>c.o?(c.o.err.length?" ce":c.o.warn.length?" cw":""):"";
    const rsv=c=>X.slotRow.get(c.lane+"|"+c.d)?.status==="Reserved";
    const tip=c=>c.o?esc([c.o.L?.label||c.o.s.lane,...c.o.err.map(e=>"✖ "+e),...c.o.warn.map(e=>"⚠ "+e)].join("\n")):"Boş simülatör günü – oturum eklemek için tıklayın";
@@ -751,10 +752,10 @@ function vPlan(){const X=ctx(),R=evaluate(X),months=planCols(X,R),multi=X.laneAr
     const fm=FM.has(c.o.s.id+"|"+code),vx=VX.get(c.o.s.id+"|"+code),de=DE.get(c.o.s.id+"|"+code);return`<td class="cl ${t}${cr?.rank==="CPT"?" cp":""}${fm?" fm":""}${vx?" vx":""}${de?" re":""}" ${at(c)} data-dt="p|${c.o.s.id}|${j}"${code?` draggable="true" data-dg="p|${c.o.s.id}|${j}"`:""} title="${esc(cr?cr.name+" ("+cr.rank+")":code)}${t?" – "+(c.o.labels[code]?.[c.k]||t):""}${fm?" – SON AYINDA (Final!)":""}${vx?" – "+esc(vx):""}${c.o.s.lk&&pLk(c.o.s,j)?" – kilitli":""}${WN.has(c.o.s.id+"|"+code)?"&#10;"+esc(WN.get(c.o.s.id+"|"+code)):""}${de?"&#10;✖ "+esc(de):""}">${esc(code)||"<span style='color:#999'>—</span>"}${c.o.s.lk&&pLk(c.o.s,j)&&code?"<small>🔒</small>":""}</td>`};
    const ic=c=>{const iv=c.o?instrVisa(X,c.o,c.k):"";return`<td class="cl${iv?" vx":""}" ${at(c)}${c.o?` data-dt="i|${c.o.s.id}|${c.k}"${c.o.s.instr?.[c.k]?` draggable="true" data-dg="i|${c.o.s.id}|${c.k}"`:""}`:""} title="Eğitmen${iv?" – "+esc(iv):""}${c.o?.s.lk&&iLk(c.o.s,c.k)?" – kilitli":""}">${c.o?esc(c.o.s.instr?.[c.k]||"?"):""}${c.o?.s.lk&&iLk(c.o.s,c.k)&&c.o.s.instr?.[c.k]?"<small>🔒</small>":""}</td>`};
    const blank='<td class="nb"></td>';
-   const dayRow=`<tr>${gs.map(g=>{const c=g.items[0],a=g.items;return`<td class="dy${mk(c)}${a.some(x=>x.o)?"":" em"}${rsv(c)?" rs":""}" ${at(c)} title="${fmt(g.d)} ${DAYN[wd(g.d)]}${a.length>1?" · "+a.length+" slot":""}${rsv(c)?" · Reserved":""}&#10;${tip(c)}">${ymd(g.d)[2]}${a.some(x=>x.o?.s.locked&&!x.o.s.lk)?"🔒":""}</td>`}).join("")}</tr>`;
+   const dayRow=`<tr>${gs.map(g=>{const c=g.items[0],a=g.items;return`<td class="dy${mk(c)}${a.some(x=>x.o)?"":" em"}${rsv(c)?" rs":""}" ${at(c)}${sdg(c)} title="${fmt(g.d)} ${DAYN[wd(g.d)]}${a.length>1?" · "+a.length+" slot":""}${rsv(c)?" · Reserved":""}&#10;${tip(c)}">${ymd(g.d)[2]}${a.some(x=>x.o?.s.locked&&!x.o.s.lk)?"🔒":""}</td>`}).join("")}</tr>`;
    const simRow=`<tr>${gs.map(g=>`<td class="ln" ${at(g.items[0])}>${esc(simOf(g.items[0]))}</td>`).join("")}</tr>`;// lokasyon başlıkta yazdığı için burada yalnızca simülatör
    let layers="";for(let l=0;l<NL;l++){const row=fn=>`<tr>${gs.map(g=>g.items[l]?fn(g.items[l]):blank).join("")}</tr>`;
-    layers+=row(c=>`<td class="tm${l?mk(c):""}${l&&rsv(c)?" rs":""}${c.o?"":" em"}" ${at(c)} title="Slot ${esc(X.lanes.get(c.lane)?.slot||"")} – yerel saat${rsv(c)?" · Reserved":""}${l?"&#10;"+tip(c):""}">${esc(X.lanes.get(c.lane)?.time||"")}</td>`)+row(ic)+row(c=>pc(c,0))+row(c=>pc(c,1))}
+    layers+=row(c=>`<td class="tm${l?mk(c):""}${l&&rsv(c)?" rs":""}${c.o?"":" em"}" ${at(c)}${sdg(c)} title="Slot ${esc(X.lanes.get(c.lane)?.slot||"")} – yerel saat${rsv(c)?" · Reserved":""}${l?"&#10;"+tip(c):""}">${esc(X.lanes.get(c.lane)?.time||"")}</td>`)+row(ic)+row(c=>pc(c,0))+row(c=>pc(c,1))}
    tabs.push(`<table class="mt"><tr><th class="mh" colspan="${gs.length}">${esc(title)}</th></tr>${dayRow}${simRow}${layers}</table>`)}
   return`<div>${tabs.join('<div style="height:6px"></div>')}</div>`}).join("");
  const load=new Map();R.ses.forEach(o=>(o.s.instr||[]).forEach(t=>t&&load.set(t,(load.get(t)||0)+1)));
@@ -762,7 +763,7 @@ function vPlan(){const X=ctx(),R=evaluate(X),months=planCols(X,R),multi=X.laneAr
  return`${stale()}<div class="cd"><div class="row np"><h2>Taslak plan</h2><span class="mu">${fmt(X.start)} – ${fmt(X.end)}${DB.planAt?" · son planlama "+esc(DB.planAt):""}</span><span class="sp"></span>
  <label class="ck"><input type="checkbox" data-ui="showEmpty"${UI.showEmpty?" checked":""}><span>Boş simülatör günlerini göster</span></label>
  ${UI.undo?.length?`<button class="s" data-undo="1" title="Son sürükle-bırak işlemini geri alır">↶ Geri al (${UI.undo.length})</button>`:""}<button class="s" data-newses="1">+ Oturum ekle</button><button class="s" data-lockall="1">Tümünü kilitle</button><button class="s" data-lockall="0">Kilitleri kaldır</button></div>
- ${stats(R)}<div class="mu" style="margin:4px 0 10px"><span class="lg" style="background:var(--lpc)"></span>LPC <span class="lg" style="background:var(--opc)"></span>OPC <span class="lg" style="background:#c6efce"></span>Reserved slot (gün yeşil) · <span style="outline:2px solid #d00000;outline-offset:-2px;padding:0 4px">AB</span> son ayına kalan (kırmızı çerçeve) · <span style="color:#d00000;font-weight:700">AB</span> tarih kuralı hatası: en erken / en geç / 4 ay (kırmızı yazı) · <span style="outline:2px dashed #7030a0;outline-offset:-2px;padding:0 4px">AB</span> vizesi geçmiş ya da vize kaydı yok (mor kesik çerçeve; pilot ve eğitmen) · Satırlar: gün, simülatör, slot saati (yerel), eğitmen, öğrenciler; aynı gün aynı simülatördeki ikinci slot alt alta · sektör adı ve tarih üzerine gelince görünür · 🔒 kilitli · <span style="color:#d00000">▀</span> hata <span style="color:#ff4fa3">▀</span> uyarı · Bir sütuna tıklayıp oturumu düzenleyin; pilotu ya da eğitmeni sürükleyip başka bir pilotun / eğitmenin üzerine bırakarak yer değiştirin (pilotta bütün oturum, eğitmende o gün).
+ ${stats(R)}<div class="mu" style="margin:4px 0 10px"><span class="lg" style="background:var(--lpc)"></span>LPC <span class="lg" style="background:var(--opc)"></span>OPC <span class="lg" style="background:#c6efce"></span>Reserved slot (gün yeşil) · <span style="outline:2px solid #d00000;outline-offset:-2px;padding:0 4px">AB</span> son ayına kalan (kırmızı çerçeve) · <span style="color:#d00000;font-weight:700">AB</span> tarih kuralı hatası: en erken / en geç / 4 ay (kırmızı yazı) · <span style="outline:2px dashed #7030a0;outline-offset:-2px;padding:0 4px">AB</span> vizesi geçmiş ya da vize kaydı yok (mor kesik çerçeve; pilot ve eğitmen) · Satırlar: gün, simülatör, slot saati (yerel), eğitmen, öğrenciler; aynı gün aynı simülatördeki ikinci slot alt alta · sektör adı ve tarih üzerine gelince görünür · 🔒 kilitli · <span style="color:#d00000">▀</span> hata <span style="color:#ff4fa3">▀</span> uyarı · Bir sütuna tıklayıp oturumu düzenleyin; pilotu ya da eğitmeni sürükleyip başka bir pilotun / eğitmenin üzerine bırakarak yer değiştirin (pilotta bütün oturum, eğitmende o gün). Boş simülatör günlerini gösterip boş güne bir pilotu bırakırsanız yalnız o pilot, oturumun gün ya da saat hücresini bırakırsanız bütün oturum oraya taşınır; gün ya da saat hücresini başka bir oturumun gün ya da saat hücresine bırakırsanız iki oturum yer değiştirir.
  Eğitmen yükü: ${[...load].sort().map(([t,n])=>esc(t)+" "+n).join(", ")||"—"}</div>
  <div class="months">${blocks||'<div class="mu">Henüz oturum yok. <b>Planı oluştur</b> ile taslak plan hazırlayın.</div>'}</div></div>
  ${probs.length||bad.length?`<div class="cd"><h2>Sorunlar</h2>${probs.map(r=>`<div class="iss"><span class="bad">${esc(r.c.code)} ${esc(r.c.name)}</span> – ${r.ev.type} (geçerlilik ${fmt(r.ev.deadline)}, en erken ${fmt(r.ev.earliest)}): ${esc(r.err.join(", "))} <button class="s np" data-new-for="${esc(r.c.code)}">+ Planla</button></div>`).join("")}
@@ -1024,7 +1025,7 @@ document.addEventListener("input",e=>{const el=e.target,d=el.dataset;let sel=nul
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#ov").hidden)closeDlg()});
 /* ---- taslak planda sürükle-bırak ile yer değiştirme ---- */
 UI.undo=[];let DRAG=null;
-const dgParse=v=>{const[k,id,i]=String(v).split("|");return{k,id,i:+i}};
+const dgParse=v=>{const[k,id,i]=String(v).split("|");return k==="e"?{k,lane:id,date:i}:{k,id,i:+i}};
 // iki kişiyi takas eder: p = pilot (oturumun tüm sektörleri), i = eğitmen (yalnızca o sektör)
 function swapLk(A,B,f,i,j){const LA=lkOf(A),LB=A===B?LA:lkOf(B),t=LA[f][i];LA[f][i]=LB[f][j];LB[f][j]=t;setLk(A,LA);if(B!==A)setLk(B,LB)}
 function doSwap(list,a,b){const A=list.find(x=>x.id===a.id),B=list.find(x=>x.id===b.id);if(!A||!B)return false;
@@ -1035,6 +1036,39 @@ function swapIssues(ids,codes){const R=evaluate(ctx()),out=[];
  R.ses.filter(o=>ids.includes(o.s.id)).forEach(o=>{const lb=fmt(o.dn[0])+" "+o.s.pilots.filter(Boolean).join("/");o.err.forEach(e=>out.push("✖ "+lb+": "+e));o.warn.forEach(w=>out.push("⚠ "+lb+": "+w))});
  R.rows.filter(r=>codes.includes(r.c.code)).forEach(r=>{const lb=r.c.code+" "+(r.ev.idx+1)+". kontrol ("+r.ev.type+")";if(r.hata)out.push("✖ "+lb+": Hata – "+r.why);if(r.final)out.push("⚠ "+lb+": son ayında");if(r.visa)out.push("⚠ "+lb+": vize "+r.visa);r.err.forEach(e=>out.push("✖ "+lb+": "+e))});
  return out}
+// boş simülatör gününe taşıma: s = bütün oturum (sürüklenen sektör o güne gelir), p = yalnız o pilot (ilk sektör o güne gelir, yeni oturum olur)
+function moveApply(list,src,dst){const A=list.find(x=>x.id===src.id);if(!A)return null;const dn=A.dates.map(toDn),T=toDn(dst.date);
+ const nd=(src.k==="s"?dn.map(x=>T+(x-dn[src.i])):dn.map(x=>T+(x-dn[0]))).map(toIso);
+ const busy=list.some(o=>(src.k!=="s"||o!==A)&&o.dates.some((x,k)=>nd.includes(x)&&laneAt(o,k)===dst.lane));if(busy)return{err:"Hedef günlerde bu slotta başka oturum var"};
+ if(src.k==="s"){A.dates=nd;A.lane=dst.lane;delete A.lanes;return{ids:[A.id]}}
+ const code=A.pilots[src.i];if(!code)return null;const N={id:uid(),lane:dst.lane,dates:nd,pilots:[code,""],instr:[...(A.instr||[])],locked:false};
+ A.pilots[src.i]="";if(A.lk){const L=lkOf(A);L.p[src.i]=false;setLk(A,L)}
+ if(!A.pilots.some(Boolean))list.splice(list.indexOf(A),1);list.push(N);return{ids:[A.id,N.id],nid:N.id}}
+function dropMove(src,dst){const A=DB.sessions.find(x=>x.id===src.id);if(!A)return;
+ if(src.k==="s"?(A.locked||A.lk):(A.locked&&!A.lk)||(A.lk&&pLk(A,src.i))){toast("Kilitli "+(src.k==="s"?"oturum":"pilot")+" taşınamaz; önce kilidi kaldırın");return}
+ const who=src.k==="s"?"Oturum ("+A.pilots.filter(Boolean).join("/")+")":A.pilots[src.i],before=JSON.stringify(DB.sessions);if(!who)return;
+ const codes=[...new Set([...A.pilots,...(A.instr||[])].filter(Boolean))],key=x=>x.replace(/\d\d\.\d\d\.\d{4}/g,"#");
+ const old=new Set(swapIssues([A.id],codes).map(key));const r=moveApply(DB.sessions,src,dst);
+ if(!r){DB.sessions=JSON.parse(before);return}if(r.err){DB.sessions=JSON.parse(before);toast(r.err);return}
+ const neu=swapIssues(r.ids,codes).filter(x=>!old.has(key(x)));DB.sessions=JSON.parse(before);
+ const go=()=>{moveApply(DB.sessions,src,dst);UI.undo.push(before);if(UI.undo.length>30)UI.undo.shift();touch();render();toast(who+" "+fmt(toDn(dst.date))+" "+dst.lane+" slotuna taşındı"+(neu.length?" – "+neu.length+" yeni sorun":""))};
+ if(!neu.length)return go();
+ dlg("Kural ihlali",`<div><b>${esc(who)}</b> → ${esc(fmt(toDn(dst.date))+" "+dst.lane)} taşıması şu yeni sorunları doğuruyor:</div><ul>${neu.map(x=>`<li class="${x[0]==="✖"?"bad":"warn"}">${esc(x.slice(2))}</li>`).join("")}</ul><div class="mu">Yine de yapılsın mı? (Sonra ↶ Geri al ile geri alabilirsiniz.)</div>`,[{l:"Vazgeç"},{l:"Yine de yap",c:"p",f:go}])}
+// iki oturum yer değiştirir: tarihleri ve simülatör/slotları karşılıklı değişir (öğrenciler ve eğitmenler oturumla birlikte gider)
+function sesSwapApply(list,a,b){const A=list.find(x=>x.id===a.id),B=list.find(x=>x.id===b.id);if(!A||!B||A===B)return null;
+ if(A.dates.length!==B.dates.length)return{err:"Sektör sayıları farklı oturumlar yer değiştiremez"};
+ const la=A.dates.map((_,k)=>laneAt(A,k)),lb=B.dates.map((_,k)=>laneAt(B,k)),da=A.dates,db=B.dates;
+ const set=(S,d,l)=>{S.dates=[...d];S.lane=l[0];if(l.some(x=>x!==l[0]))S.lanes=[...l];else delete S.lanes};set(A,db,lb);set(B,da,la);return{ids:[A.id,B.id]}}
+function dropSesSwap(src,dst){const A=DB.sessions.find(x=>x.id===src.id),B=DB.sessions.find(x=>x.id===dst.id);if(!A||!B||A===B)return;
+ if(A.locked||A.lk||B.locked||B.lk){toast("Kilitli oturum yer değiştiremez; önce kilidi kaldırın");return}
+ const wa=A.pilots.filter(Boolean).join("/"),wb=B.pilots.filter(Boolean).join("/"),before=JSON.stringify(DB.sessions);
+ const codes=[...new Set([...A.pilots,...B.pilots,...(A.instr||[]),...(B.instr||[])].filter(Boolean))],key=x=>x.replace(/\d\d\.\d\d\.\d{4}/g,"#");
+ const old=new Set(swapIssues([A.id,B.id],codes).map(key));const r=sesSwapApply(DB.sessions,src,dst);
+ if(!r){DB.sessions=JSON.parse(before);return}if(r.err){DB.sessions=JSON.parse(before);toast(r.err);return}
+ const neu=swapIssues(r.ids,codes).filter(x=>!old.has(key(x)));DB.sessions=JSON.parse(before);
+ const go=()=>{sesSwapApply(DB.sessions,src,dst);UI.undo.push(before);if(UI.undo.length>30)UI.undo.shift();touch();render();toast("Oturumlar yer değiştirdi: "+wa+" ↔ "+wb+(neu.length?" – "+neu.length+" yeni sorun":""))};
+ if(!neu.length)return go();
+ dlg("Kural ihlali",`<div><b>${esc(wa)} ↔ ${esc(wb)}</b> oturumlarının yer değiştirmesi şu yeni sorunları doğuruyor:</div><ul>${neu.map(x=>`<li class="${x[0]==="✖"?"bad":"warn"}">${esc(x.slice(2))}</li>`).join("")}</ul><div class="mu">Yine de yapılsın mı? (Sonra ↶ Geri al ile geri alabilirsiniz.)</div>`,[{l:"Vazgeç"},{l:"Yine de yap",c:"p",f:go}])}
 function dropSwap(src,dst){if(src.k!==dst.k||(src.id===dst.id&&src.i===dst.i))return;
  const before=JSON.stringify(DB.sessions),A=DB.sessions.find(x=>x.id===src.id),B=DB.sessions.find(x=>x.id===dst.id);if(!A||!B)return;
  const who=src.k==="p"?[A.pilots[src.i],B.pilots[dst.i]]:[A.instr?.[src.i],B.instr?.[dst.i]];
@@ -1045,9 +1079,9 @@ function dropSwap(src,dst){if(src.k!==dst.k||(src.id===dst.id&&src.i===dst.i))re
  if(!neu.length)return go();
  dlg("Kural ihlali",`<div><b>${esc(who[0]||"boş")} ↔ ${esc(who[1]||"boş")}</b> yer değiştirmesi şu yeni sorunları doğuruyor:</div><ul>${neu.map(x=>`<li class="${x[0]==="✖"?"bad":"warn"}">${esc(x.slice(2))}</li>`).join("")}</ul><div class="mu">Yine de yapılsın mı? (Sonra ↶ Geri al ile geri alabilirsiniz.)</div>`,[{l:"Vazgeç"},{l:"Yine de yap",c:"p",f:go}])}
 document.addEventListener("dragstart",e=>{const el=e.target.closest?.("[data-dg]");if(!el)return;DRAG=dgParse(el.dataset.dg);e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain",el.dataset.dg);el.classList.add("dsrc")});
-document.addEventListener("dragover",e=>{const el=e.target.closest?.("[data-dt]");if(!el||!DRAG||dgParse(el.dataset.dt).k!==DRAG.k)return;e.preventDefault();e.dataTransfer.dropEffect="move";$$(".dtg").forEach(x=>{if(x!==el)x.classList.remove("dtg")});el.classList.add("dtg")});
+document.addEventListener("dragover",e=>{const el=e.target.closest?.("[data-dt]");if(!el||!DRAG)return;const tk=dgParse(el.dataset.dt).k;if(!(tk===DRAG.k||tk==="e"&&(DRAG.k==="p"||DRAG.k==="s")))return;if(tk==="s"&&dgParse(el.dataset.dt).id===DRAG.id)return;e.preventDefault();e.dataTransfer.dropEffect="move";$$(".dtg").forEach(x=>{if(x!==el)x.classList.remove("dtg")});el.classList.add("dtg")});
 document.addEventListener("dragleave",e=>{const el=e.target.closest?.("[data-dt]");if(el&&!el.contains(e.relatedTarget))el.classList.remove("dtg")});
-document.addEventListener("drop",e=>{const el=e.target.closest?.("[data-dt]");$$(".dtg,.dsrc").forEach(x=>x.classList.remove("dtg","dsrc"));if(!el||!DRAG)return;e.preventDefault();const s=DRAG;DRAG=null;dropSwap(s,dgParse(el.dataset.dt))});
+document.addEventListener("drop",e=>{const el=e.target.closest?.("[data-dt]");$$(".dtg,.dsrc").forEach(x=>x.classList.remove("dtg","dsrc"));if(!el||!DRAG)return;e.preventDefault();const s=DRAG;DRAG=null;const t=dgParse(el.dataset.dt);if(t.k==="e")dropMove(s,t);else if(t.k==="s")dropSesSwap(s,t);else dropSwap(s,t)});
 document.addEventListener("dragend",()=>{DRAG=null;$$(".dtg,.dsrc").forEach(x=>x.classList.remove("dtg","dsrc"))});
 $("#ov").addEventListener("click",e=>{if(e.target.id==="ov")closeDlg()});
 $("#bPlan").onclick=()=>planDlg(false);$("#bPlanR").onclick=()=>planDlg(true);$("#bImp").onclick=()=>$("#fImp").click();$("#fImp").onchange=e=>{const f=e.target.files[0];e.target.value="";if(f)importFile(f)};
@@ -1146,7 +1180,7 @@ const EN_T={
 "Plan, Earliest Auto (#) tarihinden sonra olmalı":"Plan must be after Earliest Auto (#)","Plan, Valid (#) tarihinden sonra":"Plan is after Valid (#)","# ay kuralı: en erken #":"# months rule: earliest #","Geçerlilik bitişinden (#) sonra":"After validity end (#)","Planlanmadı – geçerlilik dönem sonrasında (#)":"Not planned – validity after the period (#)","AB tarih kuralı hatası: en erken / en geç / # ay (kırmızı yazı)":"AB date rule error: earliest / latest / # months (red text)","tarih kuralı hatası: en erken / en geç / # ay (kırmızı yazı)":"date rule error: earliest / latest / # months (red text)","vizesi geçmiş ya da vize kaydı yok (mor kesik çerçeve; pilot ve eğitmen)":"visa expired or no visa record (purple dashed frame; pilot and instructor)",
 "Satırlar: gün, simülatör, slot saati (yerel), eğitmen, öğrenciler; aynı gün aynı simülatördeki ikinci slot alt alta":"Rows: day, simulator, slot time (local), instructor, students; a second slot on the same day and simulator is stacked below",
 "sektör adı ve tarih üzerine gelince görünür":"sector name and date appear on hover","🔒 kilitli":"🔒 locked","kilitli":"locked","hata uyarı":"error warning","hata":"error","uyarı":"warning",
-"Bir sütuna tıklayıp oturumu düzenleyin; pilotu ya da eğitmeni sürükleyip başka bir pilotun / eğitmenin üzerine bırakarak yer değiştirin (pilotta bütün oturum, eğitmende o gün).":"Click a column to edit the session; drag a pilot or instructor onto another pilot / instructor to swap them (whole session for a pilot, that day for an instructor).",
+"Bir sütuna tıklayıp oturumu düzenleyin; pilotu ya da eğitmeni sürükleyip başka bir pilotun / eğitmenin üzerine bırakarak yer değiştirin (pilotta bütün oturum, eğitmende o gün). Boş simülatör günlerini gösterip boş güne bir pilotu bırakırsanız yalnız o pilot, oturumun gün ya da saat hücresini bırakırsanız bütün oturum oraya taşınır; gün ya da saat hücresini başka bir oturumun gün ya da saat hücresine bırakırsanız iki oturum yer değiştirir.":"Click a column to edit the session; drag a pilot or instructor onto another pilot / instructor to swap them (whole session for a pilot, that day for an instructor). With empty simulator days shown, drop a pilot on an empty day to move only that pilot, or drop the session's day or time cell to move the whole session; drop it on another session's day or time cell to swap the two sessions.","Hedef günlerde bu slotta başka oturum var":"Another session already uses this slot on the target days","Sektör sayıları farklı oturumlar yer değiştiremez":"Sessions with different sector counts cannot be swapped","Kilitli oturum yer değiştiremez; önce kilidi kaldırın":"A locked session cannot be swapped; unlock it first",
 "SON AYINDA (Final!)":"IN FINAL MONTH (Final!)","VİZE KAYDI YOK":"NO VISA RECORD",
 "İlk sektör tarihini değiştirince diğerleri aynı miktarda kayar. Kontrol tarihi = son sektör.":"Changing the first sector date shifts the others by the same amount. Check date = last sector.",
 "Simülatör / slot":"Simulator / slot","Sektör sayısı":"Number of sectors","Bu sektörün eğitmeni kilitli":"This sector's instructor is locked","Bu öğrenci kilitli":"This student is locked",
