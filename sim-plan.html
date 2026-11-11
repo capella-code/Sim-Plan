@@ -790,9 +790,8 @@ function planDlg(resOnly){const S=DB.settings,locked=DB.sessions.filter(isKept).
   <div style="padding-left:18px;display:flex;flex-direction:column;gap:3px">${devs.filter(d=>firmOf(d)===f).map(d=>`<div class="row"><label class="ck" style="min-width:170px"><input type="checkbox" data-pd="${esc(d.id)}"${String(d.id)in pref?" checked":""}><span>${esc(d.c)} · ${esc(d.loc)}</span></label>
    <span class="row" style="gap:10px;flex-wrap:wrap">${SLOTS.filter(k=>d.s?.[k]).map(k=>`<label class="ck"><input type="checkbox" data-pk="${esc(d.id)}" value="${k}"${String(d.id)in pref&&String(pref[d.id]||defSlot(d)).split(",").includes(k)?" checked":""}><span>Slot ${k} · ${esc(slotTime(d,k))}</span></label>`).join("")}</span></div>`).join("")}</div></div>`).join("");
  dlg(resOnly?"Sadece Reserved ile planla":"Planı oluştur",`<div class="g">
- <label class="f"><span>LPC kaç sektör planlansın?</span><select id="pL">${[1,2,3,4,5].map(n=>`<option${n==S.lpcSec?" selected":""}>${n}</option>`).join("")}</select><span class="mu" id="pLn"></span></label>
- <label class="f"><span>OPC kaç sektör planlansın?</span><select id="pO">${[1,2,3,4,5].map(n=>`<option${n==S.opcSec?" selected":""}>${n}</option>`).join("")}</select><span class="mu" id="pOn"></span></label>
  <label class="f"><span>Plan başlangıcı</span><input type="date" id="pS" value="${esc(S.start)}"></label><label class="f"><span>Plan bitişi</span><input type="date" id="pE" value="${esc(S.end)}"></label></div>
+ <div class="mu" style="margin-top:4px">Sektör sayıları (Ayarlar'dan): LPC ${S.lpcSec} sektör (${sectorLabels("LPC",S.lpcSec).join(" → ")}) · OPC ${S.opcSec} sektör (${sectorLabels("OPC",S.opcSec).join(" → ")})</div>
  ${resOnly?`<h3>Yalnızca Reserved günler</h3><div class="mu">Taslak plan yalnızca müsaitlik listesindeki <b>Reserved</b> günlerle kurulur (dönemde <b>${days}</b> gün); tahmini slot açılmaz. Sığmayan kontroller uygunluk tablosunda <b>Planlanmadı</b> olarak görünür.</div>${days?"":'<div class="bad" style="margin-top:6px">Dönemde Reserved gün yok.</div>'}`:`<h3>Taslak plan hangi simülatör ve slotta kurulsun?</h3>
  <div class="mu">Önce müsaitlik listesindeki <b>Reserved</b> günler kullanılır (dönemde ${days} gün). Kalan ihtiyaç için seçilen simülatörlerde her ay bir blok açılır: aylara dengeli (ayda yaklaşık ${monthTarget(X)} oturum), kapalı günler hariç, mümkünse ayın ilk ve son 5 günü dışında. Plandaki her gün müsaitlik listesine <b>Tahmini</b> satır olarak eklenir. Bir simülatörde birden fazla slot seçerseniz bloklar aynı günlerde her seçili slotta açılır (Ayarlar'daki "Simülatör başına günde en fazla sektör" sınırına uyulur).</div>
  ${firmHtml||'<div class="bad">Aktif simülatör yok (FSTD / Uçak sekmesi).</div>'}`}
@@ -800,14 +799,14 @@ function planDlg(resOnly){const S=DB.settings,locked=DB.sessions.filter(isKept).
  <div class="mu" style="margin-top:6px">Ekip: <b>${X.crew.length}</b>${bad?` <span class="bad">(${bad} kişi kod/LPC eksik ya da kod tekrarı yüzünden dışarıda)</span>`:""} · Eğitmen: <b>${X.instr.length}</b><br>
  ${locked?`<b>${locked}</b> kilitli ve slotları Reserved oturum korunacak${(()=>{const p=DB.sessions.filter(se=>isKept(se)&&se.lk).length;return p?` (${p} tanesi kısmen kilitli: kilitsiz kişilerin yerine uygun kişi konur)`:""})()}; `:""}${DB.sessions.length-locked} oturum yeniden dağıtılacak${lockedTent?` (bunların ${lockedTent} tanesi kilitli ama slotu Tahmini olduğu için yeni seçime göre taşınır)`:""}.</div>
  `,
- [{l:"Vazgeç"},{l:"Planla",c:"p",f:()=>{S.lpcSec=+$("#pL").value;S.opcSec=+$("#pO").value;S.start=$("#pS").value;S.end=$("#pE").value;
+ [{l:"Vazgeç"},{l:"Planla",c:"p",f:()=>{S.start=$("#pS").value;S.end=$("#pE").value;
    if(!S.start||!S.end||S.end<S.start){toast("Plan dönemi geçersiz");return false}
    const np={};$$("#dl [data-pd]").forEach(c=>{if(!c.checked)return;const ks=$$(`#dl [data-pk="${c.dataset.pd}"]`).filter(x=>x.checked).map(x=>x.value);np[c.dataset.pd]=(ks.length?ks:[defSlot(devById(c.dataset.pd))]).join(",")});
    if(resOnly){if(!days){toast("Dönemde Reserved gün yok");return false}runPlan(true);return}
    if(!Object.keys(np).length&&!days){toast("En az bir simülatör seçin");return false}S.pref=np;runPlan()}}],
  ()=>{$$("#dl [data-pk]").forEach(x=>x.onchange=()=>{const id=x.dataset.pk,dv=$(`#dl [data-pd="${id}"]`);if(dv)dv.checked=$$(`#dl [data-pk="${id}"]`).some(y=>y.checked)});
   $$("#dl [data-pd]").forEach(x=>x.onchange=()=>{const ks=$$(`#dl [data-pk="${x.dataset.pd}"]`);if(!x.checked)ks.forEach(y=>y.checked=false);else if(!ks.some(y=>y.checked)){const d0=defSlot(devById(x.dataset.pd)),k=ks.find(y=>y.value===d0)||ks[0];if(k)k.checked=true}});
-  const u=()=>{$("#pLn").textContent=sectorLabels("LPC",+$("#pL").value).join(" → ");$("#pOn").textContent=sectorLabels("OPC",+$("#pO").value).join(" → ")};u();$("#pL").onchange=u;$("#pO").onchange=u})}
+  })}
 // kilitsiz oturumlar ve onların tahmini satırları silinir, bloklar hesaplanır; süresi dönem içinde bitip sığmayan kontrol olursa o ayın bloğu büyütülüp yeniden denenir
 function runPlan(resOnly){const t0=performance.now();DB.sessions=DB.sessions.filter(isKept);
  DB.sessions.forEach(se=>{if(!se.lk)return;se.pilots=se.pilots.map((c,j)=>pLk(se,j)?c:"");se.instr=se.dates.map((_,k)=>iLk(se,k)?se.instr?.[k]||"":"")});syncSlots();const X=ctx(),S=X.S,base=JSON.stringify(DB.sessions);
@@ -1239,6 +1238,7 @@ const EN_R=[
  [/^([⚠✖]) (.*)$/,(m,a,r)=>{const e=en(r);return e?a+" "+e:null}],[/^(\d\d\.\d\d\.\d{4}) (Pzt|Sal|Çar|Per|Cum|Cmt|Paz)$/,(m,d,w)=>d+" "+({Pzt:"Mon",Sal:"Tue",Çar:"Wed",Per:"Thu",Cum:"Fri",Cmt:"Sat",Paz:"Sun"})[w]],
  [/^(Pzt|Sal|Çar|Per|Cum|Cmt|Paz)(,(Pzt|Sal|Çar|Per|Cum|Cmt|Paz))*$/,m=>m.split(",").map(d=>({Pzt:"Mon",Sal:"Tue",Çar:"Wed",Per:"Thu",Cum:"Fri",Cmt:"Sat",Paz:"Sun"})[d]).join(",")],
  [/^sektör (\d+)\/(\d+)$/,"sector $1/$2"],
+ [/^Sektör sayıları \(Ayarlar'dan\): LPC (\d+) sektör \((.*)\) · OPC (\d+) sektör \((.*)\)$/,"Sector counts (from Settings): LPC $1 sectors ($2) · OPC $3 sectors ($4)"],
  [/^(\d+)\. öğrenci$/,"Student $1"],[/^(\d+)\. kontrol$/,"$1. check"],[/^(\d+)\. eğitim$/,"$1. training"],
  [/^son planlama (.+)$/,"last planned $1"],[/^Eğitmen yükü: (.*)$/,"Instructor load: $1"],[/^En erken (\S+)$/,"Earliest $1"],[/^en geç (\S+)( \(süresi dolmuş\))?$/,(m,d,x)=>"latest "+d+(x?" (expired)":"")],
  [/^en erken( (\S+))?$/,(m,x,d)=>"earliest"+(d?" "+d:"")],[/^(\S+) gece$/,"$1 nights"],[/^(\S+) (\d+) gece$/,"$1 $2 nights"],[/^Ekip: (\d+)$/,"Crew: $1"],[/^Eğitmen: (\d+) (.*)$/,(m,n,r)=>{const e=en(r)??(EN_S?null:enPh(r));return e?"Instructors: "+n+" "+e:null}],
