@@ -50,10 +50,10 @@ ul.rules{margin:4px 0;padding-left:18px}ul.rules li{margin:3px 0}
 .iss{font-size:12px;margin:2px 0}
 @media print{.np,.tabs,.toast{display:none!important}body{background:#fff}.w{max-width:none;padding:0}.cd{border:none;padding:0}.sc{max-height:none;overflow:visible}.ot,.mt{font-size:10px}}
 </style></head><body><div class="w">
-<div class="row"><h1>Yıllık Simülatör Planı</h1><span class="sp"></span>
+<div class="row"><h1>Yıllık Simülatör Planı</h1><span id="appver" class="mu" style="font-size:12px;align-self:flex-end"></span><span class="sp"></span>
 <div class="row np"><button class="p" id="bPlan">Planı oluştur</button><button class="p" id="bPlanR" title="Yalnızca müsaitlik listesindeki Reserved günleri kullanır; tahmini slot açmaz">Sadece Reserved ile planla</button><button id="bImp">Excel / CSV yükle</button><button id="bXls">Excel'e aktar ▾</button><button id="bPrint">Yazdır</button><button id="bLang" class="np" title="Dil / Language">EN</button>
 <button id="bMore">Diğer ▾</button></div></div>
-<div class="mu">Veriler yalnızca bu cihazda (tarayıcı hafızasında) saklanır. İnternet gerekmez. Yedek almak için Diğer ▸ Yedek al.</div>
+<div class="mu" id="storeNote">Veriler yalnızca bu cihazda (tarayıcı hafızasında) saklanır. İnternet gerekmez. Yedek almak için Diğer ▸ Yedek al.</div>
 <input type="file" id="fImp" accept=".xlsx,.csv,.txt,.json" hidden>
 <div class="tabs np" id="tabs"></div>
 <div id="view"></div>
@@ -63,7 +63,7 @@ ul.rules{margin:4px 0;padding-left:18px}ul.rules li{margin:3px 0}
 <script>
 "use strict";
 /* ============ yardımcılar ============ */
-const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const $=s=>document.querySelector(s),qsa=s=>[...document.querySelectorAll(s)];
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
 const uid=()=>Math.random().toString(36).slice(2,10);
 const pad=n=>String(n).padStart(2,"0");
@@ -84,7 +84,11 @@ const MON=["Oca","Şub","Mar","Nis","May","Haz","Tem","Ağu","Eyl","Eki","Kas","
 const norm=s=>String(s??"").toLocaleLowerCase("tr").replace(/ı/g,"i").replace(/ş/g,"s").replace(/ğ/g,"g").replace(/ü/g,"u").replace(/ö/g,"o").replace(/ç/g,"c").normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]/g,"");
 const clampInt=(v,a,b)=>Math.max(a,Math.min(b,parseInt(v,10)||a));
 const EXAM=new Set(["TRE","SFE"]),LINE=new Set(["TRE","TRI"]);// LINE: hat pilotu eğitmenler (ayarda "yalnızca kendi LPC/OPC'si varsa")
-const ls={g:k=>{try{return localStorage.getItem(k)}catch(e){return null}},s:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
+// Veri deposu: masaüstü uygulamasında (Electron) veriler bir dosyada tutulur; tarayıcıda localStorage'da
+const IS_APP=typeof window!=="undefined"&&!!window.simStore;
+const ls=IS_APP?(()=>{let m={};try{m=JSON.parse(window.simStore.initial()||"{}")||{}}catch(e){m={}}
+ return{g:k=>k in m?m[k]:null,s:(k,v)=>{m[k]=v;try{window.simStore.save(JSON.stringify(m))}catch(e){}}}})()
+ :{g:k=>{try{return localStorage.getItem(k)}catch(e){return null}},s:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
 
 /* ============ veri ============ */
 const LS_KEY="simplan.v1";
@@ -623,8 +627,8 @@ function devDlg(id,kind){const orig=id!=null?devById(id):null;const x=orig?clone
  ${ac?'<p class="mu">Uçakta uçuş saati değişken olduğu için slot tanımlanmaz.</p>':`<div class="mu" style="margin-top:10px">Slot saatleri (yerel; kullanılmayan slotu boş bırakın)</div><div class="g" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-top:4px">${SLOTS.map(k=>`<label class="f"><span>Slot ${k} (${SLOTS.indexOf(k)})</span><span style="display:flex;gap:4px;align-items:center"><input type="time" data-sl="${k}" data-j="0" value="${esc((x.s[k]||[])[0]||"")}" style="flex:1;min-width:0"> – <input type="time" data-sl="${k}" data-j="1" value="${esc((x.s[k]||[])[1]||"")}" style="flex:1;min-width:0"></span></label>`).join("")}</div>`}
  <ul id="der" class="bad" style="padding-left:18px;font-size:13px;margin:8px 0 0"></ul>`,
  [{l:"Vazgeç"},{l:"Kaydet",c:"p",f:()=>{const N={c:v=>v.toUpperCase().replace(/\s/g,""),loc:v=>v.toUpperCase().replace(/[^A-Z]/g,""),ac:v=>v.toUpperCase().trim()};
-  $$("#dl [data-dd]").forEach(i=>{const k=i.dataset.dd;x[k]=i.type==="checkbox"?(i.checked?1:0):N[k]?N[k](i.value):i.value.trim()});
-  const sl={};$$("#dl [data-sl]").forEach(i=>{const k=i.dataset.sl;(sl[k]=sl[k]||["",""])[+i.dataset.j]=i.value});x.s={};if(!ac)SLOTS.forEach(k=>{if(sl[k]&&(sl[k][0]||sl[k][1]))x.s[k]=sl[k]});
+  qsa("#dl [data-dd]").forEach(i=>{const k=i.dataset.dd;x[k]=i.type==="checkbox"?(i.checked?1:0):N[k]?N[k](i.value):i.value.trim()});
+  const sl={};qsa("#dl [data-sl]").forEach(i=>{const k=i.dataset.sl;(sl[k]=sl[k]||["",""])[+i.dataset.j]=i.value});x.s={};if(!ac)SLOTS.forEach(k=>{if(sl[k]&&(sl[k][0]||sl[k][1]))x.s[k]=sl[k]});
   const b=devErr(x);if(b.length){$("#der").innerHTML=b.map(m=>`<li>${esc(m)}</li>`).join("");return false}
   if(!ac)SLOTS.forEach(k=>{if(x.s[k]&&!(x.s[k][0]&&x.s[k][1]))delete x.s[k]});
   if(orig&&orig.c!==x.c){const rn=l=>l===orig.c?x.c:l.startsWith(orig.c+" ")?x.c+l.slice(orig.c.length):l;DB.sessions.forEach(se=>{se.lane=rn(se.lane);if(se.lanes)se.lanes=se.lanes.map(rn)})}// kod değişince oturumlar izler
@@ -786,7 +790,7 @@ function simAddDlg(){const p=DB.sims.at(-1),devs=DB.devices.filter(d=>d.a).sort(
    UI.pin=UI.pin||{};(UI.pin.sims=UI.pin.sims||[]).unshift(it.id);DB.sims.push(it);touch();render()}}],
   ()=>{$("#saV").onchange=()=>{$("#saS").innerHTML=slotOpts($("#saV").value)};if(p?.slot&&$(`#saS option[value="${p.slot}"]`))$("#saS").value=p.slot;$("#saD").focus()})}
 function dlg(title,body,buttons,onOpen){$("#dl").innerHTML=`<h2>${title}</h2><div id="dlb">${body}</div><div class="bt">${buttons.map((b,i)=>`<button data-b="${i}" class="${b.c||""}">${b.l}</button>`).join("")}</div>`;
- $("#ov").hidden=false;$$("#dl [data-b]").forEach(el=>el.onclick=()=>{const b=buttons[+el.dataset.b];if(b.f&&b.f()===false)return;closeDlg()});if(onOpen)onOpen()}
+ $("#ov").hidden=false;qsa("#dl [data-b]").forEach(el=>el.onclick=()=>{const b=buttons[+el.dataset.b];if(b.f&&b.f()===false)return;closeDlg()});if(onOpen)onOpen()}
 function closeDlg(){$("#ov").hidden=true;$("#dl").innerHTML=""}
 function toast(m,ms=3500){const t=document.createElement("div");t.className="toast";t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),ms)}
 const confirmDlg=(title,msg,okL,fn,cls="p")=>dlg(title,`<div>${msg}</div>`,[{l:"Vazgeç"},{l:okL,c:cls,f:fn}]);
@@ -815,11 +819,11 @@ function planDlg(resOnly){const S=DB.settings,locked=DB.sessions.filter(isKept).
  `,
  [{l:"Vazgeç"},{l:"Planla",c:"p",f:()=>{S.start=$("#pS").value;S.end=$("#pE").value;
    if(!S.start||!S.end||S.end<S.start){toast("Plan dönemi geçersiz");return false}
-   const np={};$$("#dl [data-pd]").forEach(c=>{if(!c.checked)return;const ks=$$(`#dl [data-pk="${c.dataset.pd}"]`).filter(x=>x.checked).map(x=>x.value);np[c.dataset.pd]=(ks.length?ks:[defSlot(devById(c.dataset.pd))]).join(",")});
+   const np={};qsa("#dl [data-pd]").forEach(c=>{if(!c.checked)return;const ks=qsa(`#dl [data-pk="${c.dataset.pd}"]`).filter(x=>x.checked).map(x=>x.value);np[c.dataset.pd]=(ks.length?ks:[defSlot(devById(c.dataset.pd))]).join(",")});
    if(resOnly){if(!days){toast("Dönemde Reserved gün yok");return false}runPlan(true);return}
    if(!Object.keys(np).length&&!days){toast("En az bir simülatör seçin");return false}S.pref=np;runPlan()}}],
- ()=>{$$("#dl [data-pk]").forEach(x=>x.onchange=()=>{const id=x.dataset.pk,dv=$(`#dl [data-pd="${id}"]`);if(dv)dv.checked=$$(`#dl [data-pk="${id}"]`).some(y=>y.checked)});
-  $$("#dl [data-pd]").forEach(x=>x.onchange=()=>{const ks=$$(`#dl [data-pk="${x.dataset.pd}"]`);if(!x.checked)ks.forEach(y=>y.checked=false);else if(!ks.some(y=>y.checked)){const d0=defSlot(devById(x.dataset.pd)),k=ks.find(y=>y.value===d0)||ks[0];if(k)k.checked=true}});
+ ()=>{qsa("#dl [data-pk]").forEach(x=>x.onchange=()=>{const id=x.dataset.pk,dv=$(`#dl [data-pd="${id}"]`);if(dv)dv.checked=qsa(`#dl [data-pk="${id}"]`).some(y=>y.checked)});
+  qsa("#dl [data-pd]").forEach(x=>x.onchange=()=>{const ks=qsa(`#dl [data-pk="${x.dataset.pd}"]`);if(!x.checked)ks.forEach(y=>y.checked=false);else if(!ks.some(y=>y.checked)){const d0=defSlot(devById(x.dataset.pd)),k=ks.find(y=>y.value===d0)||ks[0];if(k)k.checked=true}});
   })}
 // kilitsiz oturumlar ve onların tahmini satırları silinir, bloklar hesaplanır; süresi dönem içinde bitip sığmayan kontrol olursa o ayın bloğu büyütülüp yeniden denenir
 function runPlan(resOnly){const t0=performance.now();DB.sessions=DB.sessions.filter(isKept);
@@ -864,8 +868,8 @@ function sessionDlg(id,preset={}){const X=ctx();const orig=id?DB.sessions.find(s
    s.dates=ord.map(x=>x[0]);s.instr=ord.map(x=>x[1]);setLk(s,{p:W.p,i:ord.map(x=>!!x[3])});const L2=ord.map(x=>x[2]);s.lane=L2[0];if(L2.some(k=>k!==L2[0]))s.lanes=L2;else delete s.lanes;
    if(orig){Object.assign(orig,s);if(!s.lk)delete orig.lk}else DB.sessions.push(s);save();tabCounts();render();const R2=evaluate(ctx()),o2=R2.byId.get(s.id);toast(o2&&o2.err.length?"Kaydedildi – "+o2.err.length+" hata var":"Kaydedildi")}}],
  ()=>{draw();$("#sN").onchange=()=>{const n=+$("#sN").value;while(s.dates.length<n){const l=toDn(s.dates.at(-1))??X.start;if(s.lanes)s.lanes.push(s.lanes.at(-1));s.dates.push(toIso(l+1))}s.dates.length=n;if(s.lanes)s.lanes.length=n;s.instr.length=Math.min(s.instr.length,n);while(W.i.length<n)W.i.push(W.i.at(-1)??true);W.i.length=n;draw();sm()};
-  sm();$("#sK").onchange=()=>{const v=$("#sK").checked;W.p=W.p.map(()=>v);W.i=W.i.map(()=>v);$$("[data-pk]").forEach(x=>x.checked=v);draw();sm()};
-  $$("[data-pk]").forEach(el=>el.onchange=()=>{W.p[+el.dataset.pk]=el.checked;sm()});
+  sm();$("#sK").onchange=()=>{const v=$("#sK").checked;W.p=W.p.map(()=>v);W.i=W.i.map(()=>v);qsa("[data-pk]").forEach(x=>x.checked=v);draw();sm()};
+  qsa("[data-pk]").forEach(el=>el.onchange=()=>{W.p[+el.dataset.pk]=el.checked;sm()});
   $("#sL").onchange=()=>{delete s.lanes;s.lane=$("#sL").value;draw()};
   $("#sx").onchange=e=>{const el=e.target;if(el.dataset.sd!=null){const k=+el.dataset.sd,old=toDn(s.dates[k]),nw=toDn(el.value);if(k===0&&old!=null&&nw!=null){const dl=nw-old;s.dates=s.dates.map(d=>toIso(toDn(d)+dl));draw()}else s.dates[k]=el.value}
    if(el.dataset.si!=null)s.instr[+el.dataset.si]=el.value;
@@ -1117,25 +1121,25 @@ function dropSwap(src,dst){if(src.k!==dst.k||(src.id===dst.id&&src.i===dst.i))re
  if(!neu.length)return go();
  dlg("Kural ihlali",`<div><b>${esc(who[0]||"boş")} ↔ ${esc(who[1]||"boş")}</b> yer değiştirmesi şu yeni sorunları doğuruyor:</div><ul>${neu.map(x=>`<li class="${x[0]==="✖"?"bad":"warn"}">${esc(x.slice(2))}</li>`).join("")}</ul><div class="mu">Yine de yapılsın mı? (Sonra ↶ Geri al ile geri alabilirsiniz.)</div>`,[{l:"Vazgeç"},{l:"Yine de yap",c:"p",f:go}])}
 document.addEventListener("dragstart",e=>{const el=e.target.closest?.("[data-dg]");if(!el)return;DRAG=dgParse(el.dataset.dg);e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain",el.dataset.dg);el.classList.add("dsrc")});
-document.addEventListener("dragover",e=>{const el=e.target.closest?.("[data-dt]");if(!el||!DRAG)return;const tk=dgParse(el.dataset.dt).k;if(!(tk===DRAG.k||tk==="e"&&(DRAG.k==="p"||DRAG.k==="s")))return;if(tk==="s"&&dgParse(el.dataset.dt).id===DRAG.id)return;e.preventDefault();e.dataTransfer.dropEffect="move";$$(".dtg").forEach(x=>{if(x!==el)x.classList.remove("dtg")});el.classList.add("dtg")});
+document.addEventListener("dragover",e=>{const el=e.target.closest?.("[data-dt]");if(!el||!DRAG)return;const tk=dgParse(el.dataset.dt).k;if(!(tk===DRAG.k||tk==="e"&&(DRAG.k==="p"||DRAG.k==="s")))return;if(tk==="s"&&dgParse(el.dataset.dt).id===DRAG.id)return;e.preventDefault();e.dataTransfer.dropEffect="move";qsa(".dtg").forEach(x=>{if(x!==el)x.classList.remove("dtg")});el.classList.add("dtg")});
 document.addEventListener("dragleave",e=>{const el=e.target.closest?.("[data-dt]");if(el&&!el.contains(e.relatedTarget))el.classList.remove("dtg")});
-document.addEventListener("drop",e=>{const el=e.target.closest?.("[data-dt]");$$(".dtg,.dsrc").forEach(x=>x.classList.remove("dtg","dsrc"));if(!el||!DRAG)return;e.preventDefault();const s=DRAG;DRAG=null;const t=dgParse(el.dataset.dt);if(t.k==="e")dropMove(s,t);else if(t.k==="s")dropSesSwap(s,t);else dropSwap(s,t)});
-document.addEventListener("dragend",()=>{DRAG=null;$$(".dtg,.dsrc").forEach(x=>x.classList.remove("dtg","dsrc"))});
+document.addEventListener("drop",e=>{const el=e.target.closest?.("[data-dt]");qsa(".dtg,.dsrc").forEach(x=>x.classList.remove("dtg","dsrc"));if(!el||!DRAG)return;e.preventDefault();const s=DRAG;DRAG=null;const t=dgParse(el.dataset.dt);if(t.k==="e")dropMove(s,t);else if(t.k==="s")dropSesSwap(s,t);else dropSwap(s,t)});
+document.addEventListener("dragend",()=>{DRAG=null;qsa(".dtg,.dsrc").forEach(x=>x.classList.remove("dtg","dsrc"))});
 $("#ov").addEventListener("click",e=>{if(e.target.id==="ov")closeDlg()});
 $("#bPlan").onclick=()=>planDlg(false);$("#bPlanR").onclick=()=>planDlg(true);$("#bImp").onclick=()=>$("#fImp").click();$("#fImp").onchange=e=>{const f=e.target.files[0];e.target.value="";if(f)importFile(f)};
 $("#bXls").onclick=()=>dlg("Excel'e aktar",`<div class="row"><button id="xP">Planı Excel'e aktar</button><button id="xH">Otel taslağı</button><button id="xC">CrwPlng Sim Import</button><button id="xB">CrwPlng Bilet Import</button><button id="xT">Excel şablonu (veriler)</button></div><div class="mu" style="margin-top:8px">Planı Excel'e aktar: uygunluk tablosu, taslak plan ve tüm veriler. CrwPlng Sim Import: plandaki her sektör günü için öğrenci ve eğitmen satırları. CrwPlng Bilet Import: otel taslağındaki her konaklama için taslak gidiş (otel girişi) ve dönüş (otel çıkışı) bileti. Excel şablonu: girilen veriler (doldurup Excel / CSV yükle ile geri yüklenebilir).</div>`,[{l:"Kapat"}],()=>{
  $("#xP").onclick=()=>{closeDlg();exportPlan()};$("#xH").onclick=()=>{closeDlg();exportHotel()};$("#xC").onclick=()=>{closeDlg();exportCrw()};$("#xB").onclick=()=>{closeDlg();exportTicket()};
  $("#xT").onclick=()=>{closeDlg();download(xlsxBlob(inputSheets()),"simulator-plan-veri.xlsx")}});$("#bPrint").onclick=()=>window.print();
-$("#bMore").onclick=()=>dlg("Diğer işlemler",`<div class="row"><button id="mB">Yedek al (JSON)</button><button id="mR">Yedekten yükle</button><button id="mS">Örnek veriyi yükle</button><button id="mC" class="d">Tüm verileri temizle</button></div><div class="mu" style="margin-top:8px">Yedek dosyası tüm girdileri, ayarları ve planı içerir; başka cihaza taşımak için kullanın.</div>`,[{l:"Kapat"}],()=>{
+$("#bMore").onclick=()=>dlg("Diğer işlemler",`<div class="row"><button id="mB">Yedek al (JSON)</button><button id="mR">Yedekten yükle</button><button id="mS">Örnek veriyi yükle</button><button id="mC" class="d">Tüm verileri temizle</button></div>${IS_APP?`<div class="row" style="margin-top:6px"><button id="mF">Veri klasörünü aç</button></div>`:""}<div class="mu" style="margin-top:8px">Yedek dosyası tüm girdileri, ayarları ve planı içerir; başka cihaza taşımak için kullanın.</div>`,[{l:"Kapat"}],()=>{
  $("#mB").onclick=()=>{download(new Blob([JSON.stringify(DB,null,1)],{type:"application/json"}),"simulator-plan-yedek-"+toIso(todayDn())+"-"+(n=>pad(n.getHours())+"."+pad(n.getMinutes()))(new Date())+".json");closeDlg()};
  $("#mR").onclick=()=>{closeDlg();$("#fImp").click()};
  $("#mS").onclick=()=>confirmDlg("Örnek veri","Mevcut veriler örnek veriyle değiştirilecek.","Yükle",()=>{DB=sampleDB();save();tabCounts();render()});
- $("#mC").onclick=()=>confirmDlg("Tüm verileri temizle","Ekip, eğitmen, simülatör, kısıt ve plan verilerinin tamamı silinecek.","Temizle",()=>{DB=emptyDB();save();tabCounts();render()},"d")});
+ $("#mC").onclick=()=>confirmDlg("Tüm verileri temizle","Ekip, eğitmen, simülatör, kısıt ve plan verilerinin tamamı silinecek.","Temizle",()=>{DB=emptyDB();save();tabCounts();render()},"d");if(IS_APP&&$("#mF"))$("#mF").onclick=()=>{try{window.simStore.openFolder&&window.simStore.openFolder()}catch(e){}}});
 /* ---- İngilizce ipuçları: Türkçe yazının üzerine gelince İngilizcesi görünür ---- */
 // Anahtarlarda sayılar # ile yazılır; İngilizcedeki # aynı sırayla gerçek sayılarla doldurulur.
 const EN_T={
 "Yıllık Simülatör Planı":"Annual Simulator Plan",
-"Veriler yalnızca bu cihazda (tarayıcı hafızasında) saklanır. İnternet gerekmez. Yedek almak için Diğer ▸ Yedek al.":"Data is stored only on this device (browser storage). No internet needed. To back up: More ▸ Back up.",
+"Veriler yalnızca bu cihazda (tarayıcı hafızasında) saklanır. İnternet gerekmez. Yedek almak için Diğer ▸ Yedek al.":"Data is stored only on this device (browser storage). No internet needed. To back up: More ▸ Back up.","Veriler bu bilgisayarda uygulamanın veri klasöründe saklanır. İnternet gerekmez. Yedek almak için Diğer ▸ Yedek al.":"Data is stored on this computer in the apps data folder. No internet needed. To back up: More ▸ Back up.","Veri klasörünü aç":"Open data folder",
 "Planı oluştur":"Build plan","Excel'e aktar ▾":"Export to Excel ▾","Excel'e aktar":"Export to Excel","Excel şablonu (veriler)":"Excel template (data)","CrwPlng Bilet Import":"CrwPlng Ticket Import","Planı Excel'e aktar: uygunluk tablosu, taslak plan ve tüm veriler. CrwPlng Sim Import: plandaki her sektör günü için öğrenci ve eğitmen satırları. CrwPlng Bilet Import: otel taslağındaki her konaklama için taslak gidiş (otel girişi) ve dönüş (otel çıkışı) bileti. Excel şablonu: girilen veriler (doldurup Excel / CSV yükle ile geri yüklenebilir).":"Export plan to Excel: eligibility table, draft plan and all data. CrwPlng Sim Import: student and instructor rows for every sector day in the plan. CrwPlng Ticket Import: a draft outbound (hotel check-in) and return (hotel check-out) ticket for every hotel stay. Excel template: the entered data (fill in and load back with Upload Excel / CSV).","Sadece Reserved ile planla":"Plan with Reserved only","Excel / CSV yükle":"Upload Excel / CSV","Excel şablonu indir":"Download Excel template",
 "Planı Excel'e aktar":"Export plan to Excel","Yazdır":"Print","Diğer ▾":"More ▾","Diğer":"More",
 "Ayarlar":"Settings","Ekip":"Crew","Vize":"Visa","Eğitmenler":"Instructors","FSTD / Uçak":"FSTD / Aircraft","Kapalı günler & izinler":"Closed days & leave",
@@ -1319,5 +1323,6 @@ const enPass=()=>LANG==="en"?trApply():enTips();
 let enQ=0;new MutationObserver(()=>{if(!enQ)enQ=requestAnimationFrame(()=>{enQ=0;enPass()})}).observe(document.body,{childList:true,subtree:true,characterData:true});
 document.addEventListener("change",e=>{if(LANG==="tr"&&e.target.tagName==="SELECT")requestAnimationFrame(()=>enTips(e.target.parentNode))});
 $("#bLang").textContent=LANG==="en"?"TR":"EN";$("#bLang").onclick=()=>{ls.s("simplan.lang",LANG==="en"?"tr":"en");location.reload()};
+if(IS_APP){try{const vv=window.simStore.version;if(vv&&$("#appver"))$("#appver").textContent="v"+vv;const sn=$("#storeNote");if(sn)sn.textContent="Veriler bu bilgisayarda uygulamanın veri klasöründe saklanır. İnternet gerekmez. Yedek almak için Diğer ▸ Yedek al.";document.title="Sim Plan"+(vv?" v"+vv:"")}catch(e){}}
 load();tabCounts();render();
 </script></body></html>

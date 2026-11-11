@@ -1,0 +1,45 @@
+{
+  "name": "sim-plan",
+  "productName": "Sim Plan",
+  "version": "1.0.0",
+  "description": "Yıllık simülatör planı",
+  "author": "Capella",
+  "license": "UNLICENSED",
+  "private": true,
+  "main": "electron/main.js",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "dist": "npm run build && electron-builder --win --publish never",
+    "start": "npm run build && electron ."
+  },
+  "devDependencies": {
+    "electron": "33.2.0",
+    "electron-builder": "25.1.8",
+    "javascript-obfuscator": "4.1.1"
+  },
+  "build": {
+    "appId": "com.capella.simplan",
+    "productName": "Sim Plan",
+    "copyright": "Capella",
+    "asar": true,
+    "files": [
+      "electron/**/*",
+      "app/**/*",
+      "package.json"
+    ],
+    "directories": { "buildResources": "build", "output": "dist" },
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Sim Plan"
+    },
+    "publish": null
+  }
+}

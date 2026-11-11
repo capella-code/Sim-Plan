@@ -1,0 +1,51 @@
+name: Windows kurulum dosyasi
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["app-v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Bagimliliklari kur
+        run: npm install
+
+      - name: Kodu karistir (app/index.html uret)
+        run: npm run build
+
+      - name: Setup.exe olustur
+        run: npx --no-install electron-builder --win --publish never
+
+      - name: Surum numarasini oku
+        id: ver
+        shell: bash
+        run: echo "v=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Derleme ciktisini yukle (Actions > artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: SimPlan-Setup-${{ steps.ver.outputs.v }}
+          path: dist/*.exe
+          if-no-files-found: error
+
+      - name: Surum (Release) olustur ve Setup.exe ekle
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: app-v${{ steps.ver.outputs.v }}
+          name: Sim Plan v${{ steps.ver.outputs.v }}
+          body: |
+            Sim Plan kurulum dosyasi. Setup.exe'yi indirip calistirin.
+            Imzasiz oldugu icin Windows SmartScreen uyari verebilir: "Ek bilgi" > "Yine de calistir".
+          files: dist/*.exe
+          token: ${{ secrets.GITHUB_TOKEN }}
