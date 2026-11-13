@@ -1052,20 +1052,23 @@ function ticketRows(X,R){const H=hotelStays(X,R).filter(h=>h.loc);const out=[];
   arr:{date:h.out,route:h.loc+"-"+hb,fn:"?",dt:"14:45",at:"19:10"}})});
  return out.sort((a,b)=>mKey(a.dep.date)-mKey(b.dep.date)||a.dep.date-b.dep.date||a.arr.date-b.arr.date||a.code.localeCompare(b.code))}
 const tMon=r=>HMON[ymd(r.dep.date)[1]];
+const skyYmd=dn=>{const[y,m,d]=ymd(dn);return String(y).slice(2)+pad(m+1)+pad(d)};
+// Skyscanner gidiş-dönüş arama bağlantısı — canlı fiyat değil; tek tıkla doğru rota+tarihle en ucuzu arar
+const skyUrl=(from,to,out,ret)=>`https://www.skyscanner.com.tr/transport/flights/${String(from||"").toLowerCase()}/${String(to||"").toLowerCase()}/${skyYmd(out)}/${skyYmd(ret)}/?adults=1&cabinclass=economy&preferdirects=true`;
 function vTicket(){const X=ctx(),R=evaluate(X),all=ticketRows(X,R);
  let rows=all;if(UI.tloc)rows=rows.filter(r=>r.loc===UI.tloc);const locs=[...new Set(all.map(r=>r.loc))].sort();
  const leg=g=>`<td class="c">${fmt(g.date)}</td><td class="c">${esc(g.route)}</td><td class="c">${esc(g.fn)}</td><td class="c">${esc(g.dt)}</td><td class="c">${esc(g.at)}</td>`;
- const body=rows.map(r=>`<tr style="background:#${tMon(r)}"><td class="c">${esc(r.rank)}</td><td>${esc(r.name)}</td><td class="c">${esc(r.code)}</td>${leg(r.dep)}${leg(r.arr)}</tr>`).join("");
+ const body=rows.map(r=>`<tr style="background:#${tMon(r)}"><td class="c">${esc(r.rank)}</td><td>${esc(r.name)}</td><td class="c">${esc(r.code)}</td>${leg(r.dep)}${leg(r.arr)}<td class="c"><a href="${skyUrl(r.home,r.loc,r.dep.date,r.arr.date)}" target="_blank" rel="noopener" title="Skyscanner'da en ucuz gidiş-dönüş (yeni sekmede açılır)">↗ ara</a></td></tr>`).join("");
  return`${stale()}<div class="cd"><div class="row np"><h2>Bilet taslağı</h2><span class="mu">Her kişi için gidiş (Dep.) + dönüş (Arr.)</span><span class="sp"></span>
   <select data-ui="tloc"><option value="">Tüm lokasyonlar</option>${locs.map(l=>`<option value="${esc(l)}"${UI.tloc===l?" selected":""}>${esc(l||"—")}</option>`).join("")}</select>
   <button class="s np" data-kexp="1">Excel'e aktar</button></div>
   <div class="chips"><span class="chip">Kişi <b>${rows.length}</b></span>${locs.map(l=>`<span class="chip">${esc(l||"—")} <b>${rows.filter(r=>r.loc===l).length}</b></span>`).join("")}</div>
-  <div class="mu" style="margin:0 0 6px">Otel taslağından kurulur: her satır bir kişinin gidiş (home base→lokasyon, otel girişi) ve dönüş (lokasyon→home base, otel çıkışı) biletidir. Saat ve uçuş bilgisi taslaktır (Flight No "?"). Aylara göre renklendirilir; ay → kişi → tarih sıralı. "Excel'e aktar" ile CrwPlng Bilet Import dosyası iner (Transport Type, Call_Sign, Time Type yalnızca Excel'de).</div>
+  <div class="mu" style="margin:0 0 6px">Otel taslağından kurulur: her satır bir kişinin gidiş (home base→lokasyon, otel girişi) ve dönüş (lokasyon→home base, otel çıkışı) biletidir. Saat ve uçuş bilgisi taslaktır (Flight No "?"). Aylara göre renklendirilir; ay → kişi → tarih sıralı. "Excel'e aktar" ile CrwPlng Bilet Import dosyası iner (Transport Type, Call_Sign, Time Type yalnızca Excel'de). <b>Skyscanner</b> sütunundaki "↗ ara", o kişinin gidiş-dönüşünü doğru rota ve tarihlerle, <b>aktarmasız (direkt)</b> tercihiyle Skyscanner'da yeni sekmede arar (canlı fiyat uygulamaya çekilmez; en ucuzu orada görürsünüz).</div>
   <div class="sc"><table class="ot"><thead>
-   <tr><th rowspan="3">Rank</th><th rowspan="3">Name Surname</th><th rowspan="3">Code</th><th colspan="5">Dep.</th><th colspan="5">Arr.</th></tr>
+   <tr><th rowspan="3">Rank</th><th rowspan="3">Name Surname</th><th rowspan="3">Code</th><th colspan="5">Dep.</th><th colspan="5">Arr.</th><th rowspan="3">Skyscanner</th></tr>
    <tr><th rowspan="2">Date</th><th rowspan="2">Route</th><th rowspan="2">Flight No</th><th colspan="2">Time</th><th rowspan="2">Date</th><th rowspan="2">Route</th><th rowspan="2">Flight No</th><th colspan="2">Time</th></tr>
    <tr><th>Dep.</th><th>Arr.</th><th>Dep.</th><th>Arr.</th></tr>
-  </thead><tbody>${body||`<tr><td colspan="13">${all.length?"Bu lokasyonda bilet yok.":"Taslak plan boş. Önce <b>Planı oluştur</b>'a basın."}</td></tr>`}</tbody></table></div></div>`}
+  </thead><tbody>${body||`<tr><td colspan="14">${all.length?"Bu lokasyonda bilet yok.":"Taslak plan boş. Önce <b>Planı oluştur</b>'a basın."}</td></tr>`}</tbody></table></div></div>`}
 function exportCrw(){const X=ctx(),R=evaluate(X),FILL={LPC:"FFC000",OPC:"FFFF00"},GR="D9D9D9";
  const head=["Date","Code","Simulator Type","Company","SLOT","Device ID","Time Type","City"].map(v=>({v,b:1,bd:1,c:1}));
  const items=[];R.ses.forEach(o=>o.dn.forEach((d,k)=>items.push({o,d,k})));
