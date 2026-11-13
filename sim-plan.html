@@ -149,6 +149,8 @@ const LISTS={
   {k:"rank",l:"Rütbe",t:"sel",o:["CPT","F/O"],al:["rutbe","rank","unvan","gorev","pozisyon"]},
   {k:"name",l:"Ad Soyad",t:"text",al:["adsoyad","namesurname","adisoyadi","name","isim","personel"],w:190},
   {k:"code",l:"Kod",t:"code",al:["kod","code","codes","kisaltma"]},
+  {k:"base",l:"Base",t:"text",al:["base","baz","us","gorevyeri"],w:70,tip:"Kişinin bazı (bilgi amaçlı)."},
+  {k:"homebase",l:"Home Base",t:"text",al:["homebase","home","anaus","evus","merkez","istasyon","hb"],w:90,tip:"Kişinin home base'i (ör. IST). Biletler bu üssten yapılır."},
   {k:"lpc",l:"LPC Geçerlilik",t:"date",al:["lpcgecerlilik","lpcexpiry","lisansgecerlilik","lpcvalid","lpc","valid","gecerlilik"],tip:"OPC geçerliliği bundan hesaplanır: LPC'den 6 ay önce ya da sonra (bugünden sonraki ilk tarih, ay sonuna yuvarlanır)."},
   {k:"last",l:"Son Sim Tarihi",t:"date",al:["sonsimtarihi","sonsimulatortarihi","sonkontroltarihi","sonkontrol","sonsim","lastsim","lastcheck","sonsimulator"],tip:"En son katıldığı kontrolün (LPC/OPC) tarihi; 4 ay kuralı buna göre uygulanır."}],
   // Excel'de bu başlıklar olsa da okunmaz (başka sütunla karışmasın diye)
@@ -166,6 +168,8 @@ const LISTS={
   {k:"rank",l:"Rütbe",t:"sel",o:["CPT","F/O"],al:["rutbe","rank","unvan","gorev","pozisyon"],tip:"Eğitmenin rütbesi (pilot değilse boş bırakın)."},
   {k:"name",l:"Ad Soyad",t:"text",al:["adsoyad","name","adisoyadi","isim"],w:190},
   {k:"code",l:"Kod",t:"code",al:["kod","code"]},
+  {k:"base",l:"Base",t:"text",al:["base","baz","us","gorevyeri"],w:70,tip:"Eğitmenin bazı (bilgi amaçlı)."},
+  {k:"homebase",l:"Home Base",t:"text",al:["homebase","home","anaus","evus","merkez","istasyon","hb"],w:90,tip:"Eğitmenin home base'i (ör. IST). Biletler bu üssten yapılır."},
   {k:"role",l:"Yetki",t:"sel",o:["TRE","SFE","TRI","SFI"],al:["yetki","role","rol","yetkisi","rating"],tip:"Kontrol sektörlerine (LPC/OPC) yalnızca TRE ve SFE atanır; eğitim sektörlerine (LPT/OPT) herkes."},
   {k:"note",l:"Not",t:"text",al:["not","note","aciklama"],w:130}]},
  sims:{t:"Simülatör müsaitliği",sheet:"Simulatorler",cols:[
@@ -250,7 +254,7 @@ if(!Array.isArray(d.visas)||(!d.visas.length&&(d.crew||[]).some(c=>c.visa)))d.vi
  if(d.settings&&d.settings.schengen!=null){const t=d.visaTypes.find(t=>t.id==="schengen");if(t)t.locs=d.settings.schengen;delete d.settings.schengen}
  // eski SCHENGEN/UAE hücrelerindeki "Yesil" kişinin yeşil pasaportuna dönüşür
  d.visas.forEach(v=>{if("schengen"in v||"uae"in v){if(v.schengen==="Yesil"||v.uae==="Yesil")v.green=true;if(v.schengen&&v.schengen!=="Yesil")v.v_schengen=v.schengen;if(v.uae&&v.uae!=="Yesil")v.v_uae=v.uae;delete v.schengen;delete v.uae}if(v.green==null)v.green=false});
- (d.crew||[]).forEach(c=>delete c.visa);(d.sims||[]).forEach(s=>delete s.visa);
+ (d.crew||[]).forEach(c=>{delete c.visa;if(c.base==null)c.base="IST";if(c.homebase==null)c.homebase="IST"});(d.instr||[]).forEach(t=>{if(t.base==null)t.base="IST";if(t.homebase==null)t.homebase="IST"});(d.sims||[]).forEach(s=>delete s.visa);
  if(!Array.isArray(d.devices))d.devices=seedDevices();
  const lm=new Map();
  (d.sims||[]).forEach(s=>{if(s.dev!=null||!s.sim)return;const code=s.sim.trim().toUpperCase();let dv=d.devices.find(x=>(x.c||"").toUpperCase()===code);
@@ -544,7 +548,7 @@ function evaluate(X){const S=X.S;
  return{rows,ses,byId}}
 
 /* ============ arayüz ============ */
-const TABS=[["settings","Ayarlar"],["crew","Ekip"],["visas","Vize"],["instr","Eğitmenler"],["sims","FSTD / Uçak"],["off","Kapalı günler & izinler"],["nofly","Birlikte uçmayacaklar"],["table","Uygunluk tablosu"],["plan","Taslak plan"],["hotel","Otel taslağı"]];
+const TABS=[["settings","Ayarlar"],["crew","Ekip"],["visas","Vize"],["instr","Eğitmenler"],["sims","FSTD / Uçak"],["off","Kapalı günler & izinler"],["nofly","Birlikte uçmayacaklar"],["table","Uygunluk tablosu"],["plan","Taslak plan"],["hotel","Otel taslağı"],["ticket","Bilet taslağı"]];
 let TAB=ls.g("simplan.tab")||"table";
 const UI={type:"",onlyErr:false,q:"",showEmpty:false,lf:{},ts:{s:null,d:1},tf:{},devShow:"a",dev:{s:null,d:1,f:{}},hs:{s:null,d:1,f:{}},hloc:""};
 // sıralama / filtre yardımcıları: boş değerler her zaman sonda
@@ -563,7 +567,7 @@ function render(){const v=$("#view");
  else if(TAB==="sims")v.innerHTML=vDevices()+vList("sims",'<div class="mu">Her satır tek bir slot günüdür (tarih + simülatör + slot; saat ayrı sütunda). <b>Planı oluştur</b> taslak planı kurar ve plandaki her oturum günü için buraya <b>Tahmini</b> satır açar. Rezervasyon yapınca Durum\'u <b>Reserved</b> yapın: Reserved günler yeni planda önce kullanılır ve hiç silinmez (oturum kilitlenmez). Plandan bağımsız alınan slotları <b>+ Satır ekle</b>, <b>Excel\'den yapıştır</b> ya da <b>Excel / CSV yükle</b> ile Reserved olarak ekleyebilirsiniz.</div>');
  else if(TAB==="off")v.innerHTML=vList("blackouts",'<div class="mu">Bu tarihlerde hiçbir simülatöre plan yapılmaz (tatil vb.).</div>')+vList("leaves",'<div class="mu">Pilot ya da eğitmenin plana alınmayacağı tarihler (kod ile).</div>');
  else if(TAB==="nofly")v.innerHTML=vList("nofly",'<div class="mu">Bu iki kişi aynı oturuma (öğrenci–öğrenci ya da öğrenci–eğitmen) konmaz.</div>');
- else if(TAB==="table")v.innerHTML=vTable();else if(TAB==="hotel")v.innerHTML=vHotel();else v.innerHTML=vPlan();
+ else if(TAB==="table")v.innerHTML=vTable();else if(TAB==="hotel")v.innerHTML=vHotel();else if(TAB==="ticket")v.innerHTML=vTicket();else v.innerHTML=vPlan();
  if(TAB==="crew")crewDerived()}
 
 /* ---- ayarlar ---- */
@@ -752,7 +756,7 @@ function hotelStays(X,R){const S=DB.settings,bi=+S.hotelIn||0,ao=+S.hotelOut||0,
   flush()}
  out.forEach(h=>{h.nights=h.out-h.in;const c=X.crewMap.get(h.code),t=X.instrMap.get(h.code);h.name=c?.name||t?.name||"";
   h.role=t?.rank||c?.rank||"";h.isT=h.roles.has("te")});
- return out.sort((a,b)=>a.in-b.in||a.loc.localeCompare(b.loc)||(b.isT-a.isT)||a.code.localeCompare(b.code))}
+ return out.sort((a,b)=>a.in-b.in||a.out-b.out||a.loc.localeCompare(b.loc)||a.code.localeCompare(b.code))}
 // giriş ayına göre satır rengi (12 ay, açık tonlar)
 const HMON=["DDEBF7","FCE4D6","E2EFDA","FFF2CC","E4D7F5","D2F1EE","FAD7E3","E7E6E6","EEF5C8","FFDDB3","E6D3C3","F5C9C9"],hMon=h=>HMON[ymd(h.in)[1]];
 // sütun: [başlık, metin, sıralama değeri, ortala]
@@ -1028,12 +1032,36 @@ function inputSheets(){return[devSheet(),...Object.entries(LISTS).map(([key,L])=
 // CrwPlng Bilet Import (taslak): otel taslağındaki her konaklama için gidiş (giriş günü, IST → lokasyon) ve dönüş (çıkış günü, lokasyon → IST)
 // Saatler ve uçuş bilgisi taslaktır (14:10–16:45 gidiş, 14:45–19:10 dönüş, Flight Number "?"); yalnızca kod yazılır
 const TICKET_HOME="IST";
+// kişinin home base'i (Ekip > Base); yoksa (ör. eğitmen) IST
+const homeBase=(X,code)=>((X.crewMap.get(code)||X.instrMap.get(code))?.homebase||"").trim().toUpperCase()||TICKET_HOME;
 function exportTicket(){const X=ctx(),R=evaluate(X),H=hotelStays(X,R).filter(h=>h.loc);
  H.sort((a,b)=>a.code.localeCompare(b.code)||a.in-b.in);
  const head=["Rank","Name","Code","Transport Type","Call_Sign","Flight Number","Departure Date","Time Type","Dep Time","Arv. Time","Departure","Arrival"].map(v=>({v,b:1,bd:1,c:1}));
  const R1=(code,d,dep,arv,from,to)=>[{v:""},{v:""},{v:code},{v:0},{v:"0B"},{v:"?"},{v:d,d:true},{v:"Local"},{v:dep},{v:arv},{v:from},{v:to}].map(x=>({...x,bd:1,c:1,red:1}));
- const rows=[head];H.forEach(h=>{rows.push(R1(h.code,h.in,"14:10","16:45",TICKET_HOME,h.loc));rows.push(R1(h.code,h.out,"14:45","19:10",h.loc,TICKET_HOME))});
+ const rows=[head];H.forEach(h=>{const hb=homeBase(X,h.code);rows.push(R1(h.code,h.in,"14:10","16:45",hb,h.loc));rows.push(R1(h.code,h.out,"14:45","19:10",h.loc,hb))});
  download(xlsxBlob([{name:"CrwPlng Bilet Import",freeze:1,widths:[7,8,7,14,10,14,15,10,9,10,11,9],autoFilter:"A1:L"+rows.length,rows}]),"CrwPlng Bilet Import "+toIso(todayDn())+".xlsx")}
+/* ---- bilet taslağı (görünüm: resimdeki gibi Dep./Arr. gruplu) ---- */
+// her kişi bir satır: gidiş (Dep.) ve dönüş (Arr.) yan yana; otel girişi/çıkışı günlerinden kurulur
+function ticketRows(X,R){const H=hotelStays(X,R).filter(h=>h.loc);const out=[];
+ H.forEach(h=>{const hb=homeBase(X,h.code);out.push({rank:h.role,name:h.name,code:h.code,loc:h.loc,home:hb,
+  dep:{date:h.in,route:hb+"-"+h.loc,fn:"?",dt:"14:10",at:"16:45"},
+  arr:{date:h.out,route:h.loc+"-"+hb,fn:"?",dt:"14:45",at:"19:10"}})});
+ return out.sort((a,b)=>mKey(a.dep.date)-mKey(b.dep.date)||a.dep.date-b.dep.date||a.arr.date-b.arr.date||a.code.localeCompare(b.code))}
+const tMon=r=>HMON[ymd(r.dep.date)[1]];
+function vTicket(){const X=ctx(),R=evaluate(X),all=ticketRows(X,R);
+ let rows=all;if(UI.tloc)rows=rows.filter(r=>r.loc===UI.tloc);const locs=[...new Set(all.map(r=>r.loc))].sort();
+ const leg=g=>`<td class="c">${fmt(g.date)}</td><td class="c">${esc(g.route)}</td><td class="c">${esc(g.fn)}</td><td class="c">${esc(g.dt)}</td><td class="c">${esc(g.at)}</td>`;
+ const body=rows.map(r=>`<tr style="background:#${tMon(r)}"><td class="c">${esc(r.rank)}</td><td>${esc(r.name)}</td><td class="c">${esc(r.code)}</td>${leg(r.dep)}${leg(r.arr)}</tr>`).join("");
+ return`${stale()}<div class="cd"><div class="row np"><h2>Bilet taslağı</h2><span class="mu">Her kişi için gidiş (Dep.) + dönüş (Arr.)</span><span class="sp"></span>
+  <select data-ui="tloc"><option value="">Tüm lokasyonlar</option>${locs.map(l=>`<option value="${esc(l)}"${UI.tloc===l?" selected":""}>${esc(l||"—")}</option>`).join("")}</select>
+  <button class="s np" data-kexp="1">Excel'e aktar</button></div>
+  <div class="chips"><span class="chip">Kişi <b>${rows.length}</b></span>${locs.map(l=>`<span class="chip">${esc(l||"—")} <b>${rows.filter(r=>r.loc===l).length}</b></span>`).join("")}</div>
+  <div class="mu" style="margin:0 0 6px">Otel taslağından kurulur: her satır bir kişinin gidiş (home base→lokasyon, otel girişi) ve dönüş (lokasyon→home base, otel çıkışı) biletidir. Saat ve uçuş bilgisi taslaktır (Flight No "?"). Aylara göre renklendirilir; ay → kişi → tarih sıralı. "Excel'e aktar" ile CrwPlng Bilet Import dosyası iner (Transport Type, Call_Sign, Time Type yalnızca Excel'de).</div>
+  <div class="sc"><table class="ot"><thead>
+   <tr><th rowspan="3">Rank</th><th rowspan="3">Name Surname</th><th rowspan="3">Code</th><th colspan="5">Dep.</th><th colspan="5">Arr.</th></tr>
+   <tr><th rowspan="2">Date</th><th rowspan="2">Route</th><th rowspan="2">Flight No</th><th colspan="2">Time</th><th rowspan="2">Date</th><th rowspan="2">Route</th><th rowspan="2">Flight No</th><th colspan="2">Time</th></tr>
+   <tr><th>Dep.</th><th>Arr.</th><th>Dep.</th><th>Arr.</th></tr>
+  </thead><tbody>${body||`<tr><td colspan="13">${all.length?"Bu lokasyonda bilet yok.":"Taslak plan boş. Önce <b>Planı oluştur</b>'a basın."}</td></tr>`}</tbody></table></div></div>`}
 function exportCrw(){const X=ctx(),R=evaluate(X),FILL={LPC:"FFC000",OPC:"FFFF00"},GR="D9D9D9";
  const head=["Date","Code","Simulator Type","Company","SLOT","Device ID","Time Type","City"].map(v=>({v,b:1,bd:1,c:1}));
  const items=[];R.ses.forEach(o=>o.dn.forEach((d,k)=>items.push({o,d,k})));
@@ -1087,6 +1115,8 @@ document.addEventListener("click",e=>{const el=e.target.closest("button,[data-se
  if(d.newses)return sessionDlg(null,{});
  if(d.hexp){exportHotel();return}
  if(d.hs!==undefined){const hs=UI.hs,i=+d.hs;if(hs.s!==i){hs.s=i;hs.d=1}else if(hs.d===1)hs.d=-1;else hs.s=null;render();return}
+ if(d.ks!==undefined){const ks=UI.ks=UI.ks||{s:null,d:1,f:{}},i=+d.ks;if(ks.s!==i){ks.s=i;ks.d=1}else if(ks.d===1)ks.d=-1;else ks.s=null;render();return}
+ if(d.kexp){exportTicket();return}
  if(d.undo){const b=UI.undo.pop();if(b){DB.sessions=JSON.parse(b);touch();render();toast("Son yer değiştirme geri alındı")}return}
  if(d.pmv!==undefined){const S=DB.settings,p=prioOf(S),i=+d.pmv,j=i+ +d.dir;if(j<0||j>=p.length)return;[p[i],p[j]]=[p[j],p[i]];S.prio=p;touch();render();return}
  if(d.fillvisa){const have=new Set(DB.visas.map(v=>(v.code||"").toUpperCase()));let n=0;DB.crew.forEach(c=>{if(c.code&&!have.has(c.code.toUpperCase())){DB.visas.push({id:uid(),code:c.code.toUpperCase(),name:c.name||"",green:false});n++}});touch();render();toast(n+" kişi eklendi");return}
@@ -1107,6 +1137,7 @@ document.addEventListener("input",e=>{const el=e.target,d=el.dataset;let sel=nul
  else if(d.tf!==undefined){UI.tf[d.tf]=el.value;sel=`[data-tf="${d.tf}"]`}
  else if(d.dvf){UI.dev.f[d.dvf]=el.value;sel=`[data-dvf="${d.dvf}"]`}
  else if(d.hf!==undefined){UI.hs.f[d.hf]=el.value;sel=`[data-hf="${d.hf}"]`}
+ else if(d.kf!==undefined){(UI.ks=UI.ks||{s:null,d:1,f:{}}).f[d.kf]=el.value;sel=`[data-kf="${d.kf}"]`}
  if(!sel)return;clearTimeout(window._q);window._q=setTimeout(()=>{const sc=$(".sc")?.scrollLeft||0;render();const i=$(sel);if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length)}const s2=$(".sc");if(s2)s2.scrollLeft=sc},250)});
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#ov").hidden)closeDlg()});
 /* ---- taslak planda sürükle-bırak ile yer değiştirme ---- */
@@ -1187,7 +1218,7 @@ const EN_T={
 "Planı oluştur":"Build plan","Excel'e aktar ▾":"Export to Excel ▾","Excel'e aktar":"Export to Excel","Excel şablonu (veriler)":"Excel template (data)","CrwPlng Bilet Import":"CrwPlng Ticket Import","Planı Excel'e aktar: uygunluk tablosu, taslak plan ve tüm veriler. CrwPlng Sim Import: plandaki her sektör günü için öğrenci ve eğitmen satırları. CrwPlng Bilet Import: otel taslağındaki her konaklama için taslak gidiş (otel girişi) ve dönüş (otel çıkışı) bileti. Excel şablonu: girilen veriler (doldurup Excel / CSV yükle ile geri yüklenebilir).":"Export plan to Excel: eligibility table, draft plan and all data. CrwPlng Sim Import: student and instructor rows for every sector day in the plan. CrwPlng Ticket Import: a draft outbound (hotel check-in) and return (hotel check-out) ticket for every hotel stay. Excel template: the entered data (fill in and load back with Upload Excel / CSV).","Sadece Reserved ile planla":"Plan with Reserved only","Excel / CSV yükle":"Upload Excel / CSV","Excel şablonu indir":"Download Excel template",
 "Planı Excel'e aktar":"Export plan to Excel","Yazdır":"Print","Diğer ▾":"More ▾","Diğer":"More",
 "Ayarlar":"Settings","Ekip":"Crew","Vize":"Visa","Eğitmenler":"Instructors","FSTD / Uçak":"FSTD / Aircraft","Kapalı günler & izinler":"Closed days & leave",
-"Birlikte uçmayacaklar":"Do-not-pair","Uygunluk tablosu":"Eligibility table","Taslak plan":"Draft plan","Otel taslağı":"Hotel draft",
+"Birlikte uçmayacaklar":"Do-not-pair","Uygunluk tablosu":"Eligibility table","Taslak plan":"Draft plan","Otel taslağı":"Hotel draft","Bilet taslağı":"Ticket draft",
 "+ Oturum ekle":"+ Add session","+ Planla":"+ Schedule","+ Satır ekle":"+ Add row","+ Yeni simülatör":"+ New simulator","+ Yeni uçak":"+ New aircraft",
 "Düzelt":"Fix","Excel'den yapıştır":"Paste from Excel","Kapat":"Close","Kaydet":"Save","Kilitleri kaldır":"Unlock all","Tümünü kilitle":"Lock all","Tümünü sil":"Delete all",
 "Otel taslağını Excel'e aktar":"Export hotel draft to Excel","Planla":"Schedule","Sil":"Delete","Vazgeç":"Cancel","Tüm verileri temizle":"Clear all data",
