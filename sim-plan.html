@@ -440,10 +440,10 @@ function schedule(X,tent=new Map()){const S=X.S,out=[];
   [...out,...freeI.keys()].sort((a,b)=>a.dates[0].localeCompare(b.dates[0])).forEach(se=>{const fk=freeI.get(se),dn=se.dates.map(toDn),n=dn.length,res=[];
    for(let k=0;k<n;k++){if(fk&&!fk.has(k)){res.push(se.instr?.[k]||"");continue}const d=dn[k],chk=isCheckSector(k,n),g=gk(se,k,d),loc=locOf(se,k);let best=null,bs=Infinity;
     for(const t of X.instr){if(S.sfOnly&&LINE.has(t.role)&&!own.has(t.code+"|"+g))continue;if(stu.has(t.code+"|"+d)||(te.get(t.code+"|"+d)||0)>=S.instrPerDay||onLeave(X,t.code,d))continue;if(chk&&!EXAM.has(t.role))continue;
-     if(se.pilots.some(c=>c&&(c===t.code||noFly(X,c,t.code))))continue;if(instrClash(dn.map((_,j)=>j<k?res[j]:fk&&!fk.has(j)?se.instr?.[j]||"":""),k,n,t.code))continue;const vx=visaExpired(visaOf(X,t.code,loc),d);if(vx&&S.visaHard)continue;
+     if(se.pilots.some(c=>c&&(c===t.code||noFly(X,c,t.code))))continue;if(instrClash(dn.map((_,j)=>j<k?res[j]:se.instr?.[j]||""),k,n,t.code))continue;const vx=visaExpired(visaOf(X,t.code,loc),d);if(vx&&S.visaHard)continue;
      let sc=(S.sameInstr===false||trip.get(g)?.has(t.code)?0:10)+(vx?20:0)+(ld.get(t.code)||0)*.01;if(!chk&&EXAM.has(t.role))sc+=3;if(!chk&&k>0&&res[k-1]===t.code)sc-=1;
      if(sc<bs){bs=sc;best=t}}
-    const c=best?best.code:(se.instr?.[k]||"");res.push(c);if(c){inc(te,c+"|"+d);add(g,c);inc(ld,c)}}
+    let c=best?best.code:(se.instr?.[k]||"");if(c&&instrClash(dn.map((_,j)=>j<k?res[j]:se.instr?.[j]||""),k,n,c))c="";res.push(c);if(c){inc(te,c+"|"+d);add(g,c);inc(ld,c)}}
    se.instr=res})}
  return out}
 
