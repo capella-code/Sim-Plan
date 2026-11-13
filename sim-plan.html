@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Sim Plan</title>
 <style>
-:root{--bg:#f4f6f9;--cd:#fff;--tx:#1b1f24;--mu:#5b6570;--bd:#d5dbe2;--ac:#1456c8;--ok:#177a3b;--er:#c0302b;--wa:#d6338a;--hd:#e8edf3;--lpc:#ffc000;--opc:#ffff00;--gr:#bfbfbf}
-@media(prefers-color-scheme:dark){:root{--bg:#14171a;--cd:#1d2126;--tx:#e8ebee;--mu:#9aa5b1;--bd:#333a42;--ac:#6ea2ff;--ok:#5ccf86;--er:#ff7b72;--wa:#ff7ac0;--hd:#262c33;color-scheme:dark}}
+:root{--bg:#eef2f7;--cd:#fff;--tx:#0f1d2e;--mu:#5c6a7d;--bd:#d4dce6;--ac:#1036c8;--ac2:#0d2ba0;--gold:#4f6fe6;--ok:#177a3b;--er:#c0302b;--wa:#c0348a;--hd:#eef3f9;--lpc:#ffc000;--opc:#ffff00;--gr:#bfbfbf;--sh:0 1px 2px rgba(15,29,46,.05),0 3px 10px rgba(15,29,46,.06)}
+@media(prefers-color-scheme:dark){:root{--bg:#0d141c;--cd:#151e28;--tx:#e6ecf3;--mu:#93a2b4;--bd:#2a3744;--ac:#5b82f0;--ac2:#4f72dd;--gold:#7e9bff;--ok:#5ccf86;--er:#ff7b72;--wa:#ff7ac0;--hd:#1b2632;--sh:0 1px 3px rgba(0,0,0,.45);color-scheme:dark}}
 [hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 -apple-system,system-ui,"Segoe UI",Roboto,sans-serif}
 .w{max-width:1500px;margin:0 auto;padding:10px 12px 60px}
@@ -49,8 +49,52 @@ tr.fr th{padding:2px 3px;background:var(--hd)}tr.fr input{width:100%;min-width:4
 ul.rules{margin:4px 0;padding-left:18px}ul.rules li{margin:3px 0}
 .iss{font-size:12px;margin:2px 0}
 @media print{.np,.tabs,.toast{display:none!important}body{background:#fff}.w{max-width:none;padding:0}.cd{border:none;padding:0}.sc{max-height:none;overflow:visible}.ot,.mt{font-size:10px}}
+/* ===== profesyonel görünüm (yalnızca görsel) ===== */
+.hdr{align-items:center;gap:12px;padding:11px 14px;margin:4px 0 2px;background:var(--cd);border:1px solid var(--bd);border-radius:12px;box-shadow:var(--sh);position:relative;overflow:hidden}
+.hdr::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:linear-gradient(var(--ac),var(--gold))}
+.brand{display:flex;align-items:center;gap:10px;padding-left:4px}
+.brand .blogo{width:38px;height:38px;flex:0 0 auto}
+.brand img.blogo2{height:30px;width:auto;display:block;background:#fff;border:1px solid var(--bd);border-radius:8px;padding:5px 9px;flex:0 0 auto}
+.brand .bwm{display:flex;flex-direction:column;line-height:1}
+.brand .bwm b{font-size:17px;letter-spacing:3px;color:var(--ac);font-weight:800}
+.brand .bwm small{font-size:9px;letter-spacing:3.5px;color:var(--gold);font-weight:700;margin-top:3px}
+.hdr h1{font-size:15px;font-weight:600;color:var(--mu);margin:0;padding-left:12px;border-left:1px solid var(--bd);align-self:center}
+@media(max-width:640px){.hdr h1{border-left:none;padding-left:0;flex-basis:100%}}
+button{transition:background .12s,border-color .12s,box-shadow .12s}
+button:hover:not(:disabled){border-color:var(--ac)}
+button.p{box-shadow:0 1px 2px rgba(16,54,200,.25)}
+button.p:hover:not(:disabled){background:var(--ac2);border-color:var(--ac2)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+input:focus,select:focus,textarea:focus{border-color:var(--ac);outline:none}
+.cd{box-shadow:var(--sh)}
+.tabs button{transition:none}
+.tabs button.on{box-shadow:inset 0 -2px 0 var(--gold)}
+.ed th{letter-spacing:.3px}
+.chip{box-shadow:var(--sh)}
+.dl{box-shadow:0 14px 48px rgba(16,54,200,.24)}
+/* ===== Ayarlar sayfası düzeni ===== */
+.setpg{max-width:1060px}
+.setpg .cd{padding:16px 18px}
+.setpg>.cd+.cd{margin-top:14px}
+.setpg .cd>h2{font-size:14px;letter-spacing:.2px;margin:0 0 14px;padding-bottom:9px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:9px}
+.setpg .cd>h2::before{content:"";width:3px;height:15px;border-radius:2px;background:linear-gradient(var(--ac),var(--gold));flex:0 0 auto}
+.setpg h3{font-size:11.5px;text-transform:uppercase;letter-spacing:.7px;color:var(--mu);font-weight:700;margin:18px 0 9px}
+.setpg .g{gap:13px 18px}
+.setpg .f>span{font-weight:600;color:var(--tx);font-size:12.5px}
+.setpg .f .mu{font-weight:400;margin-top:1px}
+.setpg .f input,.setpg .f select{min-height:36px}
+.setpg .ck{border:1px solid var(--bd);background:var(--bg);border-radius:9px;padding:10px 12px;gap:10px;transition:border-color .12s,box-shadow .12s}
+.setpg .ck:hover{border-color:var(--ac);box-shadow:var(--sh)}
+.setpg .ck>input{width:17px;height:17px;margin-top:1px;flex:0 0 auto;accent-color:var(--ac)}
+.setpg .ck>span{font-size:12.5px;line-height:1.45}
+.setpg #prioS{border:1px solid var(--bd);border-radius:9px;padding:10px 12px;background:var(--bg)}
+.setpg #prioS .ck{border:none;background:none;padding:0;box-shadow:none}
+.setpg #prioS .ck>input{margin-top:3px}
+.setpg #prioS .ck:hover{box-shadow:none}
+.setpg ul.rules{font-size:12.5px;color:var(--mu);line-height:1.55}
+.setpg ul.rules b{color:var(--tx)}
 </style></head><body><div class="w">
-<div class="row"><h1>Yıllık Simülatör Planı</h1><span id="appver" class="mu" style="font-size:12px;align-self:flex-end"></span><span class="sp"></span>
+<div class="row hdr"><span class="brand"><img class="blogo2" src="data:image/png;base64,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" alt="Capella Aviation Solutions"></span><h1>Yıllık Simülatör Planı</h1><span id="appver" class="mu" style="font-size:12px;align-self:flex-end"></span><span class="sp"></span>
 <div class="row np"><button class="p" id="bPlan">Planı oluştur</button><button class="p" id="bPlanR" title="Yalnızca müsaitlik listesindeki Reserved günleri kullanır; tahmini slot açmaz">Sadece Reserved ile planla</button><button id="bImp">Excel / CSV yükle</button><button id="bXls">Excel'e aktar ▾</button><button id="bPrint">Yazdır</button><button id="bLang" class="np" title="Dil / Language">EN</button>
 <button id="bMore">Diğer ▾</button></div></div>
 <div class="mu" id="storeNote">Veriler yalnızca bu cihazda (tarayıcı hafızasında) saklanır. İnternet gerekmez. Yedek almak için Diğer ▸ Yedek al.</div>
@@ -529,7 +573,7 @@ function fld(k,l,type,extra=""){const v=DB.settings[k];
  if(type==="sec")return`<label class="f"><span>${l}</span><select data-s="${k}">${[1,2,3,4,5].map(n=>`<option${n==v?" selected":""}>${n}</option>`).join("")}</select>${extra}</label>`;
  return`<label class="f"><span>${l}</span><input type="${type}" data-s="${k}" value="${esc(v)}"${type==="number"?' min="0" max="36"':""}>${extra}</label>`}
 function vSettings(){const S=DB.settings;
- return`<div class="cd"><h2>Plan dönemi ve sektör sayıları</h2><div class="g">${fld("start","Plan başlangıcı","date")}${fld("end","Plan bitişi","date")}
+ return`<div class="setpg"><div class="cd"><h2>Plan dönemi ve sektör sayıları</h2><div class="g">${fld("start","Plan başlangıcı","date")}${fld("end","Plan bitişi","date")}
  ${fld("lpcSec","LPC kaç sektör?","sec",`<span class="mu">${sectorLabels("LPC",S.lpcSec).join(" → ")}</span>`)}${fld("opcSec","OPC kaç sektör?","sec",`<span class="mu">${sectorLabels("OPC",S.opcSec).join(" → ")}</span>`)}</div></div>
  <div class="cd"><h2>Kurallar</h2><div class="g">${fld("winM","Son … ay kuralı (ay)","number")}${fld("gapM","İki kontrol arası en az (ay)","number")}${fld("lpcM","LPC geçerlilik süresi (ay)","number")}${fld("opcM","OPC geçerlilik süresi (ay, ay sonuna yuvarlanır)","number")}
  ${fld("maxGap","Sektörler arası en fazla gün farkı","number",'<span class="mu">1 = art arda günler</span>')}${fld("instrPerDay","Eğitmen günde en fazla oturum","number")}${fld("secPerDay","Simülatör başına günde en fazla sektör","number",'<span class="mu">0 = sınırsız</span>')}${fld("pilotPerDay","Öğrenci günde en fazla oturum","number",'<span class="mu">farklı saatteki slotlar; aynı saatte iki oturum olmaz</span>')}</div>
@@ -547,7 +591,7 @@ function vSettings(){const S=DB.settings;
  <li>Öncelikli kurallar (şu anki sıra): ${prioOf(S).map((k,i)=>`<b>${i+1}.</b> ${PRULES[k]}${ruleOn(S,k)?"":" <i>(uygulanmıyor)</i>"}`).join(" · ")}. Son ay = geçerliliğin bittiği takvim ayı (Excel'de "Final!"). LPC ile OPC ancak sektör sayıları eşitse aynı oturumda olabilir.</li>
  <li>Excel'deki gibi plan tarihi <b>Earliest Auto'dan sonra</b> (eşit olamaz) ve <b>Valid'e kadar</b> olmalı; değilse ya da planlanmamışsa "Hata".</li>
  <li>Eğitmenler: ${S.sameInstr!==false?"aynı ay ve lokasyonda mümkün olduğunca aynı kişiler kullanılır (bilet masrafı); o ay kendi LPC/OPC'si için gelen eğitmen, kendi oturumu dışındaki günlerde diğer oturumlarda görev alabilir.":"her sektör için yük dengesine göre atanır."} Kontrol sektörüne yalnızca TRE/SFE.</li>
- <li>Kontrol tarihi = son sektörün tarihi. Kilitli ve slotları Reserved olan oturumlar yeniden planlamada korunur; diğerleri (Tahmini slottaki kilitliler dahil) silinip yeniden dağıtılır.</li></ul></div>`}
+ <li>Kontrol tarihi = son sektörün tarihi. Kilitli ve slotları Reserved olan oturumlar yeniden planlamada korunur; diğerleri (Tahmini slottaki kilitliler dahil) silinip yeniden dağıtılır.</li></ul></div></div>`}
 
 /* ---- liste düzenleyiciler ---- */
 function personRole(code){const c=(code||"").toUpperCase(),p=DB.crew.find(x=>(x.code||"").toUpperCase()===c),t=DB.instr.find(x=>(x.code||"").toUpperCase()===c);
