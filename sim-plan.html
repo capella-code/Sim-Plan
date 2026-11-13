@@ -210,6 +210,8 @@ const formDevices=()=>{try{const a=JSON.parse(ls.g("shgm_dev")||"null");return A
 const seedDevices=()=>(formDevices()||DEV0).map(cloneDev);
 const isAC=d=>!!d&&d.k==="AC";
 const devById=id=>DB.devices.find(d=>id!==""&&id!=null&&String(d.id)===String(id));
+// eğitmen aynı zamanda ekipteyse (aynı kod) ekip kaydını döndürür; Base/Home Base oradan gelir
+const crewByCode=code=>{const u=(code||"").trim().toUpperCase();return u?DB.crew.find(p=>(p.code||"").trim().toUpperCase()===u):null};
 const slotTime=(d,k)=>d&&!isAC(d)&&d.s?.[k]?d.s[k][0]+"–"+d.s[k][1]:"";
 const devLane=(d,k)=>d.c+(isAC(d)||!k?"":" "+k);
 const nextDevId=list=>Math.max(-1,...list.map(d=>+d.id).filter(n=>!isNaN(n)))+1;
@@ -632,7 +634,8 @@ function listIdx(key,X){const arr=DB[key],st=lfOf(key),all=listCols(key,X);let i
  const pin=(UI.pin?.[key]||[]).map(id=>arr.findIndex(x=>x.id===id)).filter(i=>i>=0);if(pin.length){const ps=new Set(pin);idx=[...pin,...idx.filter(i=>!ps.has(i))]}
  return{idx,all,fs,st,pin:new Set(pin)}}
 function vList(key,help=""){const L=LISTS[key],arr=DB[key],X=DERIVED[key]?ctx():null,{idx,all,fs,st,pin}=listIdx(key,X),busy=fs.length||st.s;
- const cell=(c,it,i)=>c.col?`<td>${cellInput(key,i,c.col,it[c.k],L.ro?.(it,c.col))}</td>`:key==="crew"&&c.k==="_next"?`<td class="mu" data-nx="${i}"></td>`:`<td class="mu">${esc(c.txt(it))}</td>`;
+ const cell=(c,it,i)=>{if(key==="instr"&&(c.k==="base"||c.k==="homebase")){const cr=crewByCode(it.code);if(cr)return`<td class="mu c" title="Ekip listesinde kayıtlı; Base / Home Base oradan gelir">${esc(cr[c.k]||"")}</td>`}
+  return c.col?`<td>${cellInput(key,i,c.col,it[c.k],L.ro?.(it,c.col))}</td>`:key==="crew"&&c.k==="_next"?`<td class="mu" data-nx="${i}"></td>`:`<td class="mu">${esc(c.txt(it))}</td>`};
  return`<div class="cd"><div class="row"><h2>${L.t}</h2><span class="mu">${fs.length?idx.length+" / ":""}${arr.length} satır</span><span class="sp"></span>
  ${busy?`<button class="s np" data-lclear="${key}">Filtre / sıralamayı temizle</button>`:""}<button class="s np" data-add="${key}">+ Satır ekle</button><button class="s np" data-paste="${key}">Excel'den yapıştır</button><button class="s d np" data-clear="${key}">Tümünü sil</button></div>${help}
  <div class="sc" style="margin-top:6px"><table class="ed"><thead><tr><th>#</th>${all.map(c=>`<th class="so" data-ls="${key}" data-sk="${c.k}" title="${esc((c.tip?c.tip+" · ":"")+"Sıralamak için tıklayın")}">${c.l}${c.tip?" ⓘ":""}${arrow(st.s===c.k,st.d)}</th>`).join("")}<th></th></tr>
@@ -1033,7 +1036,8 @@ function inputSheets(){return[devSheet(),...Object.entries(LISTS).map(([key,L])=
 // Saatler ve uçuş bilgisi taslaktır (14:10–16:45 gidiş, 14:45–19:10 dönüş, Flight Number "?"); yalnızca kod yazılır
 const TICKET_HOME="IST";
 // kişinin home base'i (Ekip > Base); yoksa (ör. eğitmen) IST
-const homeBase=(X,code)=>((X.crewMap.get(code)||X.instrMap.get(code))?.homebase||"").trim().toUpperCase()||TICKET_HOME;
+// bilet üssü: kişi ekipteyse Ekip'teki Home Base, değilse (yalnız eğitmen) eğitmenin Home Base'i; yoksa IST
+const homeBase=(X,code)=>{const u=(code||"").trim().toUpperCase(),cr=DB.crew.find(p=>(p.code||"").trim().toUpperCase()===u),t=DB.instr.find(p=>(p.code||"").trim().toUpperCase()===u);return(((cr?.homebase)||(t?.homebase)||"").trim().toUpperCase())||TICKET_HOME};
 function exportTicket(){const X=ctx(),R=evaluate(X),H=hotelStays(X,R).filter(h=>h.loc);
  H.sort((a,b)=>a.code.localeCompare(b.code)||a.in-b.in);
  const head=["Rank","Name","Code","Transport Type","Call_Sign","Flight Number","Departure Date","Time Type","Dep Time","Arv. Time","Departure","Arrival"].map(v=>({v,b:1,bd:1,c:1}));
