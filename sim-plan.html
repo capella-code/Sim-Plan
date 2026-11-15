@@ -574,14 +574,14 @@ function render(){const v=$("#view");
 
 /* ---- ayarlar ---- */
 function selFld(k,l,opts){const v=String(DB.settings[k]??"");return`<label class="f"><span>${l}</span><select data-s="${k}">${opts.map(([o,t])=>`<option value="${o}"${o===v?" selected":""}>${esc(t)}</option>`).join("")}</select></label>`}
-function fld(k,l,type,extra=""){const v=DB.settings[k];
- if(type==="check")return`<label class="ck"><input type="checkbox" data-s="${k}"${v?" checked":""}><span>${l}</span></label>`;
- if(type==="sec")return`<label class="f"><span>${l}</span><select data-s="${k}">${[1,2,3,4,5].map(n=>`<option${n==v?" selected":""}>${n}</option>`).join("")}</select>${extra}</label>`;
- return`<label class="f"><span>${l}</span><input type="${type}" data-s="${k}" value="${esc(v)}"${type==="number"?' min="0" max="36"':""}>${extra}</label>`}
+function fld(k,l,type,extra="",tip=""){const v=DB.settings[k];const tt=tip?` title="${esc(tip)}"`:"",lb=`${l}${tip?' <span class="mu" style="cursor:help">ⓘ</span>':""}`;
+ if(type==="check")return`<label class="ck"${tt}><input type="checkbox" data-s="${k}"${v?" checked":""}><span>${lb}</span></label>`;
+ if(type==="sec")return`<label class="f"${tt}><span>${lb}</span><select data-s="${k}">${[1,2,3,4,5].map(n=>`<option${n==v?" selected":""}>${n}</option>`).join("")}</select>${extra}</label>`;
+ return`<label class="f"${tt}><span>${lb}</span><input type="${type}" data-s="${k}" value="${esc(v)}"${type==="number"?' min="0" max="36"':""}>${extra}</label>`}
 function vSettings(){const S=DB.settings;
  return`<div class="setpg"><div class="cd"><h2>Plan dönemi ve sektör sayıları</h2><div class="g">${fld("start","Plan başlangıcı","date")}${fld("end","Plan bitişi","date")}
  ${fld("lpcSec","LPC kaç sektör?","sec",`<span class="mu">${sectorLabels("LPC",S.lpcSec).join(" → ")}</span>`)}${fld("opcSec","OPC kaç sektör?","sec",`<span class="mu">${sectorLabels("OPC",S.opcSec).join(" → ")}</span>`)}</div></div>
- <div class="cd"><h2>Kurallar</h2><div class="g">${fld("winM","Son … ay kuralı (ay)","number")}${fld("gapM","İki kontrol arası en az (ay)","number")}${fld("lpcM","LPC geçerlilik süresi (ay)","number")}${fld("opcM","OPC geçerlilik süresi (ay, ay sonuna yuvarlanır)","number")}
+ <div class="cd"><h2>Kurallar</h2><div class="g">${fld("winM","Son … ay kuralı (ay)","number","","AMC1 ORO.FC.145(g)")}${fld("gapM","İki kontrol arası en az (ay)","number","","ICAO Annex 6, Part I 9.4.4.1")}${fld("lpcM","LPC geçerlilik süresi (ay)","number")}${fld("opcM","OPC geçerlilik süresi (ay, ay sonuna yuvarlanır)","number")}
  ${fld("maxGap","Sektörler arası en fazla gün farkı","number",'<span class="mu">1 = art arda günler</span>')}${fld("instrPerDay","Eğitmen günde en fazla oturum","number")}${fld("secPerDay","Simülatör başına günde en fazla sektör","number",'<span class="mu">0 = sınırsız</span>')}${fld("pilotPerDay","Öğrenci günde en fazla oturum","number",'<span class="mu">farklı saatteki slotlar; aynı saatte iki oturum olmaz</span>')}</div>
  <h3>Öncelikli kurallar</h3><div id="prioS">${prioBox(S)}</div>
  <div class="g" style="margin-top:10px"> ${fld("sameInstr","Aynı ay ve lokasyonda mümkün olduğunca aynı eğitmenler (bilet masrafı); o ay kendi LPC/OPC'si için gelen eğitmen diğer oturumlarda da görev alır","check")}${fld("sfOnly","Eğitmen olarak SFI/SFE kullanılsın; TRI/TRE yalnızca o ay o lokasyonda kendi LPC/OPC'si varsa (zaten oradaysa) görev alsın","check")}${fld("visaHard","Vizesi geçersiz pilot ya da eğitmeni vize gereken simülatöre hiç planlama","check")}</div></div>
