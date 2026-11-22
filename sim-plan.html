@@ -668,7 +668,7 @@ function vDevices(){const st=UI.dev;let L=DB.devices.filter(d=>UI.devShow==="t"|
  const fd=formDevices();
  return`<div class="cd"><div class="row"><h2>FSTD / Uçak</h2><span class="mu">${fs.length?L.length+" / ":""}${all} kayıt</span><span class="sp"></span>
  <label class="f" style="flex-direction:row;align-items:center;gap:6px"><span>Göster</span><select data-ui="devShow"><option value="a"${UI.devShow==="a"?" selected":""}>Aktif</option><option value="p"${UI.devShow==="p"?" selected":""}>Pasif</option><option value="t"${UI.devShow==="t"?" selected":""}>Tümü</option></select></label>
- ${fs.length||st.s?'<button class="s np" data-devclear="1">Filtre / sıralamayı temizle</button>':""}<button class="s p np" data-devnew="FFS">+ Yeni simülatör</button><button class="s p np" data-devnew="AC">+ Yeni uçak</button>${fd?'<button class="s np" data-devform="1">Form uygulamasından al</button>':""}<button class="s np" data-devreset="1">Örnek listeye dön</button></div>
+ ${fs.length||st.s?'<button class="s np" data-devclear="1">Filtre / sıralamayı temizle</button>':""}<button class="s p np" data-devnew="FFS">+ Yeni simülatör</button><button class="s p np" data-devnew="AC">+ Yeni uçak</button><button class="s np" data-devpaste="1">Excel'den yapıştır</button>${fd?'<button class="s np" data-devform="1">Form uygulamasından al</button>':""}</div>
  <div class="mu">Slot saatleri yerel saattir; gece yarısını geçen slot ertesi gün biter. Uçakta uçuş saati değişken olduğu için slot yoktur. Liste SHGM form uygulamasındaki FSTD / Uçak tablosuyla aynı yapıdadır${fd?"; o uygulamadaki değişiklikleri <b>Form uygulamasından al</b> ile buraya aktarabilirsiniz":""}.</div>
  <div class="sc" style="margin-top:6px"><table class="ed"><thead><tr><th></th>${DEVCOLS.map(([k,l])=>`<th class="so" data-ds="${k}" title="Sıralamak için tıklayın">${l}${arrow(st.s===k,st.d)}</th>`).join("")}</tr>
  <tr class="fr np"><th></th>${DEVCOLS.map(([k])=>`<th><input data-dvf="${k}" value="${esc(st.f[k]||"")}" placeholder="Filtre"></th>`).join("")}</tr></thead>
@@ -1061,6 +1061,14 @@ async function importFile(file){try{const nm=file.name.toLowerCase();
 function pasteDlg(key){const L=LISTS[key];dlg(L.t+" – Excel'den yapıştır",`<div class="mu">Excel'de hücreleri seçip kopyalayın (başlık satırıyla birlikte daha güvenli) ve buraya yapıştırın. Başlık yoksa sütun sırası: <b>${L.cols.map(c=>c.l).join(" | ")}</b></div><textarea id="pT" placeholder="Yapıştırın…"></textarea>`,
  [{l:"Vazgeç"},{l:"Sona ekle",f:()=>doPaste(key,"add")},{l:"Listeyi değiştir",c:"p",f:()=>doPaste(key,"replace")}],()=>$("#pT").focus())}
 function doPaste(key,mode){const items=rowsToItems(key,parseCSV($("#pT").value));if(!items.length){toast("Satır bulunamadı");return false}applyImport([{key,items}],mode)}
+function devPasteDlg(){dlg("FSTD / Uçak – Excel'den yapıştır",`<div class="mu">Excel'de hücreleri kopyalayıp buraya yapıştırın. Sütun sırası (Excel şablonuyla aynı): <b>Tür · Kod / Tescil · Tip · Operatör · Üretici · Lokasyon · Saat dilimi · A · B · C · D · E · F · Durum</b>. Başlık satırı olsa da olmasa da olur (başlık yoksa bu sıra kullanılır). Slot hücrelerine saat aralığı yazın (ör. 15:05–19:05); uçakta slot yoktur. Aynı koddaki cihaz güncellenir. (Biçim için <b>Excel'e aktar ▸ Excel şablonu</b>.)</div><textarea id="pT" placeholder="Yapıştırın…"></textarea>`,
+ [{l:"Vazgeç"},{l:"Ekle / güncelle",f:()=>doDevPaste("add")},{l:"Listeyi değiştir",c:"p",f:()=>doDevPaste("replace")}],()=>$("#pT").focus())}
+// başlıksız yapıştırma: sabit sütun sırası (Excel şablonuyla aynı): Tür,Kod,Tip,Operatör,Üretici,Lokasyon,Saat dilimi,A,B,C,D,E,F,Durum
+function devRowsToItemsFixed(rows){return rows.filter(r=>r&&String(r[1]??"").trim()).map(r=>{const g=i=>String(r[i]??"").trim(),k=/ucak|ac|aircraft/.test(norm(g(0)))?"AC":"FFS";
+ const d={k,c:g(1).toUpperCase().replace(/\s/g,""),ac:g(2).toUpperCase(),op:g(3),mf:g(4),loc:g(5).toUpperCase(),tz:g(6),a:/pasif|passive|hayir|^h$|^0$|false/.test(norm(g(13)))?0:1,s:{}};
+ if(k!=="AC")SLOTS.forEach((n,j)=>{const t=parseSlot(g(7+j));if(t)d.s[n]=t});return d})}
+function doDevPaste(mode){const rows=parseCSV($("#pT").value);let items=devRowsToItems(rows);if(!items.length)items=devRowsToItemsFixed(rows);if(!items.length){toast("Satır bulunamadı");return false}
+ if(mode==="replace")DB.devices=[];const[a,u]=upsertDevices(items);touch();render();toast(a+" eklendi, "+u+" güncellendi")}
 function inputSheets(){return[devSheet(),...Object.entries(LISTS).map(([key,L])=>{const cols=listCols(key,DERIVED[key]?ctx():null).filter(c=>c.col||c.der?.x);
  return{name:L.sheet,freeze:1,widths:cols.map(c=>!c.col?14:c.col.t==="date"?13:c.col.t==="code"?8:c.col.w?Math.round(c.col.w/7):14),
  rows:[cols.map(c=>({v:c.l,b:1,fill:"D9D9D9",bd:1})),...DB[key].map(it=>cols.map(c=>{if(!c.col)return{v:c.txt(it),bd:1};const cc=c.col,v=it[cc.k];
@@ -1134,6 +1142,7 @@ function exportPlan(){const X=ctx(),R=evaluate(X),FILL={LPC:"FFC000",OPC:"FFFF00
 document.addEventListener("click",e=>{const el=e.target.closest("button,[data-ses],[data-new],[data-ls],[data-ts],[data-ds],a");if(!el)return;const d=el.dataset;
  if(d.deved!==undefined){const dv=devById(d.deved);return devDlg(dv?dv.id:null,dv?.k)}
  if(d.devnew)return devDlg(null,d.devnew);
+ if(d.devpaste)return devPasteDlg();
  if(d.devdel!==undefined)return devDel(d.devdel);
  if(d.ds){Object.assign(UI.dev,nextSort(UI.dev,d.ds));render();return}
  if(d.devclear){UI.dev={s:null,d:1,f:{}};render();return}
