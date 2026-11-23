@@ -5,6 +5,13 @@ const path = require("path");
 const Obf = require("javascript-obfuscator");
 
 const root = path.join(__dirname, "..");
+
+// Once kontrol: sozdizimi hatasi ya da yoruma donmus kod varsa derleme durur (bozuk surum paketlenmez)
+const { checkFiles } = require("./check");
+if (!checkFiles([path.join(root, "sim-plan.html")])) {
+  console.error("Derleme durduruldu: sim-plan.html kontrolden gecmedi.");
+  process.exit(1);
+}
 const html = fs.readFileSync(path.join(root, "sim-plan.html"), "utf8");
 const m = html.match(/<script>([\s\S]*?)<\/script>/);
 if (!m) throw new Error("sim-plan.html icinde <script> bulunamadi");

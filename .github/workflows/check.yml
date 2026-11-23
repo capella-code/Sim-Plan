@@ -1,0 +1,23 @@
+name: Kod kontrolü
+
+# Her push'ta sim-plan.html kontrol edilir: sözdizimi hatası ya da satır ortasındaki // yorumunun
+# yuttuğu kod varsa iş kırmızı olur (Setup.exe derlemesi de aynı kontrolden geçmeden paketlenmez).
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: acorn (yorum kontrolü için)
+        run: npm install --prefix "$RUNNER_TEMP/chk" --no-audit --no-fund acorn@8
+      - name: Kontrol
+        run: NODE_PATH="$RUNNER_TEMP/chk/node_modules" node scripts/check.js

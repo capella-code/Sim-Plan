@@ -8,6 +8,7 @@
   "private": true,
   "main": "electron/main.js",
   "scripts": {
+    "check": "node scripts/check.js",
     "build": "node scripts/build.js",
     "dist": "npm run build && electron-builder --win --publish never",
     "start": "npm run build && electron ."
