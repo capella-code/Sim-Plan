@@ -442,7 +442,20 @@ function schedule(X,tent=new Map()){const S=X.S,out=[];
  // Pencere: rütbe uyumsuzluğunda (pen>=2, ayar açıksa) geçerlilik bitişi, diğerlerinde son aydan önceki gün.
  // ihlal edilen kural "son ay" kuralından önemliyse daha iyi eş için geçerlilik bitişine kadar beklenir, değilse son aydan önceye kadar
  // rb: karar verilen blok Reserved ise daha iyi eş ancak ileride boş Reserved günde aranır (tahmini bloğa kaçılmaz)
- const acceptPen=(a,d,n,pen,rb)=>{const C=rb?capR:cap,vM=!!(pen&(WT.mix||0)),vR=!!(pen&(WT.rank||0)),W=(vR&&above("rank"))||(vM&&above("mix"))?a.latest:a.ev.expired?X.end:a.ev.soft;if(W<a.c)return true;let dem=0;
+ // somut alternatif: a için W'ye (geçerlilik bitişine) kadar boş bir Reserved blokta, bu ihlali yaratmayan (cezası daha düşük) bir eş var mı?
+ // varsa a beklemeye "mecbur" değildir: kaba kapasite sayımına bakılmadan ihlalli eşleşme reddedilir.
+ // Yalnızca "LPC/OPC karışmasın" kuralı (son ay kuralından önemliyse) için uygulanır; rütbe kuralında bekleme kişiyi planlanamaz bırakabiliyor.
+ const busyOn=(code,ds)=>ds.some(y=>{if(onLeave(X,code,y))return true;const o=day.get(code)?.get(y);return!!o&&(o.te>0||o.st>=S.pilotPerDay)});
+ const hasAlt=(a,d,n,pen,W)=>{for(let x=d+1;x<=Math.min(W,X.end);x++){for(const L of lanes){if(!L.res.has(x)||laneBusy.get(L.key).has(x))continue;
+    const ds=block(L,x,n);if(!ds||ds.some((y,i)=>!ds.lanes[i].res.has(y)))continue;const c2=ds.at(-1);if(c2<=a.ev.earliest||c2>W)continue;
+    if(busyOn(a.p.code,ds)||(S.visaHard&&visaExpired(visaOf(X,a.p.code,L.loc),c2)))continue;
+    for(const q of X.crew){if(q===a.p||noFly(X,a.p.code,q.code))continue;const e=getPend(q);if(!e||X.sec[e.type]!==n||reserved(q,e))continue;
+     const ql=e.expired?X.end:e.deadline;if(c2<=e.earliest||c2>ql)continue;const nl=nextLock(q);if(nl&&c2>addM(nl.check,-S.gapM))continue;
+     const pq=penalty(a.p,q,a.ev.type,e.type);if(pq==null||pq>=pen)continue;
+     if(busyOn(q.code,ds)||(S.visaHard&&visaExpired(visaOf(X,q.code,L.loc),c2)))continue;
+     return true}}}return false};
+ const acceptPen=(a,d,n,pen,rb)=>{const C=rb?capR:cap,vM=!!(pen&(WT.mix||0)),vR=!!(pen&(WT.rank||0)),hi=(vR&&above("rank"))||(vM&&above("mix")),W=hi?a.latest:a.ev.expired?X.end:a.ev.soft;if(W<a.c)return true;
+  if(vM&&above("mix")&&hasAlt(a,d,n,pen,W))return false;let dem=0;
   for(const q of X.crew){const e=getPend(q);if(e&&X.sec[e.type]===n&&Math.min(e.soft,e.expired?X.end:e.deadline)<=W&&e.earliest<=W)dem++}
   if((C(d,W,n)-1)*2<dem)return true;
   // daha iyi eş adayları (better) ile aynı adaylara ihtiyaç duyan, süresi pencere içinde biten rakipler (riv) karşılaştırılır
