@@ -831,7 +831,9 @@ const dateErrMap=R=>new Map(R.rows.filter(r=>r.o&&(r.hata||r.err.length)).map(r=
 const finalSet=R=>new Set(R.rows.filter(r=>r.o&&r.final).map(r=>r.o.s.id+"|"+r.c.code));// son ayına kalan (Final!) pilot
 // eğitmen tazeleme (yetki revalidation): denetleyen (examiner) yetki kuralı — TRI→TRE · SFI→TRE/SFE · TRE/SFE→SE
 const INSTR_WIN=12,INSTR_CYCLE=36;// tazeleme penceresi: geçerlilikten önceki 12 ay · döngü: 36 ay (3 yıl)
-const SHGM_SUP="SHGM";// SHGM'nin atadığı denetçi: eğitmen listesinde olmasa da her tazelemeyi denetleyebilir
+const SHGM_SUP="SHGM";
+// denetleyenin etiketi: TRE/SFE tazelemesinde SE, diğerlerinde denetleyenin yetkisi (TRE ya da SFE); SHGM'de etiket yok
+const supTagOf=(X,r)=>{const sup=r?.sup||"";return!sup||sup===SHGM_SUP?"":(r.role==="TRE"||r.role==="SFE")?"SE":((X.instrMap.get(sup)?.held||[]).includes("TRE")?"TRE":"SFE")};// SHGM'nin atadığı denetçi: eğitmen listesinde olmasa da her tazelemeyi denetleyebilir
 const canSupervise=(sup,role)=>{const h=sup.held||[];if(role==="TRI")return h.includes("TRE");if(role==="SFI")return h.includes("TRE")||h.includes("SFE");if(role==="TRE"||role==="SFE")return !!sup.se;return false};
 // geçerliliği plan döneminde (12 ay pencere) dolan yetkiler + oturumda "Tazele" ile planlanıp planlanmadığı
 function instrDue(X,R){const out=[],sched=new Map();
@@ -841,7 +843,7 @@ function instrDue(X,R){const out=[],sched=new Map();
   out.push({code:t.code,name:t.name||"",role,deadline,date:sc?sc.date:null,sup:sc?sc.sup:null,scheduled:!!sc})})});
  return out.sort((a,b)=>(a.deadline??1e9)-(b.deadline??1e9)||a.code.localeCompare(b.code)||a.role.localeCompare(b.role))}
 function vPlan(){const X=ctx(),R=evaluate(X),months=planCols(X,R),multi=X.laneArr.length>1||R.ses.some(o=>!o.L);const CH=8,FM=finalSet(R),VX=visaSet(R),WN=winMap(R),DE=dateErrMap(R);
- const due=instrDue(X,R),revMap=new Map();R.ses.forEach(o=>{const rv=o.s.rev;if(rv)Object.keys(rv).forEach(k=>{const r=rv[k];if(!r||!r.role)return;const code=o.s.instr?.[+k]||"",sup=r.sup||"",supTag=sup===SHGM_SUP?"":sup?((r.role==="TRE"||r.role==="SFE")?"SE":((X.instrMap.get(sup)?.held||[]).includes("TRE")?"TRE":"SFE")):"";revMap.set(o.s.id+"|"+k,{code,role:r.role,sup,supTag})})});
+ const due=instrDue(X,R),revMap=new Map();R.ses.forEach(o=>{const rv=o.s.rev;if(rv)Object.keys(rv).forEach(k=>{const r=rv[k];if(!r||!r.role)return;const code=o.s.instr?.[+k]||"",sup=r.sup||"",supTag=supTagOf(X,r);revMap.set(o.s.id+"|"+k,{code,role:r.role,sup,supTag})})});
  // başlıkta her zaman lokasyon yazar (ör. "Ara.26 · FRA"); ay içinde birden fazla lokasyon varsa her lokasyon ayrı blok olur
  // aynı gün aynı simülatördeki slotlar (dolu ya da boş) tek sütunda saat sırasıyla alt alta
  const simOf=c=>X.lanes.get(c.lane)?.sim||c.lane,tmOf=c=>slotMin(X.lanes.get(c.lane)?.time)?.[0]??9999;
@@ -1155,7 +1157,8 @@ function exportCrw(){const X=ctx(),R=evaluate(X),FILL={LPC:"FFC000",OPC:"FFFF00"
   const devId=comp.replace(/^([A-Za-z]+)-?(\d+)$/,"$1-$2"),slot=L&&L.slot?SLOTS.indexOf(L.slot):"",ac=dv?.ac||"",city=L?.loc||"";
   const R1=(code,type,fill)=>[{v:d,d:true},{v:code},{v:(ac+" "+type).trim()},{v:comp},{v:slot},{v:devId},{v:"Local"},{v:city}].map(x=>({...x,bd:1,c:1,fill}));
   o.s.pilots.filter(Boolean).forEach(c=>rows.push(R1(c,o.types[c]||"",FILL[o.types[c]])));
-  const t=o.s.instr?.[k];if(t)rows.push(R1(t,X.instrMap.get(t)?.role||"",GR))});
+  const t=o.s.instr?.[k];if(t)rows.push(R1(t,X.instrMap.get(t)?.role||"",GR));
+  const sup=o.s.rev?.[k]?.sup;if(sup&&sup!==SHGM_SUP&&sup!==t)rows.push(R1(sup,X.instrMap.get(sup)?.role||"",GR))});// tazeleme denetleyeni de o gün görevli (SHGM hariç)
  download(xlsxBlob([{name:"CrwPlng Sim Import",freeze:1,widths:[12,8,18,10,7,11,11,7],autoFilter:"A1:H"+rows.length,rows}]),"CrwPlng Sim Import "+toIso(todayDn())+".xlsx")}
 function exportPlan(){const X=ctx(),R=evaluate(X),FILL={LPC:"FFC000",OPC:"FFFF00"},FM=finalSet(R),VX=visaSet(R),DE=dateErrMap(R);
  const head=TH.map(([h])=>({v:h,b:1,fill:"BFBFBF",bd:1,c:1,wrap:1}));
@@ -1167,6 +1170,7 @@ function exportPlan(){const X=ctx(),R=evaluate(X),FILL={LPC:"FFC000",OPC:"FFFF00
  for(const[k,cols]of months){const y=Math.floor(k/12),m=k%12;for(let i=0;i<cols.length;i+=CH){const cs=cols.slice(i,i+CH),r0=pr.length;
   pr.push([{v:MON[m]+"."+String(y).slice(2),b:1,fill:"BFBFBF",bd:1,c:1},...cs.slice(1).map(()=>({v:"",fill:"BFBFBF",bd:1}))]);if(cs.length>1)merges.push(`A${r0+1}:${colL(cs.length-1)}${r0+1}`);
   pr.push(cs.map(c=>({v:ymd(c.d)[2],bd:1,c:1,...(X.slotRow.get(c.lane+"|"+c.d)?.status==="Reserved"?{fill:"C6EFCE",b:1}:{})})));if(multi)pr.push(cs.map(c=>({v:X.lanes.get(c.lane)?.loc||c.lane,bd:1,c:1,sz:8})));pr.push(cs.map(c=>({v:X.lanes.get(c.lane)?.time||"",bd:1,c:1,sz:9})));
+  if(cs.some(c=>c.o?.s.rev?.[c.k]?.sup))pr.push(cs.map(c=>{const r=c.o?.s.rev?.[c.k];return{v:r?.sup?r.sup+(supTagOf(X,r)?" ("+supTagOf(X,r)+")":""):"",bd:1,c:1,sz:9}}));// tazeleme denetleyeni (ekrandaki gibi eğitmenin üstünde)
   pr.push(cs.map(c=>({v:c.o?c.o.s.instr?.[c.k]||"":"",bd:1,c:1,...(c.o&&instrVisa(X,c.o,c.k)?{vbd:1}:{})})));
   for(const j of[0,1])pr.push(cs.map(c=>{const code=c.o?.s.pilots[j]||"",fm=c.o&&FM.has(c.o.s.id+"|"+code),vx=c.o&&VX.has(c.o.s.id+"|"+code);return{v:code,bd:1,c:1,fill:FILL[c.o?.types[code]],...(X.crewMap.get(code)?.rank==="CPT"?{b:1}:{}),...(fm?{rbd:1}:{}),...(vx?{vbd:1}:{}),...(c.o&&DE.has(c.o.s.id+"|"+code)?{red:1}:{})}}));
   pr.push([])}}
