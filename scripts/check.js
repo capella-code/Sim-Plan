@@ -15,6 +15,10 @@ function codeScore(text) {
     /[\w$\])]\s*=(?![=>])\s*[\w$("'[!{-]/g, /\w\.\w+\(/g, /[;}]\s*[\w$]+\s*[=(.]/g, /[\w$]\(\)\s*;/g];
   return pats.reduce((n, re) => n + (text.match(re) || []).length, 0);
 }
+// Tek basina bile kesin kod olan kaliplar: degisken tanimi, fonksiyon, return ...;, cagri(); ve x=[];
+// (Dogal dil aciklamalarinda gecmez; tek bir yutulmus ifadeyi de yakalar.)
+const STRONG = /\b(const|let|var)\s+[\w$]+\s*=|\bfunction\s*[\w$]*\s*\(|\breturn\b[^.]*;|\w\([^()]*\)\s*;|[\w$\]]\s*=\s*\[\s*\]\s*;/;
+const looksLikeCode = (text) => codeScore(text) >= 3 || STRONG.test(text);
 
 function run(file) {
   const src = fs.readFileSync(file, "utf8"), isModule = /\.(m?js|cjs)$/i.test(file);
@@ -54,7 +58,7 @@ function run(file) {
       if (c.type !== "Line") continue;
       const before = code.slice(code.lastIndexOf("\n", c.start - 1) + 1, c.start);
       if (!before.trim()) continue; // satir basindaki yorumlar zararsiz
-      if (codeScore(c.value) >= 3) {
+      if (looksLikeCode(c.value)) {
         const ln = code.slice(0, c.start).split("\n").length + lineOffset;
         warnings.push("YORUMA DONMUS KOD OLABILIR (satir " + ln + "): //" + c.value.trim().slice(0, 160));
       }
@@ -64,7 +68,7 @@ function run(file) {
   return { ok: !errors.length, errors, warnings, checkedComments: !!acorn };
 }
 
-module.exports = { run, codeScore };
+module.exports = { run, codeScore, looksLikeCode };
 
 // Dosyalari kontrol eder, sonucu yazar; sorun varsa false dondurur (derleme betikleri bunu kullanir)
 function checkFiles(files) {
