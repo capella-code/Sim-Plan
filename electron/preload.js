@@ -26,5 +26,7 @@ contextBridge.exposeInMainWorld("simStore", {
     } catch (e) { return false; }
   },
   openFolder: () => ipcRenderer.invoke("open-data-folder"),
-  version: version
+  version: version,
+  // değişiklik geçmişinde "Kim": Windows kullanıcı adı
+  user: (() => { try { return require("os").userInfo().username || ""; } catch (e) { return ""; } })()
 });

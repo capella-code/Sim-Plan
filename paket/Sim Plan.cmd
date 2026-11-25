@@ -1,6 +1,6 @@
 @echo off
 rem Sim Plan: uygulamayi Microsoft Edge'de ayri bir pencerede acar (internet gerekmez).
-rem Veriler Edge'in tarayici hafizasinda saklanir; yedek icin uygulamada Diger > Yedek al.
+rem Veriler Edge'in tarayici hafizasinda saklanir; yedek icin uygulamada Diger > Yedekle.
 setlocal
 set "HTML=%~dp0sim plan.html"
 if not exist "%HTML%" (
@@ -8,6 +8,7 @@ if not exist "%HTML%" (
   pause
   exit /b 1
 )
-for /f "usebackq delims=" %%U in (`powershell -NoProfile -Command "[Uri]::new($env:HTML).AbsoluteUri"`) do set "URL=%%U"
+rem Windows kullanici adi uygulamaya iletilir (degisiklik gecmisinde "Kim" sutunu)
+for /f "usebackq delims=" %%U in (`powershell -NoProfile -Command "[Uri]::new($env:HTML).AbsoluteUri + '?u=' + [Uri]::EscapeDataString($env:USERNAME)"`) do set "URL=%%U"
 start "" msedge --app="%URL%" --window-size=1450,920
 if errorlevel 1 start "" "%HTML%"

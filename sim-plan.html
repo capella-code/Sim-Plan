@@ -284,6 +284,23 @@ function save(){syncSlots();ls.s(LS_KEY,JSON.stringify(DB))}
 function syncVisas(){const by=new Map(DB.visas.map(v=>[(v.code||"").toUpperCase(),v]));let n=0;
  [...DB.crew,...DB.instr].forEach(p=>{const c=(p.code||"").trim().toUpperCase();if(!c)return;const v=by.get(c);
   if(!v){const nv={id:uid(),code:c,name:p.name||"",green:false};DB.visas.push(nv);by.set(c,nv);n++}else if(!v.name&&p.name)v.name=p.name});return n}
+// ---- değişiklik geçmişi: kim, ne zaman, ne yaptı (son 12 ay; buluttaki belge sınırı için en çok LOG_MAX kayıt) ----
+const LOG_DAYS=366,LOG_MAX=4000;let logT=0;
+function logUser(){try{const s=window.simStore;if(s&&s.user)return String(s.user)}catch(e){}try{const u=new URLSearchParams(location.search).get("u");if(u)return u}catch(e){}return"bu bilgisayar"}
+function logAdd(m){if(!DB||!m)return;const L=DB.log=Array.isArray(DB.log)?DB.log:[];L.push({t:new Date().toISOString(),u:logUser(),m:String(m)});
+ const lim=Date.now()-LOG_DAYS*864e5;let i=0;while(i<L.length&&Date.parse(L[i].t)<lim)i++;if(i)L.splice(0,i);if(L.length>LOG_MAX)L.splice(0,L.length-LOG_MAX);clearTimeout(logT);logT=setTimeout(save,30)}
+const toastLog=(m,ms)=>{toast(m,ms);logAdd(m)};
+function mergeLogs(a,b){const seen=new Set(),out=[];[...(a||[]),...(b||[])].forEach(x=>{if(!x||!x.t)return;const k=x.t+"|"+x.u+"|"+x.m;if(!seen.has(k)){seen.add(k);out.push(x)}});return out.sort((x,y)=>x.t<y.t?-1:x.t>y.t?1:0)}
+// kayıtta satırın kim/ne olduğu
+function rowLabel(key,it){if(!it)return"";const dv=v=>devById(v)?.c||"",F=v=>v?fmt(toDn(v))||v:"";
+ if(key==="visaTypes")return it.name||"(adsız)";if(key==="sims")return[F(it.date),dv(it.dev),it.slot].filter(Boolean).join(" ")||"(boş satır)";
+ if(key==="blackouts")return(F(it.from)+(it.to&&it.to!==it.from?"–"+F(it.to):""))+(it.note?" "+it.note:"")||"(boş satır)";
+ if(key==="nofly")return[it.a,it.b].filter(Boolean).join(" / ")||"(boş satır)";if(key==="leaves")return[it.code,F(it.from)].filter(Boolean).join(" ")||"(boş satır)";
+ return[it.code,it.name].filter(Boolean).join(" ")||"(boş satır)"}
+function logVal(col,v){if(col.t==="days")return v||"(boş)";if(v==null||v==="")return"(boş)";if(col.t==="date")return fmt(toDn(v))||String(v);if(col.t==="check")return v?"evet":"hayır";if(col.t==="dev")return devById(v)?.c||String(v);return String(v)}
+const sesLabel=s=>{const ds=(s.dates||[]).filter(Boolean).sort(),F=v=>fmt(toDn(v));return[(s.pilots||[]).filter(Boolean).join("/")||"(öğrencisiz)",ds.length?F(ds[0])+(ds.length>1?"–"+F(ds.at(-1)):""):"",s.lane||""].filter(Boolean).join(" ")};
+function sesDiff(a,b){const J=x=>JSON.stringify(x??null),ch=[];if(J(a.dates)!==J(b.dates))ch.push("tarih");if(J(a.pilots)!==J(b.pilots))ch.push("öğrenci");if(J(a.instr)!==J(b.instr))ch.push("eğitmen");
+ if(a.lane!==b.lane||J(a.lanes)!==J(b.lanes))ch.push("simülatör/slot");if(!!a.locked!==!!b.locked||J(a.lk)!==J(b.lk))ch.push("kilit");if(J(a.rev||{})!==J(b.rev||{}))ch.push("tazeleme");return ch.length?" (değişen: "+ch.join(", ")+")":""}
 function touch(){syncVisas();const ch=syncSlots();DB.dataVer++;save();tabCounts();if(ch)render()}
 
 /* ============ örnek veri ============ */
@@ -720,11 +737,13 @@ function devDlg(id,kind){const orig=id!=null?devById(id):null;const x=orig?clone
   const b=devErr(x);if(b.length){$("#der").innerHTML=b.map(m=>`<li>${esc(m)}</li>`).join("");return false}
   if(!ac)SLOTS.forEach(k=>{if(x.s[k]&&!(x.s[k][0]&&x.s[k][1]))delete x.s[k]});
   if(orig&&orig.c!==x.c){const rn=l=>l===orig.c?x.c:l.startsWith(orig.c+" ")?x.c+l.slice(orig.c.length):l;DB.sessions.forEach(se=>{se.lane=rn(se.lane);if(se.lanes)se.lanes=se.lanes.map(rn)})}// kod değişince oturumlar izler
+  {const NM={c:"Kod / Tescil",ac:"Tip",op:"Operatör",mf:"Üretici",loc:"Lokasyon",tz:"Saat dilimi",a:"Aktif",s:"Slot saatleri"},J=v=>JSON.stringify(v??""),chg=orig?Object.keys(NM).filter(k=>J(orig[k])!==J(x[k])).map(k=>NM[k]):[];
+   logAdd("FSTD / Uçak: "+x.c+(orig?(chg.length?" güncellendi (değişen: "+chg.join(", ")+")":" kaydedildi (değişiklik yok)"):" eklendi"))}
   if(orig)Object.assign(orig,x);else DB.devices.push(x);touch();render();toast("Kaydedildi: "+x.c)}}])}
 function devUses(d){const n1=DB.sims.filter(r=>String(r.dev)===String(d.id)).length,n2=DB.sessions.filter(se=>[se.lane,...(se.lanes||[])].some(l=>l===d.c||l.startsWith(d.c+" "))).length;return[n1,n2]}
 function devDel(id){const d=devById(id);if(!d)return;const[n1,n2]=devUses(d);
- if(n1||n2)dlg("Silinemez",`<b>${esc(d.c)}</b> ${n1?n1+" müsaitlik satırında":""}${n1&&n2?" ve ":""}${n2?n2+" oturumda":""} kullanılıyor; silinemez. Pasif yaparsanız planlamada kullanılmaz, mevcut oturumlarda uyarı görünür.`,[{l:"Vazgeç"},...(d.a?[{l:"Pasif yap",c:"p",f:()=>{d.a=0;touch();render()}}]:[])]);
- else confirmDlg("Sil",`<b>${esc(d.c)}</b> kalıcı olarak silinsin mi?`,"Sil",()=>{DB.devices=DB.devices.filter(x=>x!==d);touch();render()},"d")}
+ if(n1||n2)dlg("Silinemez",`<b>${esc(d.c)}</b> ${n1?n1+" müsaitlik satırında":""}${n1&&n2?" ve ":""}${n2?n2+" oturumda":""} kullanılıyor; silinemez. Pasif yaparsanız planlamada kullanılmaz, mevcut oturumlarda uyarı görünür.`,[{l:"Vazgeç"},...(d.a?[{l:"Pasif yap",c:"p",f:()=>{d.a=0;logAdd("FSTD / Uçak: "+d.c+" pasif yapıldı");touch();render()}}]:[])]);
+ else confirmDlg("Sil",`<b>${esc(d.c)}</b> kalıcı olarak silinsin mi?`,"Sil",()=>{DB.devices=DB.devices.filter(x=>x!==d);logAdd("FSTD / Uçak: silindi – "+d.c);touch();render()},"d")}
 // listeyi koda göre birleştirir (id'ler korunur, müsaitlik satırları bozulmaz)
 function upsertDevices(list){let a=0,u=0;list.forEach(src=>{const c=(src.c||"").toUpperCase();if(!c)return;const ex=DB.devices.find(d=>(d.c||"").toUpperCase()===c);
   if(ex){Object.assign(ex,cloneDev({...src,id:ex.id}));u++}else{const id=DB.devices.some(d=>String(d.id)===String(src.id))||src.id==null?nextDevId(DB.devices):src.id;DB.devices.push(cloneDev({...src,id}));a++}});return[a,u]}
@@ -897,7 +916,7 @@ function simAddDlg(){const p=DB.sims.at(-1),devs=DB.devices.filter(d=>d.a).sort(
   [{l:"Vazgeç"},{l:"Ekle",c:"p",f:()=>{const date=$("#saD").value;if(!date){toast("Tarih zorunlu");$("#saD").focus();return false}
    const dev=$("#saV").value,dv=devById(dev);if(!dv){toast("FSTD / Uçak seçin");return false}
    const it={id:uid(),date,dev:dv.id,slot:isAC(dv)?"":$("#saS").value,status:"Reserved",note:$("#saN").value.trim()};
-   UI.pin=UI.pin||{};(UI.pin.sims=UI.pin.sims||[]).unshift(it.id);DB.sims.push(it);touch();render()}}],
+   UI.pin=UI.pin||{};(UI.pin.sims=UI.pin.sims||[]).unshift(it.id);DB.sims.push(it);logAdd(LISTS.sims.t+": satır eklendi – "+rowLabel("sims",it));touch();render()}}],
   ()=>{$("#saV").onchange=()=>{$("#saS").innerHTML=slotOpts($("#saV").value)};if(p?.slot&&$(`#saS option[value="${p.slot}"]`))$("#saS").value=p.slot;$("#saD").focus()})}
 function dlg(title,body,buttons,onOpen){$("#dl").innerHTML=`<h2>${title}</h2><div id="dlb">${body}</div><div class="bt">${buttons.map((b,i)=>`<button data-b="${i}" class="${b.c||""}">${b.l}</button>`).join("")}</div>`;
  $("#ov").hidden=false;qsa("#dl [data-b]").forEach(el=>el.onclick=()=>{const b=buttons[+el.dataset.b];if(b.f&&b.f()===false)return;closeDlg()});if(onOpen)onOpen()}
@@ -907,10 +926,16 @@ function askCrewRemoved(list){const K=x=>(x.code||"").trim().toUpperCase(),inCre
  const inI=c=>DB.instr.some(x=>K(x)===c),inV=c=>DB.visas.some(v=>K(v)===c),names=a=>a.length===1?`<div><b>${esc(K(a[0]))}${a[0].name?" "+esc(a[0].name):""}</b></div>`:`<ul>${a.map(x=>`<li>${esc(K(x))}${x.name?" "+esc(x.name):""}</li>`).join("")}</ul>`;
  const askVisa=()=>{const v=ppl.filter(x=>!inI(K(x))&&inV(K(x)));if(!v.length)return;const cs=new Set(v.map(K));
   dlg("Vizeden de silinsin mi?",names(v)+(v.length===1?`<div>Artık ekip ve eğitmen listesinde yok. Kişi vizeleri listesinde kaydı var.</div>`:`<div>Ekip ve eğitmen listesinde artık olmayan ${v.length} kişinin vize kaydı var.</div>`),
-   [{l:"Vizede kalsın"},{l:"Vizeden sil",c:"d",f:()=>{DB.visas=DB.visas.filter(x=>!cs.has(K(x)));touch();render()}}])};
+   [{l:"Vizede kalsın"},{l:"Vizeden sil",c:"d",f:()=>{DB.visas=DB.visas.filter(x=>!cs.has(K(x)));logAdd("Kişi vizeleri: silindi – "+v.map(x=>rowLabel("visas",x)).join(", ")+" (ekipten çıktığı için)");touch();render()}}])};
  const ins=ppl.filter(x=>inI(K(x)));if(!ins.length)return askVisa();const cs=new Set(ins.map(K));
  dlg("Eğitmenlerden de silinsin mi?",names(ins)+(ins.length===1?`<div>Ekip listesinden silindi. Eğitmenler listesinde de var.</div>`:`<div>Ekipten çıkan kişilerden ${ins.length} tanesi eğitmen listesinde de var.</div>`),
-  [{l:ins.length===1?"Eğitmen olarak kalsın":"Eğitmen olarak kalsınlar",f:()=>{setTimeout(askVisa,0)}},{l:"Eğitmenlerden sil",c:"d",f:()=>{DB.instr=DB.instr.filter(x=>!cs.has(K(x)));touch();render();setTimeout(askVisa,0)}}])}
+  [{l:ins.length===1?"Eğitmen olarak kalsın":"Eğitmen olarak kalsınlar",f:()=>{setTimeout(askVisa,0)}},{l:"Eğitmenlerden sil",c:"d",f:()=>{DB.instr=DB.instr.filter(x=>!cs.has(K(x)));logAdd("Eğitmenler: silindi – "+ins.map(x=>rowLabel("instr",x)).join(", ")+" (ekipten çıktığı için)");touch();render();setTimeout(askVisa,0)}}])}
+// değişiklik geçmişi penceresi: en yenisi üstte, aramayla süzülür, Excel'e aktarılır
+function historyDlg(){const L=(DB.log||[]).slice().reverse(),ft=t=>{const d=new Date(t);return isNaN(d)?String(t):pad(d.getDate())+"."+pad(d.getMonth()+1)+"."+d.getFullYear()+" "+pad(d.getHours())+":"+pad(d.getMinutes())},MAXR=500;
+ const rows=q=>{const n=norm(q||""),a=n?L.filter(x=>norm(ft(x.t)+" "+x.u+" "+x.m).includes(n)):L;
+  return(a.slice(0,MAXR).map(x=>`<tr><td style="white-space:nowrap">${esc(ft(x.t))}</td><td>${esc(x.u)}</td><td>${esc(x.m)}</td></tr>`).join("")||`<tr><td colspan="3" class="mu">Kayıt yok.</td></tr>`)+(a.length>MAXR?`<tr><td colspan="3" class="mu">İlk ${MAXR} kayıt gösteriliyor (toplam ${a.length}); aramayla daraltın.</td></tr>`:"")};
+ dlg("Değişiklik geçmişi",`<div class="row"><input id="hq" placeholder="Ara (tarih, kişi, kod, işlem)" style="flex:1;min-width:220px"><button id="hx">Excel'e aktar</button></div><div class="mu" style="margin:6px 0">Son 12 ayın kayıtları, en yenisi üstte. Toplam ${L.length} kayıt.</div><div class="sc" style="max-height:60vh;overflow:auto"><table class="ed"><thead><tr><th>Zaman</th><th>Kim</th><th>İşlem</th></tr></thead><tbody id="hb">${rows("")}</tbody></table></div>`,[{l:"Kapat"}],
+  ()=>{$("#hq").oninput=e=>{$("#hb").innerHTML=rows(e.target.value)};$("#hx").onclick=()=>download(xlsxBlob([{name:"Gecmis",freeze:1,widths:[17,30,110],rows:[["Zaman","Kim","İşlem"].map(v=>({v,b:1,fill:"D9D9D9",bd:1})),...L.map(x=>[{v:ft(x.t),bd:1},{v:x.u,bd:1},{v:x.m,bd:1}])]}]),"simulator-plan-gecmis-"+toIso(todayDn())+".xlsx")})}
 function closeDlg(){$("#ov").hidden=true;$("#dl").innerHTML=""}
 function toast(m,ms=3500){const t=document.createElement("div");t.className="toast";t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),ms)}
 const confirmDlg=(title,msg,okL,fn,cls="p")=>dlg(title,`<div>${msg}</div>`,[{l:"Vazgeç"},{l:okL,c:cls,f:fn}]);
@@ -957,7 +982,7 @@ function runPlan(resOnly){const t0=performance.now();DB.sessions=DB.sessions.fil
   [...un,...fin].forEach(r=>{const k=Math.max(mKey(X.start),Math.min(mKey(r.ev.soft>=r.ev.earliest?r.ev.soft:r.ev.deadline),mKey(X.end)));extra.set(k,(extra.get(k)||0)+1)})}
  DB.sessions=outK.concat(out);syncSlots();
  DB.planVer=DB.dataVer;const n=new Date();DB.planAt=fmt(todayDn())+" "+pad(n.getHours())+":"+pad(n.getMinutes());save();
- const R=evaluate(ctx()),un=R.rows.filter(r=>!r.o&&r.err.length).length;const tn=DB.sims.filter(r=>r.status==="Tahmini").length;show("plan");toast(`${out.length} oturum planlandı${un?`, ${un} kontrol planlanamadı`:""}; müsaitlik listesinde ${tn} tahmini gün (${Math.round(performance.now()-t0)} ms)`)}
+ const R=evaluate(ctx()),un=R.rows.filter(r=>!r.o&&r.err.length).length;const tn=DB.sims.filter(r=>r.status==="Tahmini").length;show("plan");toastLog((resOnly?"Sadece Reserved ile planla: ":"Planı oluştur: ")+`${out.length} oturum planlandı${un?`, ${un} kontrol planlanamadı`:""}; müsaitlik listesinde ${tn} tahmini gün (${Math.round(performance.now()-t0)} ms)`)}
 
 /* ---- oturum düzenleme ---- */
 function sessionDlg(id,preset={}){const X=ctx();const orig=id?DB.sessions.find(s=>s.id===id):null;if(id&&!orig)return;
@@ -984,12 +1009,13 @@ function sessionDlg(id,preset={}){const X=ctx();const orig=id?DB.sessions.find(s
  <div id="sx" style="margin-top:10px"></div><div class="mu">İlk sektör tarihini değiştirince diğerleri aynı miktarda kayar. Kontrol tarihi = son sektör.</div>
  <label class="ck" style="margin-top:8px"><input type="checkbox" id="sK"><span><b>Tümü kilitli</b> (slotları Reserved ise yeniden planlamada korunur; Tahmini slottaki oturum yeni plana göre taşınır). Öğrenci ve eğitmenler tek tek de kilitlenebilir: oturum korunur, kilitsiz kişinin yerine yeniden planlamada uygun biri konur.</span></label>
  ${o&&(o.err.length||o.warn.length)?`<div style="margin-top:8px">${o.err.map(e=>`<div class="bad iss">✖ ${esc(e)}</div>`).join("")}${o.warn.map(e=>`<div class="warn iss">⚠ ${esc(e)}</div>`).join("")}</div>`:""}`,
- [...(orig?[{l:"Sil",c:"d",f:()=>{DB.sessions=DB.sessions.filter(x=>x.id!==id);save();render();tabCounts();toast("Oturum silindi")}}]:[]),{l:"Vazgeç"},
+ [...(orig?[{l:"Sil",c:"d",f:()=>{DB.sessions=DB.sessions.filter(x=>x.id!==id);logAdd("Oturum silindi: "+sesLabel(orig));save();render();tabCounts();toast("Oturum silindi")}}]:[]),{l:"Vazgeç"},
   {l:"Kaydet",c:"p",f:()=>{const dv=devOfLane($("#sL").value),lk=s.dates.map((_,k)=>{const sel=$(`#sx [data-sk="${k}"]`);return dv&&sel?devLane(dv,sel.value):$("#sL").value});
    s.pilots=[$("#sP0").value,$("#sP1").value];
    const ord=s.dates.map((d,k)=>[d,s.instr[k]||"",lk[k],W.i[k],k]).filter(x=>x[0]).sort((a,b)=>a[0]<b[0]?-1:1);if(!ord.length){toast("En az bir sektör tarihi girin");return false}
    s.dates=ord.map(x=>x[0]);s.instr=ord.map(x=>x[1]);setLk(s,{p:W.p,i:ord.map(x=>!!x[3])});const L2=ord.map(x=>x[2]);s.lane=L2[0];if(L2.some(k=>k!==L2[0]))s.lanes=L2;else delete s.lanes;
    {const nr={};ord.forEach((x,ni)=>{const r=s.rev&&s.rev[x[4]];if(r&&r.role)nr[ni]=r});s.rev=nr}
+   logAdd(orig?"Oturum düzenlendi: "+sesLabel(s)+sesDiff(orig,s):"Oturum eklendi: "+sesLabel(s));
    if(orig){Object.assign(orig,s);if(!s.lk)delete orig.lk}else DB.sessions.push(s);save();tabCounts();render();const R2=evaluate(ctx()),o2=R2.byId.get(s.id);toast(o2&&o2.err.length?"Kaydedildi – "+o2.err.length+" hata var":"Kaydedildi")}}],
  ()=>{draw();$("#sN").onchange=()=>{const n=+$("#sN").value;while(s.dates.length<n){const l=toDn(s.dates.at(-1))??X.start;if(s.lanes)s.lanes.push(s.lanes.at(-1));s.dates.push(toIso(l+1))}s.dates.length=n;if(s.lanes)s.lanes.length=n;s.instr.length=Math.min(s.instr.length,n);while(W.i.length<n)W.i.push(W.i.at(-1)??true);W.i.length=n;draw();sm()};
   sm();$("#sK").onchange=()=>{const v=$("#sK").checked;W.p=W.p.map(()=>v);W.i=W.i.map(()=>v);qsa("[data-pk]").forEach(x=>x.checked=v);draw();sm()};
@@ -1039,7 +1065,7 @@ function xlsxBlob(sheets){sheets=enSheets(sheets);const fonts=['<font><sz val="1
 // claude.ai'de yayımlı sayfada dosya indirme yalnızca "downloads" yeteneğiyle olur; normal tarayıcıda bağlantı ile indirilir
 const DLCAP=window.claude&&typeof window.claude.use==="function"?window.claude.use("downloads").catch(()=>null):Promise.resolve(null);
 function linkDownload(blob,name){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500)}
-async function download(blob,name){if(typeof LANG!=="undefined"&&LANG==="en")name=name.replace(/^simulator-plani-/,"simulator-plan-").replace(/^otel-taslagi-/,"hotel-draft-").replace(/^simulator-plan-veri/,"simulator-plan-data").replace(/^simulator-plan-yedek-/,"simulator-plan-backup-");if(!window.claude)return linkDownload(blob,name);const dl=await DLCAP;if(!dl)return linkDownload(blob,name);
+async function download(blob,name){if(typeof LANG!=="undefined"&&LANG==="en")name=name.replace(/^simulator-plani-/,"simulator-plan-").replace(/^otel-taslagi-/,"hotel-draft-").replace(/^simulator-plan-veri/,"simulator-plan-data").replace(/^simulator-plan-yedek-/,"simulator-plan-backup-").replace(/^simulator-plan-gecmis-/,"simulator-plan-history-");if(!window.claude)return linkDownload(blob,name);const dl=await DLCAP;if(!dl)return linkDownload(blob,name);
  try{await dl.save({filename:name,data:blob})}catch(e){if(e&&e.code==="declined")return;toast("Dosya indirilemedi"+(e&&e.code?" ("+e.code+")":""),5000)}}
 async function unzip(buf){const dv=new DataView(buf);let e=buf.byteLength-22;while(e>=0&&dv.getUint32(e,true)!==0x06054b50)e--;if(e<0)throw new Error("Dosya xlsx değil");
  const n=dv.getUint16(e+10,true);let p=dv.getUint32(e+16,true);const files={},dec=new TextDecoder();
@@ -1091,7 +1117,7 @@ function sheetKey(name){const n=norm(name);for(const[k,al]of SHEET_ALIAS)if(al.s
 // Kişi vizeleri: başlıktaki tür adını (SCHENGEN, UAE…) vize türüne bağlar; türler önce yüklendiği için dosyadaki yeni türler de tanınır
 function resolveVisas(items){items.forEach(it=>{const vn=it._vn;delete it._vn;if(!vn)return;for(const h in vn){const t=DB.visaTypes.find(x=>x.name&&norm(x.name)===h);if(!t)continue;const v=vn[h];
   if(/^(yesil|green)/.test(norm(v)))it.green=true;else{const d=cellDate(v);if(d)it["v_"+t.id]=d}}})}
-function applyImport(found,mode){const ORD={devices:0,visaTypes:1},cnt=[],skipped=[],oldCrew=DB.crew;found.sort((a,b)=>(ORD[a.key]??2)-(ORD[b.key]??2));// önce cihazlar ve vize türleri, sonra diğerleri
+function applyImport(found,mode,src="Excel / CSV yükle"){const ORD={devices:0,visaTypes:1},cnt=[],skipped=[],oldCrew=DB.crew;found.sort((a,b)=>(ORD[a.key]??2)-(ORD[b.key]??2));// önce cihazlar ve vize türleri, sonra diğerleri
  found.forEach(({key,items})=>{if(key==="devices"){upsertDevices(items);cnt.push(DEVMETA.t+" "+items.length);return}if(key==="sims"){importSlots(items,mode);cnt.push(LISTS.sims.t+" "+items.length);return}const n0=items.length;if(key==="visas")resolveVisas(items);
   if(key==="visas"&&mode==="add"){items=items.filter(it=>{const ex=it.code&&DB.visas.find(v=>v.code===it.code);if(!ex)return true;// aynı kodlu kişinin satırı güncellenir (ikinci satır açılmaz)
    for(const k in it){if(k==="id")continue;const v=it[k];if(k==="green"?v:v!==""&&v!=null)ex[k]=v}return false})}
@@ -1100,10 +1126,10 @@ function applyImport(found,mode){const ORD={devices:0,visaTypes:1},cnt=[],skippe
    items=items.filter(it=>{const c=(it.code||"").trim().toUpperCase();if(!c)return true;if(seen.has(c)){sk.push(c);return false}seen.add(c);return true});
    if(sk.length)skipped.push(LISTS[key].t+" – "+[...new Set(sk)].join(", "))}// kod listede benzersiz: listede ya da dosyada daha önce geçen kod eklenmez
   cnt.push(LISTS[key].t+" "+(key==="crew"||key==="instr"?items.length:n0));DB[key]=mode==="add"?DB[key].concat(items):items});
- touch();render();toast("Yüklendi: "+cnt.join(", ")+(skipped.length?" · Atlandı (kod zaten var): "+skipped.join("; "):""),skipped.length?10000:3500);if(mode!=="add"&&found.some(f=>f.key==="crew"))setTimeout(()=>askCrewRemoved(oldCrew),0)}// Değiştir ile ekipten çıkanlar
+ touch();render();toast("Yüklendi: "+cnt.join(", ")+(skipped.length?" · Atlandı (kod zaten var): "+skipped.join("; "):""),skipped.length?10000:3500);logAdd(src+" ("+(mode==="add"?"Sona ekle":"Değiştir")+"): "+cnt.join(", ")+(skipped.length?" · Atlandı (kod zaten var): "+skipped.join("; "):""));if(mode!=="add"&&found.some(f=>f.key==="crew"))setTimeout(()=>askCrewRemoved(oldCrew),0)}// Değiştir ile ekipten çıkanlar
 async function importFile(file){try{const nm=file.name.toLowerCase();
  if(nm.endsWith(".json")){const d=JSON.parse(await file.text());if(!d||!Array.isArray(d.crew))throw new Error("Yedek dosyası tanınmadı");
-  confirmDlg("Yedekten yükle","Mevcut tüm veriler ve plan bu yedekle değiştirilecek.","Yükle",()=>{DB=d;const e=emptyDB();for(const k in e)if(DB[k]==null)DB[k]=e[k];DB.settings={...DEF,...DB.settings};migrate(DB);save();tabCounts();render();toast("Yedek yüklendi")});return}
+  confirmDlg("Yedekten yükle","Mevcut tüm veriler ve plan bu yedekle değiştirilecek.","Yükle",()=>{const lg0=DB.log;DB=d;const e=emptyDB();for(const k in e)if(DB[k]==null)DB[k]=e[k];DB.settings={...DEF,...DB.settings};migrate(DB);DB.log=mergeLogs(lg0,d.log);logAdd("Yedekten yüklendi: "+file.name);save();tabCounts();render();toast("Yedek yüklendi")});return}
  let sheets;if(nm.endsWith(".csv")||nm.endsWith(".txt"))sheets=[{name:file.name,rows:parseCSV(await file.text())}];else sheets=await readXlsx(await file.arrayBuffer());
  const found=[];for(const sh of sheets){const key=sheetKey(sh.name)||(sheets.length===1?(TAB in LISTS?TAB:TAB==="off"?"blackouts":"crew"):null);if(!key||found.some(f=>f.key===key))continue;const items=key==="devices"?devRowsToItems(sh.rows):rowsToItems(key,sh.rows);if(items.length)found.push({key,items})}
  if(!found.length){dlg("Veri bulunamadı",`Dosyada tanınan sayfa/satır yok. Beklenen sayfa adları: ${[DEVMETA,...Object.values(LISTS)].map(l=>"<b>"+l.sheet+"</b>").join(", ")}. Kolay yol: <b>Excel'e aktar ▸ Tüm verileri Excel'e aktar</b> ile dosyayı alıp doldurun.`,[{l:"Tamam",c:"p"}]);return}
@@ -1112,7 +1138,7 @@ async function importFile(file){try{const nm=file.name.toLowerCase();
  catch(err){dlg("Dosya okunamadı",esc(err.message||err),[{l:"Tamam",c:"p"}])}}
 function pasteDlg(key){const L=LISTS[key];dlg(L.t+" – Excel'den yapıştır",`<div class="mu">Excel'de hücreleri seçip kopyalayın (başlık satırıyla birlikte daha güvenli) ve buraya yapıştırın. Başlık yoksa sütun sırası: <b>${L.cols.map(c=>c.l).join(" | ")}</b></div><textarea id="pT" placeholder="Yapıştırın…"></textarea>`,
  [{l:"Vazgeç"},{l:"Sona ekle",f:()=>doPaste(key,"add")},{l:"Listeyi değiştir",c:"p",f:()=>doPaste(key,"replace")}],()=>$("#pT").focus())}
-function doPaste(key,mode){const items=rowsToItems(key,parseCSV($("#pT").value));if(!items.length){toast("Satır bulunamadı");return false}applyImport([{key,items}],mode)}
+function doPaste(key,mode){const items=rowsToItems(key,parseCSV($("#pT").value));if(!items.length){toast("Satır bulunamadı");return false}applyImport([{key,items}],mode,"Excel'den yapıştır")}
 function devPasteDlg(){dlg("FSTD / Uçak – Excel'den yapıştır",`<div class="mu">Excel'de hücreleri kopyalayıp buraya yapıştırın. Sütun sırası (Excel'e aktarılan FSTD / Uçak sayfasıyla aynı): <b>Tür · Kod / Tescil · Tip · Operatör · Üretici · Lokasyon · Saat dilimi · A · B · C · D · E · F · Durum</b>. Başlık satırı olsa da olmasa da olur (başlık yoksa bu sıra kullanılır). Slot hücrelerine saat aralığı yazın (ör. 15:05–19:05); uçakta slot yoktur. Aynı koddaki cihaz güncellenir. (Biçim için <b>Excel'e aktar ▸ Tüm verileri Excel'e aktar</b>, FSTD / Uçak sayfası.)</div><textarea id="pT" placeholder="Yapıştırın…"></textarea>`,
  [{l:"Vazgeç"},{l:"Ekle / güncelle",f:()=>doDevPaste("add")},{l:"Listeyi değiştir",c:"p",f:()=>doDevPaste("replace")}],()=>$("#pT").focus())}
 // başlıksız yapıştırma: sabit sütun sırası (Excel şablonuyla aynı): Tür,Kod,Tip,Operatör,Üretici,Lokasyon,Saat dilimi,A,B,C,D,E,F,Durum
@@ -1120,7 +1146,7 @@ function devRowsToItemsFixed(rows){return rows.filter(r=>r&&String(r[1]??"").tri
  const d={k,c:g(1).toUpperCase().replace(/\s/g,""),ac:g(2).toUpperCase(),op:g(3),mf:g(4),loc:g(5).toUpperCase(),tz:g(6),a:/pasif|passive|hayir|^h$|^0$|false/.test(norm(g(13)))?0:1,s:{}};
  if(k!=="AC")SLOTS.forEach((n,j)=>{const t=parseSlot(g(7+j));if(t)d.s[n]=t});return d})}
 function doDevPaste(mode){const rows=parseCSV($("#pT").value);let items=devRowsToItems(rows);if(!items.length)items=devRowsToItemsFixed(rows);if(!items.length){toast("Satır bulunamadı");return false}
- if(mode==="replace")DB.devices=[];const[a,u]=upsertDevices(items);touch();render();toast(a+" eklendi, "+u+" güncellendi")}
+ if(mode==="replace")DB.devices=[];const[a,u]=upsertDevices(items);logAdd("FSTD / Uçak – Excel'den yapıştır ("+(mode==="replace"?"Listeyi değiştir":"Ekle / güncelle")+"): "+a+" eklendi, "+u+" güncellendi");touch();render();toast(a+" eklendi, "+u+" güncellendi")}
 function inputSheets(){return[devSheet(),...Object.entries(LISTS).map(([key,L])=>{const cols=listCols(key,DERIVED[key]?ctx():null).filter(c=>c.col||c.der?.x);
  return{name:L.sheet,freeze:1,widths:cols.map(c=>!c.col?14:c.col.t==="date"?13:c.col.t==="code"?8:c.col.w?Math.round(c.col.w/7):14),
  rows:[cols.map(c=>({v:c.l,b:1,fill:"D9D9D9",bd:1})),...DB[key].map(it=>cols.map(c=>{if(!c.col)return{v:c.txt(it),bd:1};const cc=c.col,v=it[cc.k];
@@ -1208,9 +1234,9 @@ document.addEventListener("click",e=>{const el=e.target.closest("button,[data-se
  if(d.tclear){UI.tf={};UI.ts={s:null,d:1};UI.q="";UI.type="";UI.onlyErr=false;render();return}
  if(d.tab)return show(d.tab);
  if(d.add==="sims")return simAddDlg();
- if(d.add){const L=LISTS[d.add],it={id:uid()};UI.pin=UI.pin||{};(UI.pin[d.add]=UI.pin[d.add]||[]).unshift(it.id);L.cols.forEach(c=>it[c.k]=c.t==="days"?Array(7).fill(true):c.t==="check"?false:"");if(d.add==="sims"){const p=DB.sims.at(-1);Object.assign(it,{dev:p?.dev??"",slot:p?.slot||"",status:"Reserved"})}DB[d.add].push(it);touch();render();const ni=DB[d.add].length-1;setTimeout(()=>{const f=$(`[data-l="${d.add}"][data-i="${ni}"]`);if(f){f.focus();f.scrollIntoView({block:"center"})}},0);return}
- if(d.del){const gone=DB[d.del].splice(+d.i,1)[0];touch();render();if(d.del==="crew"&&gone)askCrewRemoved(gone);return}
- if(d.clear)return confirmDlg("Tümünü sil",`<b>${LISTS[d.clear].t}</b> listesindeki ${DB[d.clear].length} satır silinecek.`,"Sil",()=>{const old=DB[d.clear];DB[d.clear]=[];touch();render();if(d.clear==="crew")setTimeout(()=>askCrewRemoved(old),0)},"d");
+ if(d.add){const L=LISTS[d.add],it={id:uid()};UI.pin=UI.pin||{};(UI.pin[d.add]=UI.pin[d.add]||[]).unshift(it.id);L.cols.forEach(c=>it[c.k]=c.t==="days"?Array(7).fill(true):c.t==="check"?false:"");if(d.add==="sims"){const p=DB.sims.at(-1);Object.assign(it,{dev:p?.dev??"",slot:p?.slot||"",status:"Reserved"})}DB[d.add].push(it);logAdd(L.t+": yeni satır eklendi");touch();render();const ni=DB[d.add].length-1;setTimeout(()=>{const f=$(`[data-l="${d.add}"][data-i="${ni}"]`);if(f){f.focus();f.scrollIntoView({block:"center"})}},0);return}
+ if(d.del){const gone=DB[d.del].splice(+d.i,1)[0];if(gone)logAdd(LISTS[d.del].t+": silindi – "+rowLabel(d.del,gone));touch();render();if(d.del==="crew"&&gone)askCrewRemoved(gone);return}
+ if(d.clear)return confirmDlg("Tümünü sil",`<b>${LISTS[d.clear].t}</b> listesindeki ${DB[d.clear].length} satır silinecek.`,"Sil",()=>{const old=DB[d.clear];DB[d.clear]=[];logAdd(LISTS[d.clear].t+": tümü silindi ("+old.length+" satır)");touch();render();if(d.clear==="crew")setTimeout(()=>askCrewRemoved(old),0)},"d");
  if(d.paste)return pasteDlg(d.paste);
  if(d.ses)return sessionDlg(d.ses);
  if(d.new){const[l,dt]=d.new.split("|");return sessionDlg(null,{lane:l,date:dt})}
@@ -1222,23 +1248,27 @@ document.addEventListener("click",e=>{const el=e.target.closest("button,[data-se
  if(d.hs!==undefined){const hs=UI.hs,i=+d.hs;if(hs.s!==i){hs.s=i;hs.d=1}else if(hs.d===1)hs.d=-1;else hs.s=null;render();return}
  if(d.ks!==undefined){const ks=UI.ks=UI.ks||{s:null,d:1,f:{}},i=+d.ks;if(ks.s!==i){ks.s=i;ks.d=1}else if(ks.d===1)ks.d=-1;else ks.s=null;render();return}
  if(d.kexp){exportTicket();return}
- if(d.undo){const b=UI.undo.pop();if(b){DB.sessions=JSON.parse(b);touch();render();toast("Son yer değiştirme geri alındı")}return}
- if(d.pmv!==undefined){const S=DB.settings,p=prioOf(S),i=+d.pmv,j=i+ +d.dir;if(j<0||j>=p.length)return;[p[i],p[j]]=[p[j],p[i]];S.prio=p;touch();render();return}
- if(d.fillvisa){const have=new Set(DB.visas.map(v=>(v.code||"").toUpperCase()));let n=0;DB.crew.forEach(c=>{if(c.code&&!have.has(c.code.toUpperCase())){DB.visas.push({id:uid(),code:c.code.toUpperCase(),name:c.name||"",green:false});n++}});touch();render();toast(n+" kişi eklendi");return}
- if(d.lockall!==undefined){DB.sessions.forEach(s=>{s.locked=d.lockall==="1";delete s.lk});save();render();toast(d.lockall==="1"?"Tüm oturumlar kilitlendi":"Kilitler kaldırıldı");return}
+ if(d.undo){const b=UI.undo.pop();if(b){DB.sessions=JSON.parse(b);touch();render();toastLog("Son yer değiştirme geri alındı")}return}
+ if(d.pmv!==undefined){const S=DB.settings,p=prioOf(S),i=+d.pmv,j=i+ +d.dir;if(j<0||j>=p.length)return;[p[i],p[j]]=[p[j],p[i]];S.prio=p;logAdd("Ayarlar: öncelikli kurallar sırası: "+p.map((k,n)=>(n+1)+". "+PRULES[k]).join(" · "));touch();render();return}
+ if(d.fillvisa){const have=new Set(DB.visas.map(v=>(v.code||"").toUpperCase()));let n=0;DB.crew.forEach(c=>{if(c.code&&!have.has(c.code.toUpperCase())){DB.visas.push({id:uid(),code:c.code.toUpperCase(),name:c.name||"",green:false});n++}});logAdd("Kişi vizeleri: ekipten "+n+" kişi eklendi");touch();render();toast(n+" kişi eklendi");return}
+ if(d.lockall!==undefined){DB.sessions.forEach(s=>{s.locked=d.lockall==="1";delete s.lk});save();render();toastLog(d.lockall==="1"?"Tüm oturumlar kilitlendi":"Kilitler kaldırıldı");return}
 });
 document.addEventListener("change",e=>{const el=e.target,d=el.dataset;
  if(d.l){const it=DB[d.l][+d.i],col=LISTS[d.l].cols.find(c=>c.k===d.k);if(!it||!col)return;const oc=(it.code||"").trim().toUpperCase();if(d.l==="sims"&&d.k==="date"&&!el.value){el.value=it.date||"";toast("Tarih zorunlu");return}{const st=lfOf(d.l);if(st.s||Object.values(st.f).some(Boolean)){UI.pin=UI.pin||{};const a=UI.pin[d.l]=UI.pin[d.l]||[];if(!a.includes(it.id))a.unshift(it.id)}}
   if((d.l==="crew"||d.l==="instr")&&d.k==="code"){const v=el.value.trim().toUpperCase(),j=v?DB[d.l].findIndex((x,n)=>n!==+d.i&&(x.code||"").trim().toUpperCase()===v):-1;// kod listede benzersiz: aynı kod kabul edilmez
    if(j>=0){el.value=it.code||"";const o=DB[d.l][j];toast("Bu kod zaten var: "+v+" ("+LISTS[d.l].t+", satır "+(j+1)+(o.name?": "+o.name:"")+"). Kodu değiştirin.",6000);return}}
-  if(col.t==="dev"){const dv=devById(el.value);it.dev=dv?dv.id:"";if(dv&&!isAC(dv)&&!dv.s?.[it.slot])it.slot=SLOTS.find(k=>dv.s[k])||"";if(isAC(dv))it.slot="";touch();render();return}
+  const lv=()=>col.t==="days"?daysStr(it.days):it[d.k],before=lv(),lg=()=>{const a=logVal(col,col.t==="days"?before:before),b=logVal(col,lv());if(a!==b)logAdd(LISTS[d.l].t+": "+rowLabel(d.l,it)+" – "+col.l+": "+a+" → "+b)};
+  if(col.t==="dev"){const dv=devById(el.value);it.dev=dv?dv.id:"";lg();if(dv&&!isAC(dv)&&!dv.s?.[it.slot])it.slot=SLOTS.find(k=>dv.s[k])||"";if(isAC(dv))it.slot="";touch();render();return}
   if(col.t==="days"){if(!Array.isArray(it.days))it.days=Array(7).fill(true);it.days[+d.j]=el.checked}else if(col.t==="check")it[d.k]=el.checked;else if(col.t==="code"){it[d.k]=el.value.trim().toUpperCase();el.value=it[d.k]}else it[d.k]=el.value;
   // eğitmen ya da vize satırına kod girilince rütbe / ad soyad ekipten (vizede eğitmenlerden de) gelir; elle yazılmış farklı bilgi ezilmez
   if(d.k==="code"&&(d.l==="instr"||d.l==="visas")){const P=c=>c?DB.crew.find(x=>(x.code||"").trim().toUpperCase()===c)||(d.l==="visas"?DB.instr.find(x=>(x.code||"").trim().toUpperCase()===c):null):null,np=P(it.code),op=P(oc);
-   if(np){let ch=0;(d.l==="instr"?["rank","name"]:["name"]).forEach(f=>{if(np[f]&&(!it[f]||(op&&it[f]===op[f]))){it[f]=np[f];ch=1}});if(ch){touch();render();return}}}
-  touch();if(d.l==="crew")crewDerived();if(d.l==="instr")markDupCodes("instr");if(d.l==="visaTypes"||d.l==="sims")render();return}
+   if(np){let ch=0;(d.l==="instr"?["rank","name"]:["name"]).forEach(f=>{if(np[f]&&(!it[f]||(op&&it[f]===op[f]))){it[f]=np[f];ch=1}});if(ch){lg();touch();render();return}}}
+  lg();touch();if(d.l==="crew")crewDerived();if(d.l==="instr")markDupCodes("instr");if(d.l==="visaTypes"||d.l==="sims")render();return}
  if(d.pon){DB.settings[RULEKEY[d.pon]]=el.checked;touch();render();return}
- if(d.s){const S=DB.settings;S[d.s]=el.type==="checkbox"?el.checked:el.type==="number"?Math.max(0,+el.value||0):el.value;if(d.s==="winM"||d.s==="gapM"||d.s==="lpcM"||d.s==="opcM"||d.s==="maxGap"||d.s==="instrPerDay"||d.s==="pilotPerDay")S[d.s]=Math.max(1,S[d.s]);touch();render();return}
+ if(d.s){const S=DB.settings,old0=S[d.s];S[d.s]=el.type==="checkbox"?el.checked:el.type==="number"?Math.max(0,+el.value||0):el.value;if(d.s==="winM"||d.s==="gapM"||d.s==="lpcM"||d.s==="opcM"||d.s==="maxGap"||d.s==="instrPerDay"||d.s==="pilotPerDay")S[d.s]=Math.max(1,S[d.s]);
+  {const V=v=>typeof v==="boolean"?(v?"açık":"kapalı"):v==null||v===""?"(boş)":/^\d{4}-\d\d-\d\d$/.test(v)?fmt(toDn(v)):String(v),sp=el.closest("label")?.querySelector("span"),lb=((sp?.title||"").startsWith("TR: ")?sp.title.slice(4).split("\n")[0]:sp?.textContent||el.closest("label")?.textContent||d.s).replace(/\s+/g," ").replace(/ ?ⓘ/g,"").trim();
+   if(V(old0)!==V(S[d.s]))logAdd("Ayarlar: "+lb+": "+V(old0)+" → "+V(S[d.s]))}
+  touch();render();return}
  if(d.ui&&d.ui!=="q"){UI[d.ui]=el.type==="checkbox"?el.checked:el.value;render()}});// arama kutusu "input" ile işlenir; yeniden çizimde kutu kaldırılınca gelen "change" ikinci çizimi tetikleyip odağı düşürmesin
 // arama ve sütun filtreleri: yazmayı bekleyip yeniden çizer, imleci aynı kutuya geri koyar
 document.addEventListener("input",e=>{const el=e.target,d=el.dataset;let sel=null;
@@ -1278,7 +1308,7 @@ function dropMove(src,dst){const A=DB.sessions.find(x=>x.id===src.id);if(!A)retu
  const old=new Set(swapIssues([A.id],codes).map(key));const r=moveApply(DB.sessions,src,dst);
  if(!r){DB.sessions=JSON.parse(before);return}if(r.err){DB.sessions=JSON.parse(before);toast(r.err);return}
  const neu=swapIssues(r.ids,codes).filter(x=>!old.has(key(x)));DB.sessions=JSON.parse(before);
- const go=()=>{moveApply(DB.sessions,src,dst);UI.undo.push(before);if(UI.undo.length>30)UI.undo.shift();touch();render();toast(who+" "+fmt(toDn(dst.date))+" "+dst.lane+" slotuna taşındı"+(neu.length?" – "+neu.length+" yeni sorun":""))};
+ const go=()=>{moveApply(DB.sessions,src,dst);UI.undo.push(before);if(UI.undo.length>30)UI.undo.shift();touch();render();toastLog(who+" "+fmt(toDn(dst.date))+" "+dst.lane+" slotuna taşındı"+(neu.length?" – "+neu.length+" yeni sorun":""))};
  if(!neu.length)return go();
  dlg("Kural ihlali",`<div><b>${esc(who)}</b> → ${esc(fmt(toDn(dst.date))+" "+dst.lane)} taşıması şu yeni sorunları doğuruyor:</div><ul>${neu.map(x=>`<li class="${x[0]==="✖"?"bad":"warn"}">${esc(x.slice(2))}</li>`).join("")}</ul><div class="mu">Yine de yapılsın mı? (Sonra ↶ Geri al ile geri alabilirsiniz.)</div>`,[{l:"Vazgeç"},{l:"Yine de yap",c:"p",f:go}])}
 // iki oturum yer değiştirir: tarihleri ve simülatör/slotları karşılıklı değişir (öğrenciler ve eğitmenler oturumla birlikte gider)
@@ -1293,7 +1323,7 @@ function dropSesSwap(src,dst){const A=DB.sessions.find(x=>x.id===src.id),B=DB.se
  const old=new Set(swapIssues([A.id,B.id],codes).map(key));const r=sesSwapApply(DB.sessions,src,dst);
  if(!r){DB.sessions=JSON.parse(before);return}if(r.err){DB.sessions=JSON.parse(before);toast(r.err);return}
  const neu=swapIssues(r.ids,codes).filter(x=>!old.has(key(x)));DB.sessions=JSON.parse(before);
- const go=()=>{sesSwapApply(DB.sessions,src,dst);UI.undo.push(before);if(UI.undo.length>30)UI.undo.shift();touch();render();toast("Oturumlar yer değiştirdi: "+wa+" ↔ "+wb+(neu.length?" – "+neu.length+" yeni sorun":""))};
+ const go=()=>{sesSwapApply(DB.sessions,src,dst);UI.undo.push(before);if(UI.undo.length>30)UI.undo.shift();touch();render();toastLog("Oturumlar yer değiştirdi: "+wa+" ↔ "+wb+(neu.length?" – "+neu.length+" yeni sorun":""))};
  if(!neu.length)return go();
  dlg("Kural ihlali",`<div><b>${esc(wa)} ↔ ${esc(wb)}</b> oturumlarının yer değiştirmesi şu yeni sorunları doğuruyor:</div><ul>${neu.map(x=>`<li class="${x[0]==="✖"?"bad":"warn"}">${esc(x.slice(2))}</li>`).join("")}</ul><div class="mu">Yine de yapılsın mı? (Sonra ↶ Geri al ile geri alabilirsiniz.)</div>`,[{l:"Vazgeç"},{l:"Yine de yap",c:"p",f:go}])}
 function dropSwap(src,dst){if(src.k!==dst.k||(src.id===dst.id&&src.i===dst.i))return;
@@ -1302,7 +1332,7 @@ function dropSwap(src,dst){if(src.k!==dst.k||(src.id===dst.id&&src.i===dst.i))re
  const codes=[...new Set([...A.pilots,...B.pilots,...(A.instr||[]),...(B.instr||[])].filter(Boolean))],ids=[...new Set([src.id,dst.id])],old=new Set(swapIssues(ids,codes));
  if(!doSwap(DB.sessions,src,dst)){toast("Bu yer değiştirme yapılamaz: aynı kişi bir oturumda iki kez olur");return}
  const neu=swapIssues(ids,codes).filter(x=>!old.has(x));DB.sessions=JSON.parse(before);
- const go=()=>{doSwap(DB.sessions,src,dst);UI.undo.push(before);if(UI.undo.length>30)UI.undo.shift();touch();render();toast((who[0]||"boş")+" ↔ "+(who[1]||"boş")+" yer değiştirdi"+(neu.length?" – "+neu.length+" yeni sorun":""))};
+ const go=()=>{doSwap(DB.sessions,src,dst);UI.undo.push(before);if(UI.undo.length>30)UI.undo.shift();touch();render();toastLog((who[0]||"boş")+" ↔ "+(who[1]||"boş")+" yer değiştirdi"+(neu.length?" – "+neu.length+" yeni sorun":""))};
  if(!neu.length)return go();
  dlg("Kural ihlali",`<div><b>${esc(who[0]||"boş")} ↔ ${esc(who[1]||"boş")}</b> yer değiştirmesi şu yeni sorunları doğuruyor:</div><ul>${neu.map(x=>`<li class="${x[0]==="✖"?"bad":"warn"}">${esc(x.slice(2))}</li>`).join("")}</ul><div class="mu">Yine de yapılsın mı? (Sonra ↶ Geri al ile geri alabilirsiniz.)</div>`,[{l:"Vazgeç"},{l:"Yine de yap",c:"p",f:go}])}
 document.addEventListener("dragstart",e=>{const el=e.target.closest?.("[data-dg]");if(!el)return;DRAG=dgParse(el.dataset.dg);e.dataTransfer.effectAllowed="move";e.dataTransfer.setData("text/plain",el.dataset.dg);el.classList.add("dsrc")});
@@ -1314,11 +1344,11 @@ $("#ov").addEventListener("click",e=>{if(e.target.id==="ov")closeDlg()});
 $("#bPlan").onclick=()=>planDlg(false);$("#bPlanR").onclick=()=>planDlg(true);$("#fImp").onchange=e=>{const f=e.target.files[0];e.target.value="";if(f)importFile(f)};
 $("#bXls").onclick=()=>dlg("Excel'e aktar",`<div class="row"><button id="xP">Tüm verileri Excel'e aktar</button><button id="xH">Otel taslağı</button><button id="xC">CrwPlng Sim Import</button><button id="xB">CrwPlng Bilet Import</button></div><div class="mu" style="margin-top:8px">Tüm verileri Excel'e aktar: uygunluk tablosu, taslak plan ve girilen tüm veriler (veri sayfaları düzenlenip Diğer ▸ Excel / CSV yükle ile geri yüklenebilir). CrwPlng Sim Import: plandaki her sektör günü için öğrenci ve eğitmen satırları. CrwPlng Bilet Import: otel taslağındaki her konaklama için taslak gidiş (otel girişi) ve dönüş (otel çıkışı) bileti.</div>`,[{l:"Kapat"}],()=>{
  $("#xP").onclick=()=>{closeDlg();exportPlan()};$("#xH").onclick=()=>{closeDlg();exportHotel()};$("#xC").onclick=()=>{closeDlg();exportCrw()};$("#xB").onclick=()=>{closeDlg();exportTicket()};});$("#bPrint").onclick=()=>window.print();
-$("#bMore").onclick=()=>dlg("Diğer işlemler",`<div class="row"><button id="mI">Excel / CSV yükle</button><button id="mB">Yedekle (JSON)</button><button id="mR">Yedekten yükle</button><button id="mS">Örnek veriyi yükle</button><button id="mC" class="d">Tüm verileri temizle</button></div>${IS_APP?`<div class="row" style="margin-top:6px"><button id="mF">Veri klasörünü aç</button></div>`:""}<div class="mu" style="margin-top:8px">Excel / CSV yükle: dosyadaki ekip, eğitmen, simülatör, vize ve izin verilerini listelere ekler ya da listeleri değiştirir (plan dosyadan alınmaz).</div><div class="mu">Yedek dosyası tüm girdileri, ayarları ve planı içerir; başka cihaza taşımak için kullanın.</div>`,[{l:"Kapat"}],()=>{
+$("#bMore").onclick=()=>dlg("Diğer işlemler",`<div class="row"><button id="mI">Excel / CSV yükle</button><button id="mH">Geçmiş</button><button id="mB">Yedekle (JSON)</button><button id="mR">Yedekten yükle</button><button id="mS">Örnek veriyi yükle</button><button id="mC" class="d">Tüm verileri temizle</button></div>${IS_APP?`<div class="row" style="margin-top:6px"><button id="mF">Veri klasörünü aç</button></div>`:""}<div class="mu" style="margin-top:8px">Excel / CSV yükle: dosyadaki ekip, eğitmen, simülatör, vize ve izin verilerini listelere ekler ya da listeleri değiştirir (plan dosyadan alınmaz).</div><div class="mu">Yedek dosyası tüm girdileri, ayarları ve planı içerir; başka cihaza taşımak için kullanın.</div>`,[{l:"Kapat"}],()=>{
  $("#mB").onclick=()=>{download(new Blob([JSON.stringify(DB,null,1)],{type:"application/json"}),"simulator-plan-yedek-"+toIso(todayDn())+"-"+(n=>pad(n.getHours())+"."+pad(n.getMinutes()))(new Date())+".json");closeDlg()};
- $("#mR").onclick=()=>{closeDlg();$("#fImp").click()};$("#mI").onclick=()=>{closeDlg();$("#fImp").click()};
- $("#mS").onclick=()=>confirmDlg("Örnek veri","Mevcut veriler örnek veriyle değiştirilecek.","Yükle",()=>{DB=sampleDB();save();tabCounts();render()});
- $("#mC").onclick=()=>confirmDlg("Tüm verileri temizle","Ekip, eğitmen, simülatör, kısıt ve plan verilerinin tamamı silinecek.","Temizle",()=>{DB=emptyDB();save();tabCounts();render()},"d");if(IS_APP&&$("#mF"))$("#mF").onclick=()=>{try{window.simStore.openFolder&&window.simStore.openFolder()}catch(e){}}});
+ $("#mR").onclick=()=>{closeDlg();$("#fImp").click()};$("#mI").onclick=()=>{closeDlg();$("#fImp").click()};$("#mH").onclick=()=>{closeDlg();setTimeout(historyDlg,0)};
+ $("#mS").onclick=()=>confirmDlg("Örnek veri","Mevcut veriler örnek veriyle değiştirilecek.","Yükle",()=>{const lg0=DB.log;DB=sampleDB();DB.log=lg0||[];logAdd("Örnek veri yüklendi");save();tabCounts();render()});
+ $("#mC").onclick=()=>confirmDlg("Tüm verileri temizle","Ekip, eğitmen, simülatör, kısıt ve plan verilerinin tamamı silinecek.","Temizle",()=>{const lg0=DB.log;DB=emptyDB();DB.log=lg0||[];logAdd("Tüm veriler temizlendi");save();tabCounts();render()},"d");if(IS_APP&&$("#mF"))$("#mF").onclick=()=>{try{window.simStore.openFolder&&window.simStore.openFolder()}catch(e){}}});
 /* ---- İngilizce ipuçları: Türkçe yazının üzerine gelince İngilizcesi görünür ---- */
 // Anahtarlarda sayılar # ile yazılır; İngilizcedeki # aynı sırayla gerçek sayılarla doldurulur.
 const EN_T={
@@ -1487,14 +1517,26 @@ const EN_T={
 "Son Sim":"Last Sim","En erken (# ay)":"Earliest (# months)","En erken (otomatik)":"Earliest Auto","Geçerlilik":"Valid","Vize kontrol":"Visa Control","Son ay":"Final Month","Excel sütunu":"Excel column","Süresi dolmuş":"Expired","Kayıt yok":"#N/A","Yeşil":"Green","Son ay!":"Final!","Süresi dolmuş / Kayıt yok":"Expired / #N/A","Yalnızca Hata / Son ay! / Süresi dolmuş":"Only Error / Final! / Expired",
 // eğitmen tazelemeleri
 "Eğitmen tazelemeleri":"Instructor revalidations","Yetkiler # yılda bir yenilenir; geçerliliğin son # ayında tazeleme gerekir. Tazelemeyi planlamak için ilgili oturumu açıp (":"Authorizations are renewed every # years; a revalidation is required in the last # months of validity. To plan it, open the session (",
-") o sektörün":") and tick that sector's","Tazele":"Revalidate","kutusunu işaretleyin ve kurala uygun denetleyeni seçin: TRI→TRE · SFI→TRE/SFE · TRE/SFE→SE. SHGM'nin atadığı denetçi her tazelemeyi denetleyebilir (denetleyen: SHGM).":"box, then select an examiner allowed by the rule: TRI→TRE · SFI→TRE/SFE · TRE/SFE→SE. An examiner appointed by SHGM can examine any revalidation (examiner: SHGM).","SHGM – SHGM'nin atadığı denetçi":"SHGM – examiner appointed by SHGM","SHGM denetçisi":"SHGM examiner","Vizeden de silinsin mi?":"Delete from visas too?","Artık ekip ve eğitmen listesinde yok. Kişi vizeleri listesinde kaydı var.":"No longer in the crew or instructor list. There is a record in the person visas list.","Vizede kalsın":"Keep in visas","Vizeden sil":"Delete from visas","Eğitmenlerden de silinsin mi?":"Delete from instructors too?","Ekip listesinden silindi. Eğitmenler listesinde de var.":"Deleted from the crew list. Also in the instructor list.","Eğitmen olarak kalsın":"Keep as instructor","Eğitmenlerden sil":"Delete from instructors","Eğitmen olarak kalsınlar":"Keep as instructors","Ekipten çıkan kişilerden # tanesi eğitmen listesinde de var.":"# of the people removed from the crew are also in the instructor list.","Ekip ve eğitmen listesinde artık olmayan # kişinin vize kaydı var.":"# people no longer in the crew or instructor list have a visa record.","Bu kod listede birden fazla satırda var":"This code appears in more than one row of the list",
+") o sektörün":") and tick that sector's","Tazele":"Revalidate","kutusunu işaretleyin ve kurala uygun denetleyeni seçin: TRI→TRE · SFI→TRE/SFE · TRE/SFE→SE. SHGM'nin atadığı denetçi her tazelemeyi denetleyebilir (denetleyen: SHGM).":"box, then select an examiner allowed by the rule: TRI→TRE · SFI→TRE/SFE · TRE/SFE→SE. An examiner appointed by SHGM can examine any revalidation (examiner: SHGM).","SHGM – SHGM'nin atadığı denetçi":"SHGM – examiner appointed by SHGM","SHGM denetçisi":"SHGM examiner","Geçmiş":"History","Değişiklik geçmişi":"Change history","Ara (tarih, kişi, kod, işlem)":"Search (date, person, code, action)","Zaman":"Time","Kim":"Who","İşlem":"Action","Son 12 ayın kayıtları, en yenisi üstte. Toplam # kayıt.":"Records of the last # months, newest first. # records in total.","bu bilgisayar":"this computer","Örnek veri yüklendi":"Sample data loaded","Tüm veriler temizlendi":"All data cleared","Kod / Tescil":"Code / Registration","Vizeden de silinsin mi?":"Delete from visas too?","Artık ekip ve eğitmen listesinde yok. Kişi vizeleri listesinde kaydı var.":"No longer in the crew or instructor list. There is a record in the person visas list.","Vizede kalsın":"Keep in visas","Vizeden sil":"Delete from visas","Eğitmenlerden de silinsin mi?":"Delete from instructors too?","Ekip listesinden silindi. Eğitmenler listesinde de var.":"Deleted from the crew list. Also in the instructor list.","Eğitmen olarak kalsın":"Keep as instructor","Eğitmenlerden sil":"Delete from instructors","Eğitmen olarak kalsınlar":"Keep as instructors","Ekipten çıkan kişilerden # tanesi eğitmen listesinde de var.":"# of the people removed from the crew are also in the instructor list.","Ekip ve eğitmen listesinde artık olmayan # kişinin vize kaydı var.":"# people no longer in the crew or instructor list have a visa record.","Bu kod listede birden fazla satırda var":"This code appears in more than one row of the list",
 "geçerlilik #":"valid until #","oturum #":"session #","denetleyen":"examiner","denetleyen seçilmedi":"no examiner selected","planlanmadı":"not planned","denetleyen yok":"no examiner",
 "Taz.":"Reval.","Yetki tazelemesi":"Authorization revalidation","Bu eğitmenin yetki tazelemesi":"Authorization revalidation of this instructor","— denetleyen seç —":"— select examiner —","Tazeleme denetleyeni (examiner)":"Revalidation examiner","tercihiyle Skyscanner'da yeni sekmede arar (canlı fiyat uygulamaya çekilmez; en ucuzu orada görürsünüz).":"option, in a new Skyscanner tab (live prices are not pulled into the app; you see the cheapest one there)."
 };
 // kalıp kurallar: [düzenli ifade, İngilizce] — bir parçanın tamamına uygulanır
 const EN_R=[
  [/^(\d+) oturum planlandı(?:, (\d+) kontrol planlanamadı)?; müsaitlik listesinde (\d+) tahmini gün \((\d+) ms\)$/,(m,a,u,t,ms)=>a+" sessions planned"+(u?", "+u+" checks could not be planned":"")+"; "+t+" estimated days in the availability list ("+ms+" ms)"],
- [/^Kaydedildi: (.+)$/,"Saved: $1"],[/^Bu kod zaten var: (\S+) \((.+?), satır (\d+)(?:: (.+))?\)\. Kodu değiştirin\.$/,(m,c,l,n,nm)=>"This code already exists: "+c+" ("+(en(l,true)||l)+", row "+n+(nm?": "+nm:"")+"). Please change the code."],
+ [/^Kaydedildi: (.+)$/,"Saved: $1"],
+ // değişiklik geçmişi kayıtları
+ [/^Ayarlar: öncelikli kurallar sırası: (.+)$/,(m,r)=>"Settings: priority rules order: "+enSeg(r)],
+ [/^Ayarlar: (.+?): (.+) → (.+)$/,(m,l,a,b)=>{const V=v=>({"açık":"on","kapalı":"off","(boş)":"(empty)"})[v]||v;return"Settings: "+(en(l,true)||l)+": "+V(a)+" → "+V(b)}],
+ [/^FSTD \/ Uçak: (\S+) (?:güncellendi \(değişen: (.+)\)|(eklendi)|(kaydedildi \(değişiklik yok\))|(pasif yapıldı))$/,(m,c,ch,ad,nc,ps)=>"FSTD / Aircraft: "+c+(ch?" updated (changed: "+ch.split(", ").map(x=>en(x,true)||x).join(", ")+")":ad?" added":nc?" saved (no changes)":" made passive")],
+ [/^FSTD \/ Uçak – Excel'den yapıştır \((.+)\): (\d+) eklendi, (\d+) güncellendi$/,(m,md,a,u)=>"FSTD / Aircraft – Paste from Excel ("+(en(md,true)||md)+"): "+a+" added, "+u+" updated"],
+ [/^(Excel \/ CSV yükle|Excel'den yapıştır) \((Sona ekle|Değiştir)\): (.+)$/,(m,s,md,r)=>(en(s,true)||s)+" ("+(en(md,true)||md)+"): "+r.split(" · ").map(x=>en(x)??x).join(" · ")],
+ [/^Oturum (silindi|eklendi|düzenlendi): (.+?)(?: \(değişen: (.+)\))?$/,(m,k,r,ch)=>"Session "+({silindi:"deleted",eklendi:"added",düzenlendi:"edited"})[k]+": "+r+(ch?" (changed: "+ch.split(", ").map(x=>({tarih:"dates",öğrenci:"students",eğitmen:"instructors","simülatör/slot":"simulator/slot",kilit:"lock",tazeleme:"revalidation"})[x]||x).join(", ")+")":"")],
+ [/^Yedekten yüklendi: (.+)$/,"Restored from backup: $1"],[/^Kişi vizeleri: ekipten (\d+) kişi eklendi$/,"Person visas: $1 people added from the crew"],
+ [/^(.+): silindi – (.+?)( \(ekipten çıktığı için\))?$/,(m,l,r,x)=>{const e=en(l,true);return e?e+": deleted – "+r+(x?" (removed from the crew)":""):null}],
+ [/^(.+): yeni satır eklendi$/,(m,l)=>{const e=en(l,true);return e?e+": new row added":null}],[/^(.+): tümü silindi \((\d+) satır\)$/,(m,l,n)=>{const e=en(l,true);return e?e+": all deleted ("+n+" rows)":null}],
+ [/^(.+): satır eklendi – (.+)$/,(m,l,r)=>{const e=en(l,true);return e?e+": row added – "+r:null}],
+ [/^([^:–]+): (.+) – ([^:]+): (.+) → (.+)$/,(m,l,w,c,a,b)=>{const e=en(l,true),V=v=>({"evet":"yes","hayır":"no","(boş)":"(empty)"})[v]||v;return e?e+": "+w+" – "+(en(c,true)||c)+": "+V(a)+" → "+V(b):null}],[/^Bu kod zaten var: (\S+) \((.+?), satır (\d+)(?:: (.+))?\)\. Kodu değiştirin\.$/,(m,c,l,n,nm)=>"This code already exists: "+c+" ("+(en(l,true)||l)+", row "+n+(nm?": "+nm:"")+"). Please change the code."],
  [/^Atlandı \(kod zaten var\): (.+)$/,(m,r)=>"Skipped (code already exists): "+r.split("; ").map(x=>{const[a,b]=x.split(" – ");return(en(a,true)||a)+(b?" – "+b:"")}).join("; ")],
  [/^(\S+) \(denetleyen\) (\S+) izinli \((.*)\)$/,"$1 (examiner) $2 on leave ($3)"],[/^(\S+) \(denetleyen\) (\S+) aynı oturumda öğrenci$/,"$1 (examiner) $2 is a student in the same session"],
  [/^(\S+) \(denetleyen\) (\S+) başka lokasyonda görevli \((.+)\)$/,"$1 (examiner) $2 on duty at another location ($3)"],[/^(\S+) \(denetleyen\) (\S+) vize kaydı yok$/,"$1 (examiner) $2 no visa record"],
