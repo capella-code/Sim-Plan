@@ -901,6 +901,16 @@ function simAddDlg(){const p=DB.sims.at(-1),devs=DB.devices.filter(d=>d.a).sort(
   ()=>{$("#saV").onchange=()=>{$("#saS").innerHTML=slotOpts($("#saV").value)};if(p?.slot&&$(`#saS option[value="${p.slot}"]`))$("#saS").value=p.slot;$("#saD").focus()})}
 function dlg(title,body,buttons,onOpen){$("#dl").innerHTML=`<h2>${title}</h2><div id="dlb">${body}</div><div class="bt">${buttons.map((b,i)=>`<button data-b="${i}" class="${b.c||""}">${b.l}</button>`).join("")}</div>`;
  $("#ov").hidden=false;qsa("#dl [data-b]").forEach(el=>el.onclick=()=>{const b=buttons[+el.dataset.b];if(b.f&&b.f()===false)return;closeDlg()});if(onOpen)onOpen()}
+// ekipten çıkan kişi(ler): eğitmenlerde varsa oradan da silinsin mi? Eğitmen olarak kalmayanların vizesi de silinsin mi? (tek kişi ya da toplu)
+function askCrewRemoved(list){const K=x=>(x.code||"").trim().toUpperCase(),inCrew=new Set(DB.crew.map(K)),seen=new Set();
+ const ppl=(Array.isArray(list)?list:[list]).filter(x=>{const c=K(x);if(!c||inCrew.has(c)||seen.has(c))return false;seen.add(c);return true});if(!ppl.length)return;
+ const inI=c=>DB.instr.some(x=>K(x)===c),inV=c=>DB.visas.some(v=>K(v)===c),names=a=>a.length===1?`<div><b>${esc(K(a[0]))}${a[0].name?" "+esc(a[0].name):""}</b></div>`:`<ul>${a.map(x=>`<li>${esc(K(x))}${x.name?" "+esc(x.name):""}</li>`).join("")}</ul>`;
+ const askVisa=()=>{const v=ppl.filter(x=>!inI(K(x))&&inV(K(x)));if(!v.length)return;const cs=new Set(v.map(K));
+  dlg("Vizeden de silinsin mi?",names(v)+(v.length===1?`<div>Artık ekip ve eğitmen listesinde yok. Kişi vizeleri listesinde kaydı var.</div>`:`<div>Ekip ve eğitmen listesinde artık olmayan ${v.length} kişinin vize kaydı var.</div>`),
+   [{l:"Vizede kalsın"},{l:"Vizeden sil",c:"d",f:()=>{DB.visas=DB.visas.filter(x=>!cs.has(K(x)));touch();render()}}])};
+ const ins=ppl.filter(x=>inI(K(x)));if(!ins.length)return askVisa();const cs=new Set(ins.map(K));
+ dlg("Eğitmenlerden de silinsin mi?",names(ins)+(ins.length===1?`<div>Ekip listesinden silindi. Eğitmenler listesinde de var.</div>`:`<div>Ekipten çıkan kişilerden ${ins.length} tanesi eğitmen listesinde de var.</div>`),
+  [{l:ins.length===1?"Eğitmen olarak kalsın":"Eğitmen olarak kalsınlar",f:()=>{setTimeout(askVisa,0)}},{l:"Eğitmenlerden sil",c:"d",f:()=>{DB.instr=DB.instr.filter(x=>!cs.has(K(x)));touch();render();setTimeout(askVisa,0)}}])}
 function closeDlg(){$("#ov").hidden=true;$("#dl").innerHTML=""}
 function toast(m,ms=3500){const t=document.createElement("div");t.className="toast";t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),ms)}
 const confirmDlg=(title,msg,okL,fn,cls="p")=>dlg(title,`<div>${msg}</div>`,[{l:"Vazgeç"},{l:okL,c:cls,f:fn}]);
@@ -1081,7 +1091,7 @@ function sheetKey(name){const n=norm(name);for(const[k,al]of SHEET_ALIAS)if(al.s
 // Kişi vizeleri: başlıktaki tür adını (SCHENGEN, UAE…) vize türüne bağlar; türler önce yüklendiği için dosyadaki yeni türler de tanınır
 function resolveVisas(items){items.forEach(it=>{const vn=it._vn;delete it._vn;if(!vn)return;for(const h in vn){const t=DB.visaTypes.find(x=>x.name&&norm(x.name)===h);if(!t)continue;const v=vn[h];
   if(/^(yesil|green)/.test(norm(v)))it.green=true;else{const d=cellDate(v);if(d)it["v_"+t.id]=d}}})}
-function applyImport(found,mode){const ORD={devices:0,visaTypes:1},cnt=[],skipped=[];found.sort((a,b)=>(ORD[a.key]??2)-(ORD[b.key]??2));// önce cihazlar ve vize türleri, sonra diğerleri
+function applyImport(found,mode){const ORD={devices:0,visaTypes:1},cnt=[],skipped=[],oldCrew=DB.crew;found.sort((a,b)=>(ORD[a.key]??2)-(ORD[b.key]??2));// önce cihazlar ve vize türleri, sonra diğerleri
  found.forEach(({key,items})=>{if(key==="devices"){upsertDevices(items);cnt.push(DEVMETA.t+" "+items.length);return}if(key==="sims"){importSlots(items,mode);cnt.push(LISTS.sims.t+" "+items.length);return}const n0=items.length;if(key==="visas")resolveVisas(items);
   if(key==="visas"&&mode==="add"){items=items.filter(it=>{const ex=it.code&&DB.visas.find(v=>v.code===it.code);if(!ex)return true;// aynı kodlu kişinin satırı güncellenir (ikinci satır açılmaz)
    for(const k in it){if(k==="id")continue;const v=it[k];if(k==="green"?v:v!==""&&v!=null)ex[k]=v}return false})}
@@ -1090,7 +1100,7 @@ function applyImport(found,mode){const ORD={devices:0,visaTypes:1},cnt=[],skippe
    items=items.filter(it=>{const c=(it.code||"").trim().toUpperCase();if(!c)return true;if(seen.has(c)){sk.push(c);return false}seen.add(c);return true});
    if(sk.length)skipped.push(LISTS[key].t+" – "+[...new Set(sk)].join(", "))}// kod listede benzersiz: listede ya da dosyada daha önce geçen kod eklenmez
   cnt.push(LISTS[key].t+" "+(key==="crew"||key==="instr"?items.length:n0));DB[key]=mode==="add"?DB[key].concat(items):items});
- touch();render();toast("Yüklendi: "+cnt.join(", ")+(skipped.length?" · Atlandı (kod zaten var): "+skipped.join("; "):""),skipped.length?10000:3500)}
+ touch();render();toast("Yüklendi: "+cnt.join(", ")+(skipped.length?" · Atlandı (kod zaten var): "+skipped.join("; "):""),skipped.length?10000:3500);if(mode!=="add"&&found.some(f=>f.key==="crew"))setTimeout(()=>askCrewRemoved(oldCrew),0)}// Değiştir ile ekipten çıkanlar
 async function importFile(file){try{const nm=file.name.toLowerCase();
  if(nm.endsWith(".json")){const d=JSON.parse(await file.text());if(!d||!Array.isArray(d.crew))throw new Error("Yedek dosyası tanınmadı");
   confirmDlg("Yedekten yükle","Mevcut tüm veriler ve plan bu yedekle değiştirilecek.","Yükle",()=>{DB=d;const e=emptyDB();for(const k in e)if(DB[k]==null)DB[k]=e[k];DB.settings={...DEF,...DB.settings};migrate(DB);save();tabCounts();render();toast("Yedek yüklendi")});return}
@@ -1199,8 +1209,8 @@ document.addEventListener("click",e=>{const el=e.target.closest("button,[data-se
  if(d.tab)return show(d.tab);
  if(d.add==="sims")return simAddDlg();
  if(d.add){const L=LISTS[d.add],it={id:uid()};UI.pin=UI.pin||{};(UI.pin[d.add]=UI.pin[d.add]||[]).unshift(it.id);L.cols.forEach(c=>it[c.k]=c.t==="days"?Array(7).fill(true):c.t==="check"?false:"");if(d.add==="sims"){const p=DB.sims.at(-1);Object.assign(it,{dev:p?.dev??"",slot:p?.slot||"",status:"Reserved"})}DB[d.add].push(it);touch();render();const ni=DB[d.add].length-1;setTimeout(()=>{const f=$(`[data-l="${d.add}"][data-i="${ni}"]`);if(f){f.focus();f.scrollIntoView({block:"center"})}},0);return}
- if(d.del){DB[d.del].splice(+d.i,1);touch();render();return}
- if(d.clear)return confirmDlg("Tümünü sil",`<b>${LISTS[d.clear].t}</b> listesindeki ${DB[d.clear].length} satır silinecek.`,"Sil",()=>{DB[d.clear]=[];touch();render()},"d");
+ if(d.del){const gone=DB[d.del].splice(+d.i,1)[0];touch();render();if(d.del==="crew"&&gone)askCrewRemoved(gone);return}
+ if(d.clear)return confirmDlg("Tümünü sil",`<b>${LISTS[d.clear].t}</b> listesindeki ${DB[d.clear].length} satır silinecek.`,"Sil",()=>{const old=DB[d.clear];DB[d.clear]=[];touch();render();if(d.clear==="crew")setTimeout(()=>askCrewRemoved(old),0)},"d");
  if(d.paste)return pasteDlg(d.paste);
  if(d.ses)return sessionDlg(d.ses);
  if(d.new){const[l,dt]=d.new.split("|");return sessionDlg(null,{lane:l,date:dt})}
@@ -1218,11 +1228,14 @@ document.addEventListener("click",e=>{const el=e.target.closest("button,[data-se
  if(d.lockall!==undefined){DB.sessions.forEach(s=>{s.locked=d.lockall==="1";delete s.lk});save();render();toast(d.lockall==="1"?"Tüm oturumlar kilitlendi":"Kilitler kaldırıldı");return}
 });
 document.addEventListener("change",e=>{const el=e.target,d=el.dataset;
- if(d.l){const it=DB[d.l][+d.i],col=LISTS[d.l].cols.find(c=>c.k===d.k);if(!it||!col)return;if(d.l==="sims"&&d.k==="date"&&!el.value){el.value=it.date||"";toast("Tarih zorunlu");return}{const st=lfOf(d.l);if(st.s||Object.values(st.f).some(Boolean)){UI.pin=UI.pin||{};const a=UI.pin[d.l]=UI.pin[d.l]||[];if(!a.includes(it.id))a.unshift(it.id)}}
+ if(d.l){const it=DB[d.l][+d.i],col=LISTS[d.l].cols.find(c=>c.k===d.k);if(!it||!col)return;const oc=(it.code||"").trim().toUpperCase();if(d.l==="sims"&&d.k==="date"&&!el.value){el.value=it.date||"";toast("Tarih zorunlu");return}{const st=lfOf(d.l);if(st.s||Object.values(st.f).some(Boolean)){UI.pin=UI.pin||{};const a=UI.pin[d.l]=UI.pin[d.l]||[];if(!a.includes(it.id))a.unshift(it.id)}}
   if((d.l==="crew"||d.l==="instr")&&d.k==="code"){const v=el.value.trim().toUpperCase(),j=v?DB[d.l].findIndex((x,n)=>n!==+d.i&&(x.code||"").trim().toUpperCase()===v):-1;// kod listede benzersiz: aynı kod kabul edilmez
    if(j>=0){el.value=it.code||"";const o=DB[d.l][j];toast("Bu kod zaten var: "+v+" ("+LISTS[d.l].t+", satır "+(j+1)+(o.name?": "+o.name:"")+"). Kodu değiştirin.",6000);return}}
   if(col.t==="dev"){const dv=devById(el.value);it.dev=dv?dv.id:"";if(dv&&!isAC(dv)&&!dv.s?.[it.slot])it.slot=SLOTS.find(k=>dv.s[k])||"";if(isAC(dv))it.slot="";touch();render();return}
   if(col.t==="days"){if(!Array.isArray(it.days))it.days=Array(7).fill(true);it.days[+d.j]=el.checked}else if(col.t==="check")it[d.k]=el.checked;else if(col.t==="code"){it[d.k]=el.value.trim().toUpperCase();el.value=it[d.k]}else it[d.k]=el.value;
+  // eğitmen ya da vize satırına kod girilince rütbe / ad soyad ekipten (vizede eğitmenlerden de) gelir; elle yazılmış farklı bilgi ezilmez
+  if(d.k==="code"&&(d.l==="instr"||d.l==="visas")){const P=c=>c?DB.crew.find(x=>(x.code||"").trim().toUpperCase()===c)||(d.l==="visas"?DB.instr.find(x=>(x.code||"").trim().toUpperCase()===c):null):null,np=P(it.code),op=P(oc);
+   if(np){let ch=0;(d.l==="instr"?["rank","name"]:["name"]).forEach(f=>{if(np[f]&&(!it[f]||(op&&it[f]===op[f]))){it[f]=np[f];ch=1}});if(ch){touch();render();return}}}
   touch();if(d.l==="crew")crewDerived();if(d.l==="instr")markDupCodes("instr");if(d.l==="visaTypes"||d.l==="sims")render();return}
  if(d.pon){DB.settings[RULEKEY[d.pon]]=el.checked;touch();render();return}
  if(d.s){const S=DB.settings;S[d.s]=el.type==="checkbox"?el.checked:el.type==="number"?Math.max(0,+el.value||0):el.value;if(d.s==="winM"||d.s==="gapM"||d.s==="lpcM"||d.s==="opcM"||d.s==="maxGap"||d.s==="instrPerDay"||d.s==="pilotPerDay")S[d.s]=Math.max(1,S[d.s]);touch();render();return}
@@ -1474,7 +1487,7 @@ const EN_T={
 "Son Sim":"Last Sim","En erken (# ay)":"Earliest (# months)","En erken (otomatik)":"Earliest Auto","Geçerlilik":"Valid","Vize kontrol":"Visa Control","Son ay":"Final Month","Excel sütunu":"Excel column","Süresi dolmuş":"Expired","Kayıt yok":"#N/A","Yeşil":"Green","Son ay!":"Final!","Süresi dolmuş / Kayıt yok":"Expired / #N/A","Yalnızca Hata / Son ay! / Süresi dolmuş":"Only Error / Final! / Expired",
 // eğitmen tazelemeleri
 "Eğitmen tazelemeleri":"Instructor revalidations","Yetkiler # yılda bir yenilenir; geçerliliğin son # ayında tazeleme gerekir. Tazelemeyi planlamak için ilgili oturumu açıp (":"Authorizations are renewed every # years; a revalidation is required in the last # months of validity. To plan it, open the session (",
-") o sektörün":") and tick that sector's","Tazele":"Revalidate","kutusunu işaretleyin ve kurala uygun denetleyeni seçin: TRI→TRE · SFI→TRE/SFE · TRE/SFE→SE. SHGM'nin atadığı denetçi her tazelemeyi denetleyebilir (denetleyen: SHGM).":"box, then select an examiner allowed by the rule: TRI→TRE · SFI→TRE/SFE · TRE/SFE→SE. An examiner appointed by SHGM can examine any revalidation (examiner: SHGM).","SHGM – SHGM'nin atadığı denetçi":"SHGM – examiner appointed by SHGM","SHGM denetçisi":"SHGM examiner","Bu kod listede birden fazla satırda var":"This code appears in more than one row of the list",
+") o sektörün":") and tick that sector's","Tazele":"Revalidate","kutusunu işaretleyin ve kurala uygun denetleyeni seçin: TRI→TRE · SFI→TRE/SFE · TRE/SFE→SE. SHGM'nin atadığı denetçi her tazelemeyi denetleyebilir (denetleyen: SHGM).":"box, then select an examiner allowed by the rule: TRI→TRE · SFI→TRE/SFE · TRE/SFE→SE. An examiner appointed by SHGM can examine any revalidation (examiner: SHGM).","SHGM – SHGM'nin atadığı denetçi":"SHGM – examiner appointed by SHGM","SHGM denetçisi":"SHGM examiner","Vizeden de silinsin mi?":"Delete from visas too?","Artık ekip ve eğitmen listesinde yok. Kişi vizeleri listesinde kaydı var.":"No longer in the crew or instructor list. There is a record in the person visas list.","Vizede kalsın":"Keep in visas","Vizeden sil":"Delete from visas","Eğitmenlerden de silinsin mi?":"Delete from instructors too?","Ekip listesinden silindi. Eğitmenler listesinde de var.":"Deleted from the crew list. Also in the instructor list.","Eğitmen olarak kalsın":"Keep as instructor","Eğitmenlerden sil":"Delete from instructors","Eğitmen olarak kalsınlar":"Keep as instructors","Ekipten çıkan kişilerden # tanesi eğitmen listesinde de var.":"# of the people removed from the crew are also in the instructor list.","Ekip ve eğitmen listesinde artık olmayan # kişinin vize kaydı var.":"# people no longer in the crew or instructor list have a visa record.","Bu kod listede birden fazla satırda var":"This code appears in more than one row of the list",
 "geçerlilik #":"valid until #","oturum #":"session #","denetleyen":"examiner","denetleyen seçilmedi":"no examiner selected","planlanmadı":"not planned","denetleyen yok":"no examiner",
 "Taz.":"Reval.","Yetki tazelemesi":"Authorization revalidation","Bu eğitmenin yetki tazelemesi":"Authorization revalidation of this instructor","— denetleyen seç —":"— select examiner —","Tazeleme denetleyeni (examiner)":"Revalidation examiner","tercihiyle Skyscanner'da yeni sekmede arar (canlı fiyat uygulamaya çekilmez; en ucuzu orada görürsünüz).":"option, in a new Skyscanner tab (live prices are not pulled into the app; you see the cheapest one there)."
 };
