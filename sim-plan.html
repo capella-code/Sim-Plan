@@ -548,6 +548,14 @@ function evaluate(X){const S=X.S;
   else o.warn.push("Eğitmen listesi boş");
   if(o.L){const last=new Map();o.dn.forEach((d,k)=>{const t=o.s.instr?.[k];if(t)last.set(t,d)});
    last.forEach((d,t)=>{const v=visaOf(X,t,o.L.loc);if(v.none)return;if(v.raw==null)o.warn.push(t+" (eğitmen) vize kaydı yok");else if(visaExpired(v,d))o.err.push(t+" (eğitmen) "+v.t.name+" vizesi geçersiz")})}
+  // tazeleme denetleyeni (eğitmen): o gün izinli, aynı oturumda öğrenci ya da başka lokasyonda görevli olmamalı; vizesi de kontrol edilir (SHGM hariç)
+  o.dn.forEach((d,k)=>{const sup=o.s.rev?.[k]?.sup;if(!sup||sup===SHGM_SUP)return;const loc=X.lanes.get(laneAt(o.s,k))?.loc||"",w=sup+" (denetleyen) "+fmt(d);
+   if(!X.instrMap.has(sup))o.warn.push(sup+" (denetleyen) eğitmen listesinde yok");
+   const l=onLeave(X,sup,d);if(l)o.warn.push(w+" izinli ("+l+")");
+   if(pil.includes(sup))o.warn.push(w+" aynı oturumda öğrenci");
+   const other=[...new Set((pd.get(sup+"|"+d)||[]).filter(x=>x.o!==o).map(x=>X.lanes.get(laneAt(x.o.s,x.o.dn.indexOf(d)))?.loc||"").filter(x=>x&&x!==loc))];
+   if(other.length)o.warn.push(w+" başka lokasyonda görevli ("+other.join(", ")+")");
+   if(loc){const v=visaOf(X,sup,loc);if(!v.none&&(v.raw==null||visaExpired(v,d)))o.warn.push(w+" "+(v.raw==null?"vize kaydı yok":v.t.name+" vizesi geçersiz"))}});
   o.dn.forEach(d=>{people.forEach(c=>{const a=pd.get(c+"|"+d)||[],stN=a.filter(x=>x.r==="st").length,teN=a.filter(x=>x.r==="te").length;
    if(a.length>1&&(stN>(S.pilotPerDay||1)||(stN&&teN)||teN>S.instrPerDay)){const m=c+" "+fmt(d)+" birden fazla oturumda";if(!o.err.includes(m))o.err.push(m)}
    else if(stN>1){const tms=a.filter(x=>x.r==="st").map(x=>{const k=x.o.dn.indexOf(d);return slotMin(X.lanes.get(laneAt(x.o.s,k))?.time)});
@@ -777,7 +785,7 @@ function vTable(){const X=ctx(),R=evaluate(X);let rows=R.rows;
 // planda simülatöre giden her kişi (öğrenciler + o günün eğitmeni) için lokasyon bazında konaklama; giriş/çıkış ayarlardan
 function hotelStays(X,R){const S=DB.settings,bi=+S.hotelIn||0,ao=+S.hotelOut||0,per=new Map();
  const add=(code,loc,d,role,o)=>{if(!code)return;const k=code+"|"+loc;let p=per.get(k);if(!p){p={code,loc,days:new Map()};per.set(k,p)}const x=p.days.get(d)||{roles:new Set(),ses:new Set()};x.roles.add(role);x.ses.add(o);p.days.set(d,x)};
- for(const o of R.ses)o.dn.forEach((d,k)=>{if(d==null)return;const loc=X.lanes.get(laneAt(o.s,k))?.loc||"";o.s.pilots.forEach(c=>add(c,loc,d,"st",o));add(o.s.instr?.[k],loc,d,"te",o);if(o.s.rev?.[k]?.sup===SHGM_SUP)add(SHGM_SUP,loc,d,"sv",o)});// SHGM denetçisi tazeleme günü için
+ for(const o of R.ses)o.dn.forEach((d,k)=>{if(d==null)return;const loc=X.lanes.get(laneAt(o.s,k))?.loc||"";o.s.pilots.forEach(c=>add(c,loc,d,"st",o));add(o.s.instr?.[k],loc,d,"te",o);const sup=o.s.rev?.[k]?.sup;if(sup)add(sup,loc,d,sup===SHGM_SUP?"sv":"te",o)});// tazeleme denetleyeni (eğitmen ya da SHGM) o gün için
  const out=[];
  for(const p of per.values()){const ds=[...p.days.keys()].sort((a,b)=>a-b);let cur=null;
   const flush=()=>{if(cur)out.push(cur);cur=null};
@@ -1460,7 +1468,10 @@ const EN_T={
 // kalıp kurallar: [düzenli ifade, İngilizce] — bir parçanın tamamına uygulanır
 const EN_R=[
  [/^(\d+) oturum planlandı(?:, (\d+) kontrol planlanamadı)?; müsaitlik listesinde (\d+) tahmini gün \((\d+) ms\)$/,(m,a,u,t,ms)=>a+" sessions planned"+(u?", "+u+" checks could not be planned":"")+"; "+t+" estimated days in the availability list ("+ms+" ms)"],
- [/^Kaydedildi: (.+)$/,"Saved: $1"],[/^VİZESİ GEÇMİŞ \((?:(.+), )?(?:bitiş (\S+)|tarih girilmemiş)\)$/,(m,t,d)=>"VISA EXPIRED ("+(t?t+", ":"")+(d?"valid until "+d:"no date entered")+")"],
+ [/^Kaydedildi: (.+)$/,"Saved: $1"],
+ [/^(\S+) \(denetleyen\) (\S+) izinli \((.*)\)$/,"$1 (examiner) $2 on leave ($3)"],[/^(\S+) \(denetleyen\) (\S+) aynı oturumda öğrenci$/,"$1 (examiner) $2 is a student in the same session"],
+ [/^(\S+) \(denetleyen\) (\S+) başka lokasyonda görevli \((.+)\)$/,"$1 (examiner) $2 on duty at another location ($3)"],[/^(\S+) \(denetleyen\) (\S+) vize kaydı yok$/,"$1 (examiner) $2 no visa record"],
+ [/^(\S+) \(denetleyen\) (\S+) (.+) vizesi geçersiz$/,"$1 (examiner) $2 $3 visa invalid"],[/^(\S+) \(denetleyen\) eğitmen listesinde yok$/,"$1 (examiner) not in the instructor list"],[/^VİZESİ GEÇMİŞ \((?:(.+), )?(?:bitiş (\S+)|tarih girilmemiş)\)$/,(m,t,d)=>"VISA EXPIRED ("+(t?t+", ":"")+(d?"valid until "+d:"no date entered")+")"],
  [/^(.+) vizesi bitişi (\S+)$/,"$1 visa valid until $2"],[/^(.+) vize tarihi girilmemiş$/,"$1 visa date not entered"],[/^kontrol tarihi (\S+)$/,"check date $1"],[/^VİZE KAYDI YOK \((.+)\)$/,"NO VISA RECORD ($1)"],[/^(TRE|SFE|TRI|SFI) tazeleme$/,"$1 revalidation"],
  [/^(TRE|SFE|TRI|SFI) TAZELEME(?: \(denetleyen (.+?)(?: \/ (.+))?\))?$/,(m,r,a,b)=>r+" REVALIDATION"+(a?" (examiner "+a+(b?" / "+b:"")+")":"")],[/^Dosya indirilemedi \((.+)\)$/,"The file could not be downloaded ($1)"],[/^(.+) zaten kayıtlı$/,"$1 is already registered"],
  [/^Yüklendi: (.+)$/,(m,r)=>"Loaded: "+r.split(", ").map(p=>{const x=p.match(/^(.+) (\d+)$/),e=x&&enOne(x[1]);return e?e+" "+x[2]:p}).join(", ")],
