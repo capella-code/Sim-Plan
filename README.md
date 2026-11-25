@@ -42,7 +42,7 @@ GitHub otomatik üretir: **Actions ▸ "Windows kurulum dosyasi" ▸ Run workflo
 2. `sim-plan.html` dosyasını aynı klasöre **`sim plan.html`** adıyla kopyalayın (güncellemede eskisinin üzerine yazın; veriler tarayıcıda durduğu için kaybolmaz).
 3. `Sim Plan.cmd` ile açın. İlk açılışta verileriniz yoksa **Diğer ▸ Yedekten yükle** ile son JSON yedeğinizi yükleyin.
 
-Veriler tarayıcıda saklandığı için düzenli olarak **Diğer ▸ Yedek al (JSON)** ile yedek alın. Farklı tarayıcılarda (Edge / Chrome) veriler ayrı tutulur; hep aynı başlatıcıyla açın.
+Veriler tarayıcıda saklandığı için düzenli olarak **Diğer ▸ Yedekle (JSON)** ile yedek alın. Farklı tarayıcılarda (Edge / Chrome) veriler ayrı tutulur; hep aynı başlatıcıyla açın.
 
 ## Geliştirme
 
