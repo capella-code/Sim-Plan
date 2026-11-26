@@ -702,7 +702,7 @@ function crewDerived(){const X=ctx();markDupCodes("crew");
   const ev=nextEvent(initState({...c},X),X);td.innerHTML=`<b>${ev.type}</b> ${fmt(ev.deadline)} · en erken <span class="${ev.gapDriven?"bad":""}">${fmt(ev.earliest)}</span>${ev.expired?' <span class="bad">süresi dolmuş</span>':""}`})}
 
 /* ---- FSTD / Uçak ---- */
-const DEVCOLS=[["k","Tür",d=>isAC(d)?"Uçak":"FFS"],["c","Kod / Tescil",d=>d.c],["ac","Tip",d=>d.ac],["op","Operatör",d=>d.op],["loc","Lokasyon",d=>d.loc],...SLOTS.map((k,i)=>[k,k+" ("+i+")",d=>slotTime(d,k)]),["a","Durum",d=>d.a?"Aktif":"Pasif"]];
+const DEVCOLS=[["k","Tür",d=>isAC(d)?"Uçak":"FFS"],["c","Kod / Tescil",d=>d.c],["ac","Tip",d=>d.ac],["op","Operatör",d=>d.op],["loc","Lokasyon",d=>d.loc],["tz","Saat dilimi",d=>d.tz],...SLOTS.map((k,i)=>[k,k+" ("+i+")",d=>slotTime(d,k)]),["a","Durum",d=>d.a?"Aktif":"Pasif"]];
 function vDevices(){const st=UI.dev;let L=DB.devices.filter(d=>UI.devShow==="t"||(UI.devShow==="a")===!!d.a);const all=L.length;
  const fs=Object.entries(st.f).filter(([,v])=>v);if(fs.length)L=L.filter(d=>fs.every(([k,q])=>matchF(DEVCOLS.find(c=>c[0]===k)[2](d),q)));
  L=[...L].sort(st.s?(a,b)=>{const g=DEVCOLS.find(c=>c[0]===st.s)[2];return cmpV(g(a)||"",g(b)||"",st.d)}:(a,b)=>(isAC(a)-isAC(b))||a.c.localeCompare(b.c));
@@ -712,7 +712,7 @@ function vDevices(){const st=UI.dev;let L=DB.devices.filter(d=>UI.devShow==="t"|
  <div class="mu">Slot saatleri yerel saattir; gece yarısını geçen slot ertesi gün biter. Uçakta uçuş saati değişken olduğu için slot yoktur.</div>
  <div class="sc" style="margin-top:6px"><table class="ed"><thead><tr><th></th>${DEVCOLS.map(([k,l])=>`<th class="so" data-ds="${k}" title="Sıralamak için tıklayın">${l}${arrow(st.s===k,st.d)}</th>`).join("")}</tr>
  <tr class="fr np"><th></th>${DEVCOLS.map(([k])=>`<th><input data-dvf="${k}" value="${esc(st.f[k]||"")}" placeholder="Filtre"></th>`).join("")}</tr></thead>
- <tbody>${L.map(d=>`<tr><td style="white-space:nowrap"><button class="s np" data-deved="${esc(d.id)}">Düzelt</button> <button class="s d np" data-devdel="${esc(d.id)}">Sil</button></td><td>${isAC(d)?"Uçak":"FFS"}</td><td><b>${esc(d.c)}</b></td><td>${esc(d.ac)}</td><td>${esc(d.op)}</td><td>${esc(d.loc)}</td>${SLOTS.map(k=>`<td>${esc(slotTime(d,k))}</td>`).join("")}<td>${d.a?'<span class="good">Aktif</span>':'<span class="mu">Pasif</span>'}</td></tr>`).join("")||`<tr><td colspan="${DEVCOLS.length+1}" class="mu">${all?"Filtreye uyan kayıt yok.":"Kayıt yok."}</td></tr>`}</tbody></table></div></div>`}
+ <tbody>${L.map(d=>`<tr><td style="white-space:nowrap"><button class="s np" data-deved="${esc(d.id)}">Düzelt</button> <button class="s d np" data-devdel="${esc(d.id)}">Sil</button></td><td>${isAC(d)?"Uçak":"FFS"}</td><td><b>${esc(d.c)}</b></td><td>${esc(d.ac)}</td><td>${esc(d.op)}</td><td>${esc(d.loc)}</td><td>${esc(d.tz)}</td>${SLOTS.map(k=>`<td>${esc(slotTime(d,k))}</td>`).join("")}<td>${d.a?'<span class="good">Aktif</span>':'<span class="mu">Pasif</span>'}</td></tr>`).join("")||`<tr><td colspan="${DEVCOLS.length+1}" class="mu">${all?"Filtreye uyan kayıt yok.":"Kayıt yok."}</td></tr>`}</tbody></table></div></div>`}
 function devErr(x){const b=[],ac=isAC(x),o=DB.devices.filter(d=>String(d.id)!==String(x.id));
  if(!x.c)b.push(ac?"Tescil gerekli":"FSTD kodu gerekli");else if(!(ac?/^[A-Z0-9]{1,2}-?[A-Z0-9]{2,5}$/:/^[A-Z0-9][A-Z0-9-]{1,19}$/).test(x.c))b.push(ac?"Tescil biçimi geçersiz (ör. TC-ABC)":"FSTD kodu yalnızca harf, rakam ve tire içerebilir (ör. DE-1A-049)");
  else if(o.some(d=>d.c===x.c))b.push(x.c+" zaten kayıtlı");
@@ -726,7 +726,7 @@ function devErr(x){const b=[],ac=isAC(x),o=DB.devices.filter(d=>String(d.id)!==S
  return b}
 function devDlg(id,kind){const orig=id!=null?devById(id):null;const x=orig?cloneDev(orig):{id:nextDevId(DB.devices),k:kind,c:"",ac:"B744",op:"",mf:"",loc:"",tz:"",a:1,s:{}};const ac=isAC(x);
  const I=(k,l,a="")=>`<label class="f"><span>${l}</span><input data-dd="${k}" value="${esc(x[k]||"")}" autocomplete="off" ${a}></label>`;
- dlg(orig?(ac?"Uçağı düzenle – ":"Simülatörü düzenle – ")+esc(x.c):(ac?"Yeni uçak":"Yeni simülatör"),`<div class="g">${I("c",ac?"Tescil (ör. TC-ABC)":"FSTD kodu (ör. DE-1A-049)")}${I("ac","Hava aracı tipi")}${I("op","Operatör")}${ac?"":I("mf","Üretici")}${I("loc",ac?"Üs (IATA, opsiyonel)":"Lokasyon (IATA)",'maxlength="3" placeholder="FRA"')}
+ dlg(orig?(ac?"Uçağı düzenle – ":"Simülatörü düzenle – ")+esc(x.c):(ac?"Yeni uçak":"Yeni simülatör"),`<div class="g">${I("c",ac?"Tescil (ör. TC-ABC)":"FSTD kodu (ör. DE-1A-049)")}${I("ac","Hava aracı tipi")}${I("op","Operatör")}${I("loc",ac?"Üs (IATA, opsiyonel)":"Lokasyon (IATA)",'maxlength="3" placeholder="FRA"')}
  <label class="f"><span>Saat dilimi</span><select data-dd="tz"><option value="">${ac?"—":"Seçin…"}</option>${[...new Set([...TZS,x.tz].filter(Boolean))].map(z=>`<option${x.tz===z?" selected":""}>${esc(z)}</option>`).join("")}</select></label>
  <label class="ck" style="align-self:end"><input type="checkbox" data-dd="a"${x.a?" checked":""}><span>Aktif</span></label></div>
  ${ac?'<p class="mu">Uçakta uçuş saati değişken olduğu için slot tanımlanmaz.</p>':`<div class="mu" style="margin-top:10px">Slot saatleri (yerel; kullanılmayan slotu boş bırakın)</div><div class="g" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-top:4px">${SLOTS.map(k=>`<label class="f"><span>Slot ${k} (${SLOTS.indexOf(k)})</span><span style="display:flex;gap:4px;align-items:center"><input type="time" data-sl="${k}" data-j="0" value="${esc((x.s[k]||[])[0]||"")}" style="flex:1;min-width:0"> – <input type="time" data-sl="${k}" data-j="1" value="${esc((x.s[k]||[])[1]||"")}" style="flex:1;min-width:0"></span></label>`).join("")}</div>`}
@@ -737,7 +737,7 @@ function devDlg(id,kind){const orig=id!=null?devById(id):null;const x=orig?clone
   const b=devErr(x);if(b.length){$("#der").innerHTML=b.map(m=>`<li>${esc(m)}</li>`).join("");return false}
   if(!ac)SLOTS.forEach(k=>{if(x.s[k]&&!(x.s[k][0]&&x.s[k][1]))delete x.s[k]});
   if(orig&&orig.c!==x.c){const rn=l=>l===orig.c?x.c:l.startsWith(orig.c+" ")?x.c+l.slice(orig.c.length):l;DB.sessions.forEach(se=>{se.lane=rn(se.lane);if(se.lanes)se.lanes=se.lanes.map(rn)})}// kod değişince oturumlar izler
-  {const NM={c:"Kod / Tescil",ac:"Tip",op:"Operatör",mf:"Üretici",loc:"Lokasyon",tz:"Saat dilimi",a:"Aktif",s:"Slot saatleri"},J=v=>JSON.stringify(v??""),chg=orig?Object.keys(NM).filter(k=>J(orig[k])!==J(x[k])).map(k=>NM[k]):[];
+  {const NM={c:"Kod / Tescil",ac:"Tip",op:"Operatör",loc:"Lokasyon",tz:"Saat dilimi",a:"Aktif",s:"Slot saatleri"},J=v=>JSON.stringify(v??""),chg=orig?Object.keys(NM).filter(k=>J(orig[k])!==J(x[k])).map(k=>NM[k]):[];
    logAdd("FSTD / Uçak: "+x.c+(orig?(chg.length?" güncellendi (değişen: "+chg.join(", ")+")":" kaydedildi (değişiklik yok)"):" eklendi"))}
   if(orig)Object.assign(orig,x);else DB.devices.push(x);touch();render();toast("Kaydedildi: "+x.c)}}])}
 function devUses(d){const n1=DB.sims.filter(r=>String(r.dev)===String(d.id)).length,n2=DB.sessions.filter(se=>[se.lane,...(se.lanes||[])].some(l=>l===d.c||l.startsWith(d.c+" "))).length;return[n1,n2]}
@@ -746,12 +746,12 @@ function devDel(id){const d=devById(id);if(!d)return;const[n1,n2]=devUses(d);
  else confirmDlg("Sil",`<b>${esc(d.c)}</b> kalıcı olarak silinsin mi?`,"Sil",()=>{DB.devices=DB.devices.filter(x=>x!==d);logAdd("FSTD / Uçak: silindi – "+d.c);touch();render()},"d")}
 // listeyi koda göre birleştirir (id'ler korunur, müsaitlik satırları bozulmaz)
 function upsertDevices(list){let a=0,u=0;list.forEach(src=>{const c=(src.c||"").toUpperCase();if(!c)return;const ex=DB.devices.find(d=>(d.c||"").toUpperCase()===c);
-  if(ex){Object.assign(ex,cloneDev({...src,id:ex.id}));u++}else{const id=DB.devices.some(d=>String(d.id)===String(src.id))||src.id==null?nextDevId(DB.devices):src.id;DB.devices.push(cloneDev({...src,id}));a++}});return[a,u]}
+  if(ex){Object.assign(ex,cloneDev({...src,id:ex.id,mf:src.mf||ex.mf||""}));u++}else{const id=DB.devices.some(d=>String(d.id)===String(src.id))||src.id==null?nextDevId(DB.devices):src.id;DB.devices.push(cloneDev({...src,id}));a++}});return[a,u]}
 function devRowsToItems(rows){const H=(rows[0]||[]).map(norm),col=(...al)=>H.findIndex(h=>al.includes(h));
- const ix={k:col("tur","type","kind"),c:col("kodtescil","kod","tescil","fstd","code","fstdkodu","coderegistration","registration"),ac:col("tip","actype","hava aracitipi","havaracitipi","type2"),op:col("operator"),mf:col("uretici","manufacturer"),loc:col("lokasyon","location","us"),tz:col("saatdilimi","timezone","tz"),a:col("durum","aktif","status")};
+ const ix={k:col("tur","type","kind"),c:col("kodtescil","kod","tescil","fstd","code","fstdkodu","coderegistration","registration"),ac:col("tip","actype","hava aracitipi","havaracitipi","type2"),op:col("operator"),loc:col("lokasyon","location","us"),tz:col("saatdilimi","timezone","tz"),a:col("durum","aktif","status")};
  if(ix.c<0)return[];const sl=SLOTS.map(k=>H.indexOf(norm(k)));
  return rows.slice(1).filter(r=>r&&String(r[ix.c]??"").trim()).map(r=>{const g=i=>i<0?"":String(r[i]??"").trim();const k=/ucak|ac|aircraft/.test(norm(g(ix.k)))?"AC":"FFS";
-  const d={k,c:g(ix.c).toUpperCase().replace(/\s/g,""),ac:g(ix.ac).toUpperCase(),op:g(ix.op),mf:g(ix.mf),loc:g(ix.loc).toUpperCase(),tz:g(ix.tz),a:ix.a<0||!/pasif|passive|hayir|^h$|^0$|false/.test(norm(g(ix.a)))?1:0,s:{}};
+  const d={k,c:g(ix.c).toUpperCase().replace(/\s/g,""),ac:g(ix.ac).toUpperCase(),op:g(ix.op),loc:g(ix.loc).toUpperCase(),tz:g(ix.tz),a:ix.a<0||!/pasif|passive|hayir|^h$|^0$|false/.test(norm(g(ix.a)))?1:0,s:{}};
   if(k!=="AC")SLOTS.forEach((n,j)=>{const t=parseSlot(sl[j]<0?"":r[sl[j]]);if(t)d.s[n]=t});return d})}
 // Excel'den gelen slotlar: tek tarih ya da tarih aralığı (+günler); durum boşsa Reserved (plandan bağımsız alınmış slot)
 function importSlots(items,mode){const rows=[];items.forEach(it=>{resolveSimRow(it);const base={dev:it.dev,slot:it.slot,status:it.status||"Reserved",note:it.note||""};
@@ -759,8 +759,8 @@ function importSlots(items,mode){const rows=[];items.forEach(it=>{resolveSimRow(
  const valid=rows.filter(r=>r.date&&devById(r.dev));if(mode!=="add")DB.sims=DB.sims.filter(r=>r.status==="Tahmini");
  const idx=new Map(DB.sims.map(r=>[rowLane(r)+"|"+r.date,r]));
  valid.forEach(r=>{const k=rowLane(r)+"|"+r.date,ex=idx.get(k);if(ex){if(r.status==="Reserved")ex.status="Reserved";if(r.note)ex.note=r.note}else{DB.sims.push(r);idx.set(k,r)}});return valid.length}
-function devSheet(){return{name:"FSTD",freeze:1,widths:[7,13,7,11,9,9,17,12,12,12,12,12,12,8],rows:[(LANG==="en"?["Kind","Code / Registration","AC type","Operator","Manufacturer","Location","Time zone"]:["Tür","Kod / Tescil","Tip","Operatör","Üretici","Lokasyon","Saat dilimi"]).concat(SLOTS,[LANG==="en"?"Status":"Durum"]).map(v=>({v,b:1,fill:"D9D9D9",bd:1})),
- ...DB.devices.map(d=>[isAC(d)?"Uçak":"FFS",d.c,d.ac,d.op,d.mf,d.loc,d.tz,...SLOTS.map(k=>slotTime(d,k)),d.a?"Aktif":"Pasif"].map(v=>({v:v??"",bd:1})))]}}
+function devSheet(){return{name:"FSTD",freeze:1,widths:[7,13,7,11,9,17,12,12,12,12,12,12,8],rows:[(LANG==="en"?["Kind","Code / Registration","AC type","Operator","Location","Time zone"]:["Tür","Kod / Tescil","Tip","Operatör","Lokasyon","Saat dilimi"]).concat(SLOTS,[LANG==="en"?"Status":"Durum"]).map(v=>({v,b:1,fill:"D9D9D9",bd:1})),
+ ...DB.devices.map(d=>[isAC(d)?"Uçak":"FFS",d.c,d.ac,d.op,d.loc,d.tz,...SLOTS.map(k=>slotTime(d,k)),d.a?"Aktif":"Pasif"].map(v=>({v:v??"",bd:1})))]}}
 // müsaitlik satırındaki cihaz kodu / slot metnini (Excel, yapıştırma) cihaz + slota çevirir; bilinmeyen kod yeni FFS kaydı olur
 function resolveSimRow(it){if(it._dev==null&&it._slot==null&&it._time==null)return it;if(it._slot==null&&it._time!=null)it._slot=String(it._time);const code=String(it._dev??"").trim().toUpperCase().replace(/\s/g,"");let dv=code?DB.devices.find(d=>(d.c||"").toUpperCase()===code):devById(it.dev);
  if(!dv&&code){dv={id:nextDevId(DB.devices),k:"FFS",c:code,ac:"",op:"",mf:"",loc:"",tz:"",a:1,s:{}};DB.devices.push(dv)}
@@ -1139,12 +1139,12 @@ async function importFile(file){try{const nm=file.name.toLowerCase();
 function pasteDlg(key){const L=LISTS[key];dlg(L.t+" – Excel'den yapıştır",`<div class="mu">Excel'de hücreleri seçip kopyalayın (başlık satırıyla birlikte daha güvenli) ve buraya yapıştırın. Başlık yoksa sütun sırası: <b>${L.cols.map(c=>c.l).join(" | ")}</b></div><textarea id="pT" placeholder="Yapıştırın…"></textarea>`,
  [{l:"Vazgeç"},{l:"Sona ekle",f:()=>doPaste(key,"add")},{l:"Listeyi değiştir",c:"p",f:()=>doPaste(key,"replace")}],()=>$("#pT").focus())}
 function doPaste(key,mode){const items=rowsToItems(key,parseCSV($("#pT").value));if(!items.length){toast("Satır bulunamadı");return false}applyImport([{key,items}],mode,"Excel'den yapıştır")}
-function devPasteDlg(){dlg("FSTD / Uçak – Excel'den yapıştır",`<div class="mu">Excel'de hücreleri kopyalayıp buraya yapıştırın. Sütun sırası (Excel'e aktarılan FSTD / Uçak sayfasıyla aynı): <b>Tür · Kod / Tescil · Tip · Operatör · Üretici · Lokasyon · Saat dilimi · A · B · C · D · E · F · Durum</b>. Başlık satırı olsa da olmasa da olur (başlık yoksa bu sıra kullanılır). Slot hücrelerine saat aralığı yazın (ör. 15:05–19:05); uçakta slot yoktur. Aynı koddaki cihaz güncellenir. (Biçim için <b>Excel'e aktar ▸ Tüm verileri Excel'e aktar</b>, FSTD / Uçak sayfası.)</div><textarea id="pT" placeholder="Yapıştırın…"></textarea>`,
+function devPasteDlg(){dlg("FSTD / Uçak – Excel'den yapıştır",`<div class="mu">Excel'de hücreleri kopyalayıp buraya yapıştırın. Sütun sırası (Excel'e aktarılan FSTD / Uçak sayfasıyla aynı): <b>Tür · Kod / Tescil · Tip · Operatör · Lokasyon · Saat dilimi · A · B · C · D · E · F · Durum</b>. Başlık satırı olsa da olmasa da olur (başlık yoksa bu sıra kullanılır). Slot hücrelerine saat aralığı yazın (ör. 15:05–19:05); uçakta slot yoktur. Aynı koddaki cihaz güncellenir. (Biçim için <b>Excel'e aktar ▸ Tüm verileri Excel'e aktar</b>, FSTD / Uçak sayfası.)</div><textarea id="pT" placeholder="Yapıştırın…"></textarea>`,
  [{l:"Vazgeç"},{l:"Ekle / güncelle",f:()=>doDevPaste("add")},{l:"Listeyi değiştir",c:"p",f:()=>doDevPaste("replace")}],()=>$("#pT").focus())}
-// başlıksız yapıştırma: sabit sütun sırası (Excel şablonuyla aynı): Tür,Kod,Tip,Operatör,Üretici,Lokasyon,Saat dilimi,A,B,C,D,E,F,Durum
+// başlıksız yapıştırma: sabit sütun sırası (FSTD / Uçak tablosu ve Excel'deki FSTD sayfasıyla aynı): Tür,Kod,Tip,Operatör,Lokasyon,Saat dilimi,A,B,C,D,E,F,Durum
 function devRowsToItemsFixed(rows){return rows.filter(r=>r&&String(r[1]??"").trim()).map(r=>{const g=i=>String(r[i]??"").trim(),k=/ucak|ac|aircraft/.test(norm(g(0)))?"AC":"FFS";
- const d={k,c:g(1).toUpperCase().replace(/\s/g,""),ac:g(2).toUpperCase(),op:g(3),mf:g(4),loc:g(5).toUpperCase(),tz:g(6),a:/pasif|passive|hayir|^h$|^0$|false/.test(norm(g(13)))?0:1,s:{}};
- if(k!=="AC")SLOTS.forEach((n,j)=>{const t=parseSlot(g(7+j));if(t)d.s[n]=t});return d})}
+ const d={k,c:g(1).toUpperCase().replace(/\s/g,""),ac:g(2).toUpperCase(),op:g(3),loc:g(4).toUpperCase(),tz:g(5),a:/pasif|passive|hayir|^h$|^0$|false/.test(norm(g(12)))?0:1,s:{}};
+ if(k!=="AC")SLOTS.forEach((n,j)=>{const t=parseSlot(g(6+j));if(t)d.s[n]=t});return d})}
 function doDevPaste(mode){const rows=parseCSV($("#pT").value);let items=devRowsToItems(rows);if(!items.length)items=devRowsToItemsFixed(rows);if(!items.length){toast("Satır bulunamadı");return false}
  if(mode==="replace")DB.devices=[];const[a,u]=upsertDevices(items);logAdd("FSTD / Uçak – Excel'den yapıştır ("+(mode==="replace"?"Listeyi değiştir":"Ekle / güncelle")+"): "+a+" eklendi, "+u+" güncellendi");touch();render();toast(a+" eklendi, "+u+" güncellendi")}
 function inputSheets(){return[devSheet(),...Object.entries(LISTS).map(([key,L])=>{const cols=listCols(key,DERIVED[key]?ctx():null).filter(c=>c.col||c.der?.x);
